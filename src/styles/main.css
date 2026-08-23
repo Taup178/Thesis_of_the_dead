@@ -1,0 +1,279 @@
+/* ============================================
+   Thesis of the Dead - Main Stylesheet
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Inter:wght@400;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Inter', sans-serif;
+  color: #eee;
+  cursor: default;
+}
+
+#game-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#game-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---- Overlays (menus, pause, gameover) ---- */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.menu-container {
+  text-align: center;
+  max-width: 480px;
+  padding: 40px;
+}
+
+.game-title {
+  font-family: 'Creepster', cursive;
+  font-size: 4rem;
+  color: #c62828;
+  text-shadow: 0 0 20px rgba(198, 40, 40, 0.6), 0 4px 8px rgba(0,0,0,0.8);
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.game-subtitle {
+  font-size: 1.1rem;
+  color: #aaa;
+  margin-bottom: 40px;
+  font-style: italic;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.menu-btn {
+  padding: 14px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: 2px solid #c62828;
+  background: transparent;
+  color: #eee;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.menu-btn:hover {
+  background: #c62828;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(198, 40, 40, 0.5);
+}
+
+.credits-text {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #bbb;
+  margin-bottom: 24px;
+}
+
+.gameover-title {
+  font-family: 'Creepster', cursive;
+  font-size: 3rem;
+  color: #c62828;
+  margin-bottom: 16px;
+}
+
+.win-title {
+  font-family: 'Creepster', cursive;
+  font-size: 3rem;
+  color: #4caf50;
+  margin-bottom: 16px;
+  text-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+}
+
+/* ---- Options ---- */
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.option-row label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.option-row input[type="range"] {
+  flex: 1;
+  accent-color: #c62828;
+}
+
+/* ---- Loading ---- */
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #c62828, #ff5252);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ---- HUD ---- */
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  pointer-events: none;
+}
+
+#hud.hidden {
+  display: none;
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  user-select: none;
+  font-weight: 300;
+}
+
+#health-bar-container {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+}
+
+#health-bar-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  color: #ccc;
+}
+
+#health-bar-bg {
+  width: 260px;
+  height: 14px;
+  background: rgba(50, 50, 50, 0.8);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+#health-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #81c784);
+  border-radius: 7px;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+#health-bar-fill.low {
+  background: linear-gradient(90deg, #c62828, #ff5252);
+}
+
+#health-bar-fill.medium {
+  background: linear-gradient(90deg, #f57c00, #ffb74d);
+}
+
+#level-title-display {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Creepster', cursive;
+  font-size: 1.6rem;
+  color: #c62828;
+  text-shadow: 0 0 10px rgba(198, 40, 40, 0.4);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+#level-title-display.visible {
+  opacity: 1;
+}
+
+#score-display {
+  position: absolute;
+  top: 40px;
+  right: 200px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffd54f;
+  text-shadow: 0 0 6px rgba(0,0,0,0.8);
+}
+
+#minimap-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#minimap {
+  display: block;
+}
+
+#controls-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+}

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thesis of the Dead</title>
+  <link rel="stylesheet" href="./src/styles/main.css" />
+</head>
+<body>
+  <!-- Main Menu Overlay -->
+  <div id="menu-overlay" class="overlay">
+    <div class="menu-container">
+      <h1 class="game-title">Thesis of the Dead</h1>
+      <p class="game-subtitle">Will you survive the Final Draft?</p>
+      <div class="menu-buttons">
+        <button id="btn-start" class="menu-btn">Start Game</button>
+        <button id="btn-credits" class="menu-btn">Credits</button>
+        <button id="btn-options" class="menu-btn">Options</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credits Overlay -->
+  <div id="credits-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2>Credits</h2>
+      <p class="credits-text">
+        <strong>Thesis of the Dead</strong><br />
+        A CGV Assignment Project<br /><br />
+        Built with Three.js<br />
+        Music &amp; SFX from Pixabay (Royalty-Free)
+      </p>
+      <button id="btn-credits-back" class="menu-btn">Back</button>
+    </div>
+  </div>
+
+  <!-- Options Overlay -->
+  <div id="options-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2>Options</h2>
+      <div class="option-row">
+        <label for="volume-slider">Master Volume</label>
+        <input id="volume-slider" type="range" min="0" max="100" value="70" />
+      </div>
+      <div class="option-row">
+        <label for="sensitivity-slider">Mouse Sensitivity</label>
+        <input id="sensitivity-slider" type="range" min="1" max="10" value="5" />
+      </div>
+      <button id="btn-options-back" class="menu-btn">Back</button>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loading-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2 id="loading-title">Loading...</h2>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p id="loading-hint" class="credits-text">Preparing your thesis defense...</p>
+    </div>
+  </div>
+
+  <!-- HUD (in-game) -->
+  <div id="hud" class="hidden">
+    <div id="crosshair">+</div>
+    <div id="health-bar-container">
+      <div id="health-bar-label">Stamina</div>
+      <div id="health-bar-bg">
+        <div id="health-bar-fill"></div>
+      </div>
+    </div>
+    <div id="level-title-display"></div>
+    <div id="score-display">Credits: 0</div>
+    <div id="minimap-container">
+      <canvas id="minimap" width="150" height="150"></canvas>
+    </div>
+    <div id="controls-hint">
+      WASD: Move | Mouse: Look | Click: Shoot | Shift: Sprint | Space: Dodge | C: Camera | R: Restart
+    </div>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div id="pause-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2>Paused</h2>
+      <p class="credits-text">Click to resume</p>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="gameover-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2 class="gameover-title">Thesis Rejected</h2>
+      <p class="credits-text">Your stamina ran out. The zombies got your degree.</p>
+      <button id="btn-retry" class="menu-btn">Try Again</button>
+      <button id="btn-menu" class="menu-btn">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- Level Complete Overlay -->
+  <div id="levelcomplete-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2 id="levelcomplete-title">Level Complete!</h2>
+      <p id="levelcomplete-text" class="credits-text"></p>
+      <button id="btn-nextlevel" class="menu-btn">Continue</button>
+    </div>
+  </div>
+
+  <!-- Win Overlay -->
+  <div id="win-overlay" class="overlay hidden">
+    <div class="menu-container">
+      <h2 class="win-title">Degree Earned!</h2>
+      <p class="credits-text">
+        Congratulations, Graduate!<br />
+        You survived the Final Draft and earned your degree.
+      </p>
+      <button id="btn-win-menu" class="menu-btn">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- Three.js canvas is appended here -->
+  <div id="game-container"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
