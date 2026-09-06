@@ -1,0 +1,11 @@
+Model Information:
+* title:	Simple Grass Ground (Free Low Model)
+* source:	https://sketchfab.com/3d-models/simple-grass-ground-free-low-model-758b5be71cd6427e9834d2968afff7c4
+* author:	Shun Koizumi (https://sketchfab.com/shunsuke.koizumi)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Simple Grass Ground (Free Low Model)" (https://sketchfab.com/3d-models/simple-grass-ground-free-low-model-758b5be71cd6427e9834d2968afff7c4) by Shun Koizumi (https://sketchfab.com/shunsuke.koizumi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

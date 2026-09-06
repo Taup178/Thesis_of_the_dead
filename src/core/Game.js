@@ -264,11 +264,16 @@ export class Game {
         }
       }
 
-      const hits = this.raycaster.intersectObjects(zombieMeshes, false);
+      // Include tree meshes so trees act as obstacles blocking bullets
+      const treeMeshes = this.currentLevel.treeMeshes || [];
+      const shootableObjects = [...zombieMeshes, ...treeMeshes];
+
+      const hits = this.raycaster.intersectObjects(shootableObjects, false);
       if (hits.length > 0) {
-        // Find which zombie was hit
+        // Find which zombie was hit (if blocked by tree, hitObject won't match any zombie)
         const hitObject = hits[0].object;
         for (const zombie of this.currentLevel.zombies) {
+          if (!zombie.alive) continue;
           let isThisZombie = false;
           zombie.group.traverse((child) => {
             if (child === hitObject) isThisZombie = true;
@@ -407,7 +412,7 @@ export class Game {
 
     // ---- Update logic ----
     if (this.state === this.STATE.PLAYING && this.player && this.currentLevel) {
-      this.player.update(dt);
+      this.player.update(dt, this.currentLevel.getObstacles?.() || []);
       this._handleShooting(dt);
 
       const events = this.currentLevel.update(dt, this.player, this.elapsedTime);
@@ -416,8 +421,7 @@ export class Game {
         // Brief flash or sound could go here
       }
 
-      if (events.bossReached) {
-        this.currentLevel.levelComplete = true;
+      if (events.levelComplete) {
         this.levelComplete();
       }
 

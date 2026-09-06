@@ -20,6 +20,7 @@ export class Player {
     this.maxHealth = 100;
     this.health = this.maxHealth;
     this.score = 0;
+    this.radius = 0.4; // horizontal collision radius
 
     // --- State ---
     this.yaw = 0;
@@ -136,7 +137,7 @@ export class Player {
     }
   }
 
-  update(dt) {
+  update(dt, obstacles = []) {
     if (!this.alive) return;
 
     const inp = this.input;
@@ -208,6 +209,11 @@ export class Player {
     this.group.position.z += this.velocity.z * dt;
     this.group.position.y += this.velocity.y * dt;
 
+    // Obstacle collision resolution (e.g. tree trunks)
+    if (obstacles && obstacles.length > 0) {
+      this._resolveObstacles(obstacles);
+    }
+
     // Simple ground clamp
     if (this.group.position.y <= 0) {
       this.group.position.y = 0;
@@ -224,6 +230,40 @@ export class Player {
     // Camera look target
     const lookTarget = this.group.position.clone().add(new THREE.Vector3(0, 1.4, 0));
     this.camera.lookAt(lookTarget);
+  }
+
+  /**
+   * Resolves horizontal collisions against circular obstacles (such as tree trunks).
+   * Pushes the player outside the obstacle radius and eliminates velocity directed into the obstacle
+   * to allow smooth sliding along the obstacle's surface.
+   */
+  _resolveObstacles(obstacles) {
+    const pRad = this.radius || 0.4;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const obs of obstacles) {
+        const dx = this.group.position.x - obs.x;
+        const dz = this.group.position.z - obs.z;
+        const minDist = obs.radius + pRad;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < minDist * minDist) {
+          const dist = Math.sqrt(distSq);
+          const nx = dist > 1e-5 ? dx / dist : 1;
+          const nz = dist > 1e-5 ? dz / dist : 0;
+          const overlap = minDist - dist;
+
+          this.group.position.x += nx * overlap;
+          this.group.position.z += nz * overlap;
+
+          // Remove velocity component pushing into obstacle for smooth sliding
+          const vDotN = this.velocity.x * nx + this.velocity.z * nz;
+          if (vDotN < 0) {
+            this.velocity.x -= vDotN * nx;
+            this.velocity.z -= vDotN * nz;
+          }
+        }
+      }
+    }
   }
 
   dispose() {
