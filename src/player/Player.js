@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -38,11 +39,8 @@ export class Player {
     this.group.name = 'Player';
 
     // Body (visible in 3rd person, hidden in 1st person)
-    const bodyGeo = new THREE.CapsuleGeometry(0.35, 1.0, 4, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a7ca5, roughness: 0.7 });
-    this.bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-    this.bodyMesh.position.y = 0.85;
-    this.bodyMesh.castShadow = true;
+    this.bodyMesh = new THREE.Group();
+    this.bodyMesh.name = 'CharacterBody';
     this.group.add(this.bodyMesh);
 
     // Gun (child of body, visible in both modes)
@@ -83,6 +81,120 @@ export class Player {
     this.verticalVelocity = 0;
     this.gravity = -20;
     this.grounded = true;
+  }
+
+  /**
+   * Loads the survivor character model and replaces the placeholder body.
+   */
+  async loadCharacter(url = './assets/models/character/character.gltf') {
+    const loader = new GLTFLoader();
+    return new Promise((resolve, reject) => {
+      loader.load(
+        url,
+        (gltf) => {
+          try {
+            const character = gltf.scene;
+            character.name = 'MattCharacter';
+
+            // Remove any placeholder children
+            while (this.bodyMesh.children.length > 0) {
+              this.bodyMesh.remove(this.bodyMesh.children[0]);
+            }
+
+            // Reset transforms so we can scale/orient explicitly
+            character.position.set(0, 0, 0);
+            character.quaternion.set(0, 0, 0, 1);
+            character.scale.set(1, 1, 1);
+            character.updateMatrix();
+
+            // The Matt model is authored facing +Z; rotate 180 degrees so
+            // the character faces game forward (-Z) and the camera sees his back.
+            character.rotation.y = Math.PI;
+            character.updateMatrix();
+
+            this.bodyMesh.add(character);
+            this.bodyMesh.updateMatrixWorld(true);
+
+            // Compute precise bounds and scale to a reasonable player height (~1.75 units)
+            const box = new THREE.Box3().setFromObject(character, true);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const targetHeight = 1.75;
+            const scale = targetHeight / Math.max(size.y, 0.01);
+            character.scale.setScalar(scale);
+            character.updateMatrix();
+            this.bodyMesh.updateMatrixWorld(true);
+
+            // Ground the character so its feet sit at y=0
+            const scaledBox = new THREE.Box3().setFromObject(character, true);
+            character.position.y = -scaledBox.min.y;
+            character.updateMatrix();
+            this.bodyMesh.updateMatrixWorld(true);
+
+            // Shadows and material tweaks
+            character.traverse((child) => {
+              if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material) {
+                  child.material.roughness = Math.max(child.material.roughness || 0.5, 0.5);
+                }
+              }
+            });
+
+            // Hide the blocky placeholder gun; the character model carries its own weapon.
+            this.gunGroup.traverse((child) => {
+              if (child.isMesh) child.visible = false;
+            });
+
+            this.characterModel = character;
+
+            // Set up animation mixer and actions
+            this.animations = gltf.animations;
+            this.mixer = new THREE.AnimationMixer(character);
+            this.actions = {};
+            for (const clip of gltf.animations) {
+              this.actions[clip.name] = this.mixer.clipAction(clip);
+            }
+            this.currentActionName = null;
+            this.currentAction = null;
+            this._playAnimation('Idle_Gun', 'Idle');
+
+            resolve();
+          } catch (err) {
+            console.error('[Player] failed to process character model:', err);
+            reject(err);
+          }
+        },
+        undefined,
+        (err) => {
+          console.error('[Player] failed to load character model:', err);
+          reject(err);
+        }
+      );
+    });
+  }
+
+  /**
+   * Crossfades to the named animation, trying fallbacks if the primary is missing.
+   */
+  _playAnimation(primary, ...fallbacks) {
+    const names = [primary, ...fallbacks];
+    let nextAction = null;
+    for (const name of names) {
+      if (this.actions[name]) {
+        nextAction = this.actions[name];
+        break;
+      }
+    }
+    if (!nextAction || nextAction === this.currentAction) return;
+
+    if (this.currentAction) {
+      this.currentAction.fadeOut(0.15);
+    }
+    nextAction.reset().fadeIn(0.15).play();
+    this.currentAction = nextAction;
+    this.currentActionName = names.find((n) => this.actions[n]);
   }
 
   /** Returns world position of the muzzle for raycasting. */
@@ -141,6 +253,22 @@ export class Player {
     if (!this.alive) return;
 
     const inp = this.input;
+
+    // ---- Animation ----
+    if (this.mixer) {
+      this.mixer.update(dt);
+
+      const isMoving = Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.z) > 0.1;
+      const isSprinting = isMoving && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'));
+
+      if (isSprinting) {
+        this._playAnimation('Run_Gun', 'Run');
+      } else if (isMoving) {
+        this._playAnimation('Walk_Gun', 'Walk');
+      } else {
+        this._playAnimation('Idle_Gun', 'Idle');
+      }
+    }
 
     // ---- Mouse Look ----
     if (inp.pointerLocked) {
@@ -267,12 +395,27 @@ export class Player {
   }
 
   dispose() {
-    this.bodyMesh.geometry.dispose();
-    this.bodyMesh.material.dispose();
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+    }
+    this.bodyMesh.traverse((child) => {
+      if (child.isMesh) {
+        child.geometry.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
     this.gunGroup.traverse((child) => {
       if (child.isMesh) {
         child.geometry.dispose();
-        child.material.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
       }
     });
     this.scene.remove(this.group);

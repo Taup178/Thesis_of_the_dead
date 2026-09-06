@@ -122,6 +122,7 @@ export class Game {
     // Create player
     if (this.player) this.player.dispose();
     this.player = new Player(this.scene, this.input, this.camera);
+    await this.player.loadCharacter();
     this.player.group.position.copy(level.spawnPoint);
 
     // Muzzle flash light
