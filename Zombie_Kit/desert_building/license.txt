@@ -1,0 +1,11 @@
+Model Information:
+* title:	Desert Building
+* source:	https://sketchfab.com/3d-models/desert-building-953e5ea65a7148c79fac9e7912930d43
+* author:	vincekelly2187 (https://sketchfab.com/vincekelly2187)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Desert Building" (https://sketchfab.com/3d-models/desert-building-953e5ea65a7148c79fac9e7912930d43) by vincekelly2187 (https://sketchfab.com/vincekelly2187) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -4,11 +4,11 @@ import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 
 /**
  * Zombie - Animated zombie enemy using Quaternius Zombie Kit (glTF).
- * Loads a rigged model with Walk, Run, Idle, and Death animations.
+ * Loads a rigged model with movement, attack, and death animations.
  * AI: lerps toward the player, plays appropriate animation.
  *
- * Available model variants:
- *   Zombie_Basic, Zombie_Chubby, Zombie_Ribcage, Zombie_Arm
+ * Regular variants: Zombie_Basic, Zombie_Chubby, Zombie_Ribcage.
+ * Zombie_Arm is reserved for the final boss.
  */
 
 // Model paths (served from public/ by Vite)
@@ -62,11 +62,13 @@ export class Zombie {
   constructor(scene, position, modelPath) {
     this.scene = scene;
     this.alive = true;
+    this.isBoss = false;
     this.speed = 2.0 + Math.random() * 1.5;
     this.damage = 10;
     this.damageCooldown = 0;
     this.damageRate = 1.0;
     this.health = 30;
+    this.attackTimer = 0;
 
     // Hierarchical group (the loaded model goes inside this)
     this.group = new THREE.Group();
@@ -76,19 +78,22 @@ export class Zombie {
 
     // Animation
     this.mixer = null;
-    this.actions = {};      // { Walk, Run, Idle, Death }
+    this.actions = {};      // Clip name -> AnimationAction
     this.currentAction = null;
     this.deathPlayed = false;
 
     // Model loading
     this._loaded = false;
+    this._disposed = false;
+    this._ownsGeometry = false;
     this._modelPath = modelPath || ZOMBIE_MODELS[Math.floor(Math.random() * ZOMBIE_MODELS.length)];
-    this._loadModel();
+    this.ready = this._loadModel();
   }
 
   async _loadModel() {
     try {
       const { scene: templateScene, animations } = await loadZombieModel(this._modelPath);
+      if (this._disposed) return;
 
       // Clone with SkeletonUtils so each zombie gets its OWN skeleton.
       // Plain .clone() shares the Skeleton, causing all AnimationMixers
@@ -104,6 +109,10 @@ export class Zombie {
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
+          // Each enemy owns its hit flash and material lifetime.
+          child.material = Array.isArray(child.material)
+            ? child.material.map(material => material.clone())
+            : child.material.clone();
         }
       });
 
@@ -118,6 +127,15 @@ export class Zombie {
         this.actions[clip.name] = action;
       }
 
+      // The armless ribcage variant has no attack clip: give it a short body lunge.
+      if (!this.actions['Punch'] && !this.actions['Idle_Attack']) {
+        const attackClip = new THREE.AnimationClip('Attack', 0.6, [
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.2, 0.4, 0.6], [0, 0.25, 0.12, 0]),
+          new THREE.NumberKeyframeTrack('.position[z]', [0, 0.2, 0.4, 0.6], [0, 0.3, 0.15, 0]),
+        ]);
+        this.actions['Attack'] = this.mixer.clipAction(attackClip);
+      }
+
       // Start with Walk animation (default shamble)
       if (this.actions['Walk']) {
         this.currentAction = this.actions['Walk'];
@@ -130,6 +148,7 @@ export class Zombie {
 
       this._loaded = true;
     } catch (err) {
+      if (this._disposed) return;
       console.warn('Failed to load zombie model, using fallback primitive:', err);
       this._createFallback();
     }
@@ -137,8 +156,11 @@ export class Zombie {
 
   /** Fallback box zombie if glTF loading fails. */
   _createFallback() {
+    this._ownsGeometry = true;
     const bodyGeo = new THREE.BoxGeometry(0.6, 1.6, 0.4);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.9 });
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: this.isBoss ? 0xffd54f : 0x4a7a3a, roughness: 0.9
+    });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = 1.0;
     body.castShadow = true;
@@ -158,35 +180,51 @@ export class Zombie {
   }
 
   /** Smoothly crossfade to a new animation action. */
-  _playAction(name, fadeIn = 0.3) {
+  _playAction(name, fadeIn = 0.3, restart = false) {
     const next = this.actions[name];
-    if (!next || next === this.currentAction) return;
+    if (!next || (next === this.currentAction && !restart)) return;
 
     next.reset();
     next.play();
-    if (this.currentAction) {
+    if (this.currentAction && this.currentAction !== next) {
       this.currentAction.crossFadeTo(next, fadeIn, false);
     }
     this.currentAction = next;
   }
 
+  /** Play one attack for each damage tick, then return to movement or idle. */
+  _playAttack() {
+    const name = this.actions['Punch'] ? 'Punch'
+      : this.actions['Idle_Attack'] ? 'Idle_Attack' : 'Attack';
+    const action = this.actions[name];
+    this.attackTimer = action ? Math.min(action.getClip().duration, this.damageRate) : 0.6;
+    if (!action) return;
+
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.setEffectiveTimeScale(action.getClip().duration / this.attackTimer);
+    this._playAction(name, 0.1, true);
+  }
+
   takeDamage(amount) {
     if (!this.alive) return false;
-    this.health -= amount;
+    this.health = Math.max(0, this.health - amount);
 
     // Flash white on hit
     this.group.traverse((child) => {
       if (child.isMesh && child.material) {
-        const mat = child.material;
-        if (mat.emissive) {
-          mat.emissive.setHex(0xffffff);
-          mat.emissiveIntensity = 0.6;
-          setTimeout(() => {
-            if (mat.emissive) {
-              mat.emissive.setHex(0x000000);
-              mat.emissiveIntensity = 0;
-            }
-          }, 120);
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of materials) {
+          if (mat.emissive) {
+            mat.emissive.setHex(0xffffff);
+            mat.emissiveIntensity = 0.6;
+            setTimeout(() => {
+              if (!this._disposed && mat.emissive) {
+                mat.emissive.setHex(0x000000);
+                mat.emissiveIntensity = 0;
+              }
+            }, 120);
+          }
         }
       }
     });
@@ -201,6 +239,7 @@ export class Zombie {
   die() {
     this.alive = false;
     this.speed = 0;
+    this.attackTimer = 0;
 
     // Play death animation
     if (this.actions['Death'] && !this.deathPlayed) {
@@ -231,6 +270,7 @@ export class Zombie {
     if (!this.alive) return { hit: false };
 
     this.damageCooldown = Math.max(0, this.damageCooldown - dt);
+    this.attackTimer = Math.max(0, this.attackTimer - dt);
 
     // Direction toward player (XZ plane only)
     const playerPos = new THREE.Vector3(playerPosition.x, 0, playerPosition.z);
@@ -238,13 +278,15 @@ export class Zombie {
     const dir = new THREE.Vector3().subVectors(playerPos, zombiePos);
     const dist = dir.length();
 
-    if (dist > 1.5) {
+    this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
+
+    // Hold the attack pose long enough to see it, even if the player backs away.
+    if (this.attackTimer > 0) return { hit: false };
+
+    if (dist >= 1.5) {
       dir.normalize();
       this.group.position.x += dir.x * this.speed * dt;
       this.group.position.z += dir.z * this.speed * dt;
-
-      // Face the player using lookAt on the group itself
-      this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
 
       // Choose animation based on distance
       if (dist > 15 && this.actions['Run']) {
@@ -253,16 +295,16 @@ export class Zombie {
         this._playAction('Walk');
       }
     } else {
-      // Close to player - idle menacingly
-      this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
+      // Close to player - idle between attacks.
       if (this.actions['Idle']) {
         this._playAction('Idle');
       }
     }
 
-    // Damage player ONLY when genuinely close (1.5 units)
+    // Damage and attack animation share the same cooldown.
     if (dist < 1.5 && this.damageCooldown <= 0) {
       this.damageCooldown = this.damageRate;
+      this._playAttack();
       return { hit: true, damage: this.damage };
     }
 
@@ -270,19 +312,15 @@ export class Zombie {
   }
 
   dispose() {
-    // Dispose the cloned model (not the cached template)
+    this._disposed = true;
+    // glTF geometry and textures belong to the shared cache; materials are per enemy.
     this.group.traverse((child) => {
       if (child.isMesh) {
-        // Dispose cloned geometry (the cache stays intact)
-        if (child.geometry) child.geometry.dispose();
+        if (this._ownsGeometry && child.geometry) child.geometry.dispose();
         if (child.material) {
           if (Array.isArray(child.material)) {
-            child.material.forEach(m => {
-              if (m.map) m.map.dispose();
-              m.dispose();
-            });
+            child.material.forEach(m => m.dispose());
           } else {
-            if (child.material.map) child.material.map.dispose();
             child.material.dispose();
           }
         }

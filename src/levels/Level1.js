@@ -1,18 +1,30 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { Zombie } from '../enemies/Zombie.js';
+import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
+import { NightSky } from '../environment/NightSky.js';
 
 /**
  * Level 1 - "The Freshman Woods"
- * Bright autumn forest. Collect credits, shoot zombies, chase the Dean.
+ * Moonlit forest. Collect credits, shoot zombies, chase the Dean.
  *
  * Mechanic: Navigation & Collection
- * Visual Identity: Warm sunlight, long shadows, autumn palette.
+ * Visual Identity: Starry sky, cool moonlight, soft tree shadows.
  */
 export class Level1 {
   constructor(scene) {
     this.scene = scene;
+    this.previousBackground = scene.background;
+    this.worldBounds = { minX: -60, maxX: 60, minZ: -60, maxZ: 60 };
+    this.nightSky = null;
     this.zombies = [];
+    this.zombieReserve = [];
+    this.spawnDelay = 0;
+    this.redPortalRoot = null;
+    this.redPortalMaterials = new Set();
+    this.playerAbsorption = null;
+    this.allowsShooting = true;
     this.credits = [];       // collectible orbs
     this.disposables = [];   // track for cleanup
     this.creditsCollected = 0;
@@ -21,6 +33,10 @@ export class Level1 {
     this.levelComplete = false;
 
     // References
+    this.boss = null;
+    this.bossScale = 1.25;
+    this.degreeScroll = null;
+    this.degreeGrip = null;
     this.bossMarker = null;
     this.bossRing = null;
     this.portalRoot = null;
@@ -37,11 +53,14 @@ export class Level1 {
     // Boss sequence: waiting -> running -> absorbing -> done
     this.bossState = 'waiting';
     this.portalTimer = 0;
+    this.bossAbsorption = null;
+    this.portalApproachPoint = new THREE.Vector3(0, 0, -43.2);
   }
 
   /** Async load (procedural, so mostly sync). Returns loading progress callbacks. */
   async load(onProgress) {
     this._createLighting();
+    await this.nightSky.ready;
     onProgress && onProgress(0.2);
 
     this._createGround();
@@ -55,11 +74,13 @@ export class Level1 {
 
     await this._loadTreeModel();
     this._createTrees(35);
+    this._createForestBackdrop();
     onProgress && onProgress(0.75);
 
-    this._createBossMarker();
+    await this._createBossMarker();
     await this._loadPortalModel();
-    this._createZombies(6);
+    this._createRedPortal();
+    await this._createZombies(this.credits.length * 2);
     onProgress && onProgress(1.0);
   }
 
@@ -72,38 +93,46 @@ export class Level1 {
   }
 
   _createLighting() {
-    // Warm directional sun
-    this.sunLight = new THREE.DirectionalLight(0xffe4b5, 2.5);
-    this.sunLight.position.set(30, 40, 20);
-    this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.set(2048, 2048);
-    this.sunLight.shadow.camera.left = -50;
-    this.sunLight.shadow.camera.right = 50;
-    this.sunLight.shadow.camera.top = 50;
-    this.sunLight.shadow.camera.bottom = -50;
-    this.sunLight.shadow.camera.near = 0.5;
-    this.sunLight.shadow.camera.far = 100;
-    this.sunLight.shadow.bias = -0.001;
-    this.scene.add(this.sunLight);
-    this.disposables.push(this.sunLight);
+    this.scene.background = new THREE.Color(0x020409);
+    this.nightSky = new NightSky(this.scene);
+
+    // Moonlight gives the trees shape; reduced shadow intensity keeps them readable.
+    this.moonLight = new THREE.DirectionalLight(0xe0e5e9, 0.85);
+    this.moonLight.position.copy(this.nightSky.moonDirection).multiplyScalar(110);
+    this.moonLight.castShadow = true;
+    this.moonLight.shadow.intensity = 0.4;
+    this.moonLight.shadow.radius = 3;
+    this.moonLight.shadow.blurSamples = 8;
+    this.moonLight.shadow.mapSize.set(2048, 2048);
+    this.moonLight.shadow.camera.left = -85;
+    this.moonLight.shadow.camera.right = 85;
+    this.moonLight.shadow.camera.top = 85;
+    this.moonLight.shadow.camera.bottom = -85;
+    this.moonLight.shadow.camera.near = 0.5;
+    this.moonLight.shadow.camera.far = 190;
+    this.moonLight.shadow.bias = -0.0003;
+    this.moonLight.shadow.normalBias = 0.04;
+    this.scene.add(this.moonLight);
+    this.disposables.push(this.moonLight);
 
     // Ambient fill
-    this.ambientLight = new THREE.AmbientLight(0x8899aa, 0.7);
+    this.ambientLight = new THREE.AmbientLight(0x88939d, 0.75);
     this.scene.add(this.ambientLight);
     this.disposables.push(this.ambientLight);
 
     // Hemisphere for sky/ground colour bleed
-    this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3a5f0b, 0.3);
+    this.hemiLight = new THREE.HemisphereLight(0xa4afba, 0x505846, 0.75);
     this.scene.add(this.hemiLight);
     this.disposables.push(this.hemiLight);
 
     // Fog for depth
-    this.fog = new THREE.FogExp2(0xc8d8e8, 0.012);
+    this.fog = new THREE.FogExp2(this.nightSky.horizonColor, 0.0075);
     this.scene.fog = this.fog;
   }
 
   _createGround() {
-    const groundGeo = new THREE.PlaneGeometry(120, 120, 32, 32);
+    // Continue the visible landscape beyond the playable bounds into the distant haze.
+    const groundGeo = new THREE.PlaneGeometry(600, 600);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x4a7a3a,
       roughness: 0.95,
@@ -114,7 +143,6 @@ export class Level1 {
     this.ground.receiveShadow = true;
     this.ground.name = 'Ground';
     this.scene.add(this.ground);
-    this.disposables.push(groundGeo, groundMat);
   }
 
   async _loadGrassGround() {
@@ -141,15 +169,41 @@ export class Level1 {
             this.grassGround.position.y = -scaledBox.min.y + 0.01;
 
             // Tile the grass texture so it keeps its original density.
+            let grassMaterial = null;
             this.grassGround.traverse((child) => {
-              if (child.isMesh && child.material && child.material.map) {
-                child.material.map.wrapS = THREE.RepeatWrapping;
-                child.material.map.wrapT = THREE.RepeatWrapping;
-                child.material.map.repeat.set(scale, scale);
-                child.material.map.needsUpdate = true;
-                child.receiveShadow = true;
+              if (!child.isMesh) return;
+              child.receiveShadow = true;
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              for (const material of materials) {
+                grassMaterial ||= material;
+                // Grass is a matte surface; the imported metallic default loses ambient fill.
+                material.metalness = 0;
+                material.roughness = 0.95;
+                material.normalScale.set(0.3, 0.3);
+                material.aoMapIntensity = 0.45;
+                // All channels must describe the same grass patch, including its normals and AO.
+                const maps = new Set([material.map, material.normalMap, material.roughnessMap,
+                  material.metalnessMap, material.aoMap]);
+                for (const map of maps) {
+                  if (!map) continue;
+                  map.wrapS = THREE.RepeatWrapping;
+                  map.wrapT = THREE.RepeatWrapping;
+                  map.repeat.set(scale, scale);
+                  map.anisotropy = 8;
+                  map.needsUpdate = true;
+                }
               }
             });
+
+            if (grassMaterial) {
+              this.ground.material.dispose();
+              this.ground.material = grassMaterial.clone();
+              // Share the source textures and preserve their world scale on the wider terrain.
+              const uv = this.ground.geometry.attributes.uv;
+              for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 5, uv.getY(i) * 5);
+              uv.needsUpdate = true;
+              this.ground.position.y = -0.02;
+            }
 
             this.scene.add(this.grassGround);
           } catch (err) {
@@ -175,6 +229,22 @@ export class Level1 {
         (gltf) => {
           try {
             this.treeModel = gltf.scene;
+
+            this.treeModel.traverse(child => {
+              if (!child.isMesh) return;
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              for (const material of materials) {
+                if (material.map) material.map.anisotropy = 8;
+                if (!material.transparent || !material.map) continue;
+                // Leaves need cutouts in both colour and shadow passes, with stable depth ordering.
+                material.transparent = false;
+                material.alphaTest = 0.45;
+                material.alphaToCoverage = true;
+                material.depthWrite = true;
+                material.roughness = 0.9;
+                material.needsUpdate = true;
+              }
+            });
 
             // The model contains several tree sub-groups (e.g. tree4, tree6).
             // Wrap each tree variant in an upright container group where:
@@ -279,6 +349,7 @@ export class Level1 {
         valid = Math.hypot(x, z) > 5;
         // Keep clear of boss path
         if (z < -35 && Math.abs(x) < 4) valid = false;
+        if (Math.hypot(x, z - 45) < 10) valid = false;
         // Keep clear of collectible credits
         for (const c of this.credits) {
           if (Math.hypot(c.mesh.position.x - x, c.mesh.position.z - z) < 3) {
@@ -300,6 +371,14 @@ export class Level1 {
         positions.push({ x, z });
         this._createTree(x, z);
       }
+    }
+  }
+
+  _createForestBackdrop() {
+    for (let i = 0; i < 24; i++) {
+      const angle = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
+      const distance = 90 + Math.random() * 65;
+      this._createTree(Math.cos(angle) * distance, Math.sin(angle) * distance);
     }
   }
 
@@ -333,22 +412,15 @@ export class Level1 {
     }
   }
 
-  _createBossMarker() {
-    // The Dean — hidden until all orbs are collected
-    const bossGeo = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
-    const bossMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1a2e,
-      emissive: 0x4a0e4e,
-      emissiveIntensity: 0.3,
-      roughness: 0.5
-    });
-    this.bossMarker = new THREE.Mesh(bossGeo, bossMat);
-    this.bossMarker.position.set(0, 1.5, 5);
-    this.bossMarker.castShadow = true;
+  async _createBossMarker() {
+    // The large yellow fourth zombie replaces the Dean's placeholder cylinder.
+    this.boss = new Zombie(this.scene, new THREE.Vector3(0, 0, 5),
+      './assets/models/zombies/Zombie_Arm.gltf');
+    this.boss.isBoss = true;
+    this.bossMarker = this.boss.group;
+    this.bossMarker.scale.setScalar(this.bossScale);
     this.bossMarker.name = 'Dean';
     this.bossMarker.visible = false;
-    this.scene.add(this.bossMarker);
-    this.disposables.push(bossGeo, bossMat);
 
     // Indicator ring around The Dean's feet
     const ringGeo = new THREE.TorusGeometry(1.5, 0.05, 8, 24);
@@ -363,6 +435,40 @@ export class Level1 {
     this.bossRing.visible = false;
     this.scene.add(this.bossRing);
     this.disposables.push(ringGeo, ringMat);
+    await this.boss.ready;
+    this._attachDegreeScroll();
+  }
+
+  _attachDegreeScroll() {
+    this.degreeScroll = createDegreeScroll();
+    const hand = this.bossMarker.getObjectByName(THREE.PropertyBinding.sanitizeNodeName('LowerArm.L'));
+    if (hand) {
+      // Fit the roll between the left palm, curled fingers, and opposing thumb.
+      this.degreeScroll.scale.set(0.82, 0.78, 0.78);
+      this.degreeScroll.position.set(0, 0.35, -0.06);
+      hand.add(this.degreeScroll);
+      this.degreeGrip = createLeftHandDegreeGrip(hand, this.degreeScroll);
+      this.degreeGrip();
+    } else {
+      this.degreeScroll.position.set(-0.4, 1.2, -0.2);
+      this.bossMarker.add(this.degreeScroll);
+    }
+    const resources = new Set();
+    this.degreeScroll.traverse(child => {
+      if (child.isMesh) {
+        resources.add(child.geometry);
+        resources.add(child.material);
+        if (child.material.map) resources.add(child.material.map);
+        if (child.material.bumpMap) resources.add(child.material.bumpMap);
+      }
+    });
+    this.disposables.push(...resources);
+  }
+
+  _updateBossAnimation(dt) {
+    if (this.boss.mixer) this.boss.mixer.update(dt);
+    // The run clip must not reopen the fingers or let the degree slip through them.
+    if (this.degreeGrip) this.degreeGrip();
   }
 
   _spawnBoss() {
@@ -371,9 +477,129 @@ export class Level1 {
     this.bossMarker.visible = true;
     this.bossRing.visible = true;
     // Boss appears near the player spawn and runs toward the portal
-    this.bossMarker.position.set(0, 1.5, 5);
+    this.bossMarker.position.set(0, 0, 5);
+    this.bossMarker.scale.setScalar(this.bossScale);
     this.bossRing.position.set(0, 0.1, 5);
-    this.bossMarker.lookAt(0, 1.5, -45);
+    this.bossMarker.lookAt(0, 0, -45);
+    this.boss._playAction('Run');
+    this._updateBossAnimation(0);
+    if (this.portalRoot) {
+      this.portalRoot.updateMatrixWorld(true);
+      const portalBounds = new THREE.Box3().setFromObject(this.portalRoot, true);
+      this.portalApproachPoint.set(this.portalRoot.position.x, 0, portalBounds.max.z + 0.7);
+    }
+  }
+
+  _beginBossAbsorption() {
+    this.bossState = 'absorbing';
+    this.bossReached = true;
+    this.portalTimer = 0;
+
+    // Shrink around the torso instead of the ground-level model origin.
+    // SkinnedMesh.updateMatrixWorld also refreshes its bind inverse for accurate bounds.
+    this.bossMarker.updateMatrixWorld(true);
+    const startCenter = new THREE.Box3().setFromObject(this.bossMarker, true)
+      .getCenter(new THREE.Vector3());
+    const localCenter = this.bossMarker.worldToLocal(startCenter.clone());
+
+    // Use the actual opening, including the fallback portal's different height.
+    this.portalRoot?.updateMatrixWorld(true);
+    const portalRing = this.portalModel?.getObjectByName('Object_35') || this.portalModel;
+    const portalCenter = portalRing
+      ? new THREE.Box3().setFromObject(portalRing, true).getCenter(new THREE.Vector3())
+      : new THREE.Vector3(0, 3.2, -45);
+    const control = new THREE.Vector3(
+      startCenter.x * 0.35, portalCenter.y + 0.35, THREE.MathUtils.lerp(startCenter.z, portalCenter.z, 0.35)
+    );
+    const destination = portalCenter.clone();
+    destination.z -= 0.35;
+
+    const materials = new Set();
+    this.bossMarker.traverse(child => {
+      if (child.isMesh) {
+        for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+          materials.add(material);
+        }
+      }
+    });
+    this.bossAbsorption = {
+      path: new THREE.QuadraticBezierCurve3(startCenter, control, destination),
+      localCenter,
+      startScale: this.bossMarker.scale.x,
+      startYaw: this.bossMarker.rotation.y,
+      startPortalScale: this.portalRoot?.scale.x || 1,
+      startPortalLight: this.portalLight?.intensity || 2,
+      materials: [...materials].map(material => ({
+        material,
+        opacity: material.opacity,
+        emissive: material.emissive?.clone(),
+        emissiveIntensity: material.emissiveIntensity,
+      })),
+    };
+    for (const { material } of this.bossAbsorption.materials) {
+      material.transparent = true;
+      material.needsUpdate = true;
+    }
+    this.boss._playAction('Idle', 0.35);
+    if (this.bossRing) this.bossRing.material.transparent = true;
+  }
+
+  _updateBossAbsorption(dt, time) {
+    this.portalTimer += dt;
+    const t = Math.min(this.portalTimer / 2.2, 1);
+    const ease = THREE.MathUtils.smoothstep(t, 0, 1);
+    const travelEase = 1 - Math.pow(1 - ease, 2);
+    const absorption = this.bossAbsorption;
+    const scale = absorption.startScale * Math.max(0.001, Math.pow(1 - ease, 1.25));
+
+    this.bossMarker.scale.setScalar(scale);
+    this.bossMarker.rotation.y = absorption.startYaw + ease * Math.PI / 6;
+    const centerOffset = absorption.localCenter.clone().multiplyScalar(scale)
+      .applyQuaternion(this.bossMarker.quaternion);
+    this.bossMarker.position.copy(absorption.path.getPoint(travelEase)).sub(centerOffset);
+
+    // Keep the degree gripped as his stride settles into a floating pose.
+    if (this.boss.mixer) this.boss.mixer.timeScale = 1 - ease * 0.65;
+    this._updateBossAnimation(dt);
+
+    const opacity = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
+    const portalGlow = new THREE.Color(0x35ffb1);
+    for (const entry of absorption.materials) {
+      entry.material.opacity = entry.opacity * opacity;
+      entry.material.depthWrite = opacity > 0.95;
+      if (entry.emissive) {
+        entry.material.emissive.copy(entry.emissive).lerp(portalGlow, ease * 0.7);
+        entry.material.emissiveIntensity = entry.emissiveIntensity + Math.sin(t * Math.PI) * 0.8;
+      }
+    }
+
+    if (this.bossRing) {
+      const ringFade = 1 - THREE.MathUtils.smoothstep(t, 0, 0.45);
+      this.bossRing.scale.setScalar(Math.max(0.001, ringFade));
+      this.bossRing.material.opacity = ringFade;
+    }
+    const pulse = Math.sin(t * Math.PI);
+    if (this.portalRoot) {
+      const settledScale = 1 + Math.sin(time * 4) * 0.04;
+      this.portalRoot.scale.setScalar(
+        THREE.MathUtils.lerp(absorption.startPortalScale, settledScale, ease) + pulse * 0.05
+      );
+    }
+    if (this.portalLight) {
+      const settledLight = 4 + Math.sin(time * 6);
+      this.portalLight.intensity = THREE.MathUtils.lerp(absorption.startPortalLight, settledLight, ease) + pulse * 4;
+    }
+
+    if (t >= 1) {
+      this.bossState = 'done';
+      this.bossMarker.visible = false;
+      this.scene.remove(this.bossMarker);
+      if (this.bossRing) {
+        this.bossRing.visible = false;
+        this.scene.remove(this.bossRing);
+      }
+      this.bossAbsorption = null;
+    }
   }
 
   async _loadPortalModel() {
@@ -447,6 +673,7 @@ export class Level1 {
 
             // Animation mixer
             if (gltf.animations && gltf.animations.length > 0) {
+              this.portalAnimations = gltf.animations;
               this.portalMixer = new THREE.AnimationMixer(this.portalModel);
               for (const clip of gltf.animations) {
                 const action = this.portalMixer.clipAction(clip);
@@ -502,15 +729,129 @@ export class Level1 {
     this.disposables.push(this.portalLight);
   }
 
-  _createZombies(count) {
+  _createRedPortal() {
+    this.redPortalRoot = skeletonClone(this.portalRoot);
+    this.redPortalRoot.name = 'ZombieSpawnPortal';
+    this.redPortalRoot.position.z = 45;
+    this.redPortalRoot.rotation.y = Math.PI;
+    this.redPortalRoot.traverse(node => {
+      if (!node.isMesh) return;
+      const tint = material => {
+        const copy = material.clone();
+        if (copy.emissive?.getHex() > 0) { copy.emissive.setHex(0xff1810); copy.emissiveIntensity = 2; }
+        if (copy.color?.g > copy.color.r * 1.3) copy.color.setHex(0xff3025);
+        this.redPortalMaterials.add(copy); return copy;
+      };
+      node.material = Array.isArray(node.material) ? node.material.map(tint) : tint(node.material);
+    });
+    this.scene.add(this.redPortalRoot);
+    this.redPortalMixer = new THREE.AnimationMixer(this.redPortalRoot.getObjectByName('Portal') || this.redPortalRoot);
+    for (const clip of this.portalAnimations || []) this.redPortalMixer.clipAction(clip).play();
+    this.redPortalLight = new THREE.PointLight(0xff2518, 3.5, 28);
+    this.redPortalLight.position.set(0, 3.2, 44.5);
+    this.scene.add(this.redPortalLight); this.disposables.push(this.redPortalLight);
+    this.redPortalRoot.updateMatrixWorld(true);
+    const opening = this.redPortalRoot.getObjectByName('Object_35') || this.redPortalRoot;
+    this.redPortalCenter = new THREE.Box3().setFromObject(opening, true).getCenter(new THREE.Vector3());
+  }
+
+  async _createZombies(count) {
+    const variants = ['Basic', 'Chubby', 'Ribcage'];
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const r = 12 + Math.random() * 25;
-      const x = Math.cos(angle) * r;
-      const z = Math.sin(angle) * r;
-      const zombie = new Zombie(this.scene, new THREE.Vector3(x, 0, z));
+      const zombie = new Zombie(this.scene, new THREE.Vector3(0, 0, 45),
+        `./assets/models/zombies/Zombie_${variants[i % variants.length]}.gltf`);
+      zombie.group.visible = false;
+      this.zombieReserve.push(zombie);
+    }
+    await Promise.all(this.zombieReserve.map(zombie => zombie.ready));
+  }
+
+  _spawnOrbZombies() {
+    for (let i = 0; i < 2; i++) {
+      const zombie = this.zombieReserve.shift();
+      if (!zombie) break;
+      const start = this.redPortalCenter.clone().add(new THREE.Vector3(0, -0.8, 0));
+      const end = new THREE.Vector3(i === 0 ? -0.75 : 0.75, 0, 39);
+      const control = start.clone().lerp(end, 0.5); control.y *= 0.5;
+      zombie.portalExit = { delay: this.spawnDelay, time: 0, path: new THREE.QuadraticBezierCurve3(start, control, end) };
+      this.spawnDelay += 0.55;
       this.zombies.push(zombie);
     }
+  }
+
+  _updatePortalExit(zombie, dt) {
+    const exit = zombie.portalExit;
+    if (exit.delay > 0) { exit.delay -= dt; return; }
+    zombie.group.visible = true;
+    if (!zombie.alive) { zombie.portalExit = null; return; }
+    exit.time = Math.min(1, exit.time + dt / 1.7);
+    zombie.group.position.copy(exit.path.getPoint(exit.time));
+    zombie.group.scale.setScalar(THREE.MathUtils.lerp(0.12, 1, THREE.MathUtils.smoothstep(exit.time, 0, 0.6)));
+    zombie.group.rotation.y = Math.PI;
+    zombie.mixer?.update(dt);
+    if (exit.time >= 1) zombie.portalExit = null;
+  }
+
+  _beginPlayerAbsorption(player) {
+    player.scriptedMovement = true;
+    player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.isDodging = false;
+    this.allowsShooting = false;
+    const bodyVisible = player.bodyMesh.visible;
+    player.bodyMesh.visible = true; // Show the disappearance when entering in first person too.
+    player._playAnimation?.('Idle_Gun', 'Idle');
+    player.group.updateMatrixWorld(true);
+    const center = new THREE.Box3().setFromObject(player.bodyMesh, true).getCenter(new THREE.Vector3());
+    const localCenter = player.group.worldToLocal(center.clone());
+    this.portalRoot.updateMatrixWorld(true);
+    const opening = this.portalModel.getObjectByName('Object_35') || this.portalModel;
+    const destination = new THREE.Box3().setFromObject(opening, true).getCenter(new THREE.Vector3());
+    destination.z -= 0.35;
+    const control = center.clone().lerp(destination, 0.4); control.y = destination.y + 0.3;
+    const materials = new Set();
+    player.bodyMesh.traverse(node => {
+      if (node.isMesh) for (const material of Array.isArray(node.material) ? node.material : [node.material]) materials.add(material);
+    });
+    this.playerAbsorption = { player, time: 0, bodyVisible, scale: player.group.scale.clone(),
+      localCenter, path: new THREE.QuadraticBezierCurve3(center, control, destination),
+      cameraStart: player.camera.position.clone(), cameraEnd: destination.clone().add(new THREE.Vector3(5, 1.8, 9)),
+      materials: [...materials].map(material => ({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })) };
+    for (const entry of this.playerAbsorption.materials) { entry.material.transparent = true; entry.material.needsUpdate = true; }
+  }
+
+  _updatePlayerAbsorption(dt) {
+    const travel = this.playerAbsorption, player = travel.player;
+    travel.time += dt;
+    const t = Math.min(1, travel.time / 2.2), ease = THREE.MathUtils.smoothstep(t, 0, 1);
+    const scale = Math.max(0.001, Math.pow(1 - ease, 1.25));
+    const center = travel.path.getPoint(1 - (1 - ease) ** 2);
+    player.group.scale.copy(travel.scale).multiplyScalar(scale);
+    player.group.position.copy(center).sub(travel.localCenter.clone().multiply(player.group.scale).applyQuaternion(player.group.quaternion));
+    player.mixer?.update(dt * 0.6);
+    const opacity = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
+    for (const { material, opacity: original } of travel.materials) { material.opacity = original * opacity; material.depthWrite = opacity > 0.95; }
+    player.camera.position.lerpVectors(travel.cameraStart, travel.cameraEnd, THREE.MathUtils.smoothstep(t, 0, 0.3));
+    player.camera.lookAt(center); player.camera.updateMatrixWorld(true);
+    if (this.portalLight) this.portalLight.intensity = 4 + Math.sin(t * Math.PI) * 4;
+    if (t >= 1) player.group.visible = false;
+    if (travel.time >= 2.45) this.levelComplete = true;
+  }
+
+  _restorePlayerAppearance() {
+    const travel = this.playerAbsorption; if (!travel) return;
+    travel.player.group.scale.copy(travel.scale); travel.player.group.visible = true;
+    travel.player.bodyMesh.visible = travel.bodyVisible; travel.player.scriptedMovement = false;
+    for (const entry of travel.materials) {
+      Object.assign(entry.material, { opacity: entry.opacity, transparent: entry.transparent, depthWrite: entry.depthWrite, needsUpdate: true });
+    }
+    this.playerAbsorption = null;
+  }
+
+  getChallengeStatus() {
+    const entering = !!this.playerAbsorption;
+    const done = this.bossState === 'done';
+    return { title: entering ? 'Entering The Sophomore Room' : done ? 'Follow the Dean into the green portal' : 'The Freshman Woods',
+      detail: entering ? 'The portal pulls you through.' : done ? 'Walk up to the green portal to continue to second year.' : 'Collect the yellow orbs. Each orb releases two zombies from the red portal.',
+      timer: `${this.creditsCollected} / ${this.credits.length} orbs collected`, progress: this.creditsCollected / Math.max(1, this.credits.length), tone: done ? 'follow' : 'watch' };
   }
 
   /**
@@ -519,6 +860,15 @@ export class Level1 {
    */
   update(dt, player, time) {
     const events = { creditCollected: false, bossReached: false, levelComplete: false };
+    if (this.nightSky) this.nightSky.update(player.group.position);
+    this.spawnDelay = Math.max(0, this.spawnDelay - dt);
+    this.redPortalMixer?.update(dt);
+    if (this.redPortalLight) this.redPortalLight.intensity = 3.5 + Math.sin(time * 4) * 0.8;
+    if (this.playerAbsorption) {
+      this.portalMixer?.update(dt);
+      this._updatePlayerAbsorption(dt);
+      return { ...events, levelComplete: this.levelComplete, autoAdvance: this.levelComplete };
+    }
 
     // Animate credits (bob & spin)
     for (const credit of this.credits) {
@@ -534,6 +884,7 @@ export class Level1 {
         credit.mesh.geometry.dispose();
         credit.mesh.material.dispose();
         this.creditsCollected++;
+        this._spawnOrbZombies();
         player.addScore(100);
         events.creditCollected = true;
       }
@@ -557,8 +908,10 @@ export class Level1 {
 
     // Boss runs from the edge of the player side toward the portal
     if (this.bossState === 'running') {
+      this._updateBossAnimation(dt);
       const runSpeed = 4.0;
-      const target = new THREE.Vector3(0, 1.5, -45);
+      // Begin the lift before the entrance steps so his feet never sink into them.
+      const target = this.portalApproachPoint;
       const pos = this.bossMarker.position;
       const offset = new THREE.Vector3().subVectors(target, pos);
       const dist = offset.length();
@@ -575,64 +928,36 @@ export class Level1 {
         this.bossRing.position.z = this.bossMarker.position.z;
         // Face the portal while running
         this.bossMarker.lookAt(target);
-        // Running bob
-        this.bossMarker.position.y = 1.5 + Math.abs(Math.sin(time * 12)) * 0.15;
-        this.bossRing.position.y = 0.1 + Math.abs(Math.sin(time * 12)) * 0.15;
+        // The model's run animation supplies the stride; keep its feet grounded.
+        this.bossMarker.position.y = 0;
       } else {
-        this.bossState = 'absorbing';
-        this.bossReached = true;
+        this._beginBossAbsorption();
         events.bossReached = true;
-        this.portalTimer = 0;
       }
     }
 
     // Boss disappears into the portal
     if (this.bossState === 'absorbing') {
-      this.portalTimer += dt;
-      const absorbDuration = 1.5;
-      const t = Math.min(this.portalTimer / absorbDuration, 1);
-      const ease = t * t * (3 - 2 * t);
-
-      this.bossMarker.position.y = 1.5 * (1 - ease);
-      this.bossMarker.position.z = -45 - ease * 0.5;
-      this.bossMarker.scale.setScalar(1 - ease * 0.9);
-      this.bossMarker.rotation.y += dt * 3;
-
-      // Fade out the red indicator ring
-      if (this.bossRing) {
-        this.bossRing.scale.setScalar((1 + Math.sin(time * 2) * 0.1) * (1 - ease));
-        this.bossRing.material.opacity = 1 - ease;
-        this.bossRing.material.transparent = true;
-      }
-
-      // Keep portal lit and intensely pulsing
-      if (this.portalRoot) this.portalRoot.scale.setScalar(1 + Math.sin(time * 4) * 0.04);
-      if (this.portalLight) this.portalLight.intensity = 4.0 + Math.sin(time * 6) * 1.0;
-
-      if (t >= 1) {
-        this.bossState = 'done';
-        this.scene.remove(this.bossMarker);
-        if (this.bossRing) this.scene.remove(this.bossRing);
-      }
+      this._updateBossAbsorption(dt, time);
     } else if (this.bossState === 'done') {
-      // Portal continues to pulse while level-complete UI handles the rest
+      // The player must enter the same portal after the Dean has disappeared.
       if (this.portalRoot) this.portalRoot.scale.setScalar(1 + Math.sin(time * 4) * 0.04);
       if (this.portalLight) this.portalLight.intensity = 4.0 + Math.sin(time * 6) * 1.0;
 
-      if (!this.levelComplete) {
-        this.levelComplete = true;
-        events.levelComplete = true;
+      if (Math.hypot(player.group.position.x - this.portalApproachPoint.x, player.group.position.z - this.portalApproachPoint.z) < 2.2) {
+        this._beginPlayerAbsorption(player);
+        return events;
       }
     }
 
     // Update zombies
     for (const zombie of this.zombies) {
-      if (!zombie.alive) continue;
+      if (zombie.portalExit) { this._updatePortalExit(zombie, dt); continue; }
       const result = zombie.update(dt, player.group.position);
       if (result.hit) {
         player.takeDamage(result.damage);
       }
-      this._resolveObstacles(zombie.group.position, 0.4);
+      if (zombie.alive) this._resolveObstacles(zombie.group.position, 0.4);
     }
 
     return events;
@@ -641,6 +966,10 @@ export class Level1 {
   /** Returns array of obstacle colliders { x, z, radius } */
   getObstacles() {
     return this.obstacles;
+  }
+
+  getWorldBounds() {
+    return this.worldBounds;
   }
 
   /** Resolves collision against obstacles for an entity position */
@@ -668,11 +997,21 @@ export class Level1 {
 
   /** Clean up EVERYTHING this level created. Critical for LAMP memory. */
   dispose() {
+    this._restorePlayerAppearance();
+    this.redPortalMixer?.stopAllAction();
+    this.redPortalRoot?.removeFromParent();
+    for (const material of this.redPortalMaterials) material.dispose();
+    this.redPortalMaterials.clear();
+    if (this.nightSky) {
+      this.nightSky.dispose();
+      this.nightSky = null;
+    }
     // Dispose zombies
-    for (const zombie of this.zombies) {
+    for (const zombie of [...this.zombies, ...this.zombieReserve]) {
       zombie.dispose();
     }
     this.zombies = [];
+    this.zombieReserve = [];
 
     // Dispose credit orbs
     for (const credit of this.credits) {
@@ -692,10 +1031,16 @@ export class Level1 {
     }
 
     // Dispose boss
-    if (this.bossMarker) {
-      this.scene.remove(this.bossMarker);
-      this.bossMarker.geometry.dispose();
-      this.bossMarker.material.dispose();
+    this.bossAbsorption = null;
+    this.degreeGrip = null;
+    if (this.degreeScroll) {
+      this.degreeScroll.removeFromParent();
+      this.degreeScroll = null;
+    }
+    if (this.boss) {
+      this.boss.dispose();
+      this.boss = null;
+      this.bossMarker = null;
     }
     if (this.bossRing) {
       this.scene.remove(this.bossRing);
@@ -705,22 +1050,19 @@ export class Level1 {
     // Dispose grass ground
     if (this.grassGround) {
       this.scene.remove(this.grassGround);
+      const resources = new Set();
       this.grassGround.traverse((child) => {
-        if (child.isMesh) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m) => {
-                if (m.map) m.map.dispose();
-                m.dispose();
-              });
-            } else {
-              if (child.material.map) child.material.map.dispose();
-              child.material.dispose();
-            }
+        if (!child.isMesh) return;
+        if (child.geometry) resources.add(child.geometry);
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          resources.add(material);
+          for (const value of Object.values(material)) {
+            if (value?.isTexture) resources.add(value);
           }
         }
       });
+      for (const resource of resources) resource.dispose();
       this.grassGround = null;
     }
 
@@ -785,6 +1127,7 @@ export class Level1 {
     for (const d of this.disposables) {
       if (d.isLight || d.isFog) {
         this.scene.remove(d);
+        if (d.shadow) d.shadow.dispose();
       } else if (d.dispose) {
         d.dispose();
       }
@@ -793,5 +1136,6 @@ export class Level1 {
 
     // Clear fog
     this.scene.fog = null;
+    this.scene.background = this.previousBackground;
   }
 }

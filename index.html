@@ -28,7 +28,11 @@
         <strong>Thesis of the Dead</strong><br />
         A CGV Assignment Project<br /><br />
         Built with Three.js<br />
-        Music &amp; SFX from Pixabay (Royalty-Free)
+        Music &amp; SFX from Pixabay (Royalty-Free)<br />
+        Moon imagery: NASA's Scientific Visualization Studio<br />
+        Desert scenery: FIELDFLY3R · Mud houses: vincekelly2187<br />
+        Desert rocks: Erroratten · Stone ground: OrbArts · Shrubs: evolveduk<br />
+        <a href="./assets/models/desert/SOURCES.md" target="_blank" rel="noopener">Desert asset credits and licenses</a>
       </p>
       <button id="btn-credits-back" class="menu-btn">Back</button>
     </div>
@@ -64,6 +68,7 @@
   <!-- HUD (in-game) -->
   <div id="hud" class="hidden">
     <div id="crosshair">+</div>
+    <div id="world-message" class="hidden" role="status" aria-live="polite"></div>
     <div id="health-bar-container">
       <div id="health-bar-label">Stamina</div>
       <div id="health-bar-bg">
@@ -72,11 +77,28 @@
     </div>
     <div id="level-title-display"></div>
     <div id="score-display">Credits: 0</div>
+    <div id="ammo-hud">
+      <div id="ammo-label">SMG · BULLETS</div>
+      <div id="ammo-count">30</div>
+      <div id="ammo-hint">F: Gun bash · Collect green ammo boxes</div>
+    </div>
+    <div id="challenge-hud" class="hidden">
+      <div id="challenge-title"></div>
+      <p id="challenge-detail"></p>
+      <div id="challenge-bar"><div id="challenge-progress"></div></div>
+      <div id="challenge-timer-label"></div>
+      <div id="challenge-timer"></div>
+    </div>
+    <div id="target-hud" class="hidden">
+      <div id="target-title">MUD HOUSE</div>
+      <div id="target-health-bar"><div id="target-health-fill"></div></div>
+      <div id="target-health"></div>
+    </div>
     <div id="minimap-container">
       <canvas id="minimap" width="150" height="150"></canvas>
     </div>
     <div id="controls-hint">
-      WASD: Move | Mouse: Look | Click: Shoot | Shift: Sprint | Space: Dodge | C: Camera | R: Restart
+      WASD: Move | Mouse: Look | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge | C: Camera | R: Restart
     </div>
   </div>
 
@@ -92,7 +114,7 @@
   <div id="gameover-overlay" class="overlay hidden">
     <div class="menu-container">
       <h2 class="gameover-title">Thesis Rejected</h2>
-      <p class="credits-text">Your stamina ran out. The zombies got your degree.</p>
+      <p id="gameover-text" class="credits-text">Your stamina ran out. The zombies got your degree.</p>
       <button id="btn-retry" class="menu-btn">Try Again</button>
       <button id="btn-menu" class="menu-btn">Main Menu</button>
     </div>
@@ -110,10 +132,10 @@
   <!-- Win Overlay -->
   <div id="win-overlay" class="overlay hidden">
     <div class="menu-container">
-      <h2 class="win-title">Degree Earned!</h2>
+      <h2 class="win-title">Second Year Complete!</h2>
       <p class="credits-text">
-        Congratulations, Graduate!<br />
-        You survived the Final Draft and earned your degree.
+        You survived The Freshman Woods and The Sophomore Room.<br />
+        All available chapters complete.
       </p>
       <button id="btn-win-menu" class="menu-btn">Main Menu</button>
     </div>

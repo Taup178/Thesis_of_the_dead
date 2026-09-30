@@ -1,4 +1,6 @@
 import { Level1 } from './Level1.js';
+import { Level2 } from './Level2.js';
+import { Level3 } from './Level3.js';
 
 /**
  * LevelManager - Orchestrates level transitions with proper asset disposal.
@@ -9,15 +11,15 @@ export class LevelManager {
     this.scene = scene;
     this.currentLevel = null;
     this.currentLevelIndex = 0;
-    this.totalLevels = 3; // Freshman Woods, Sophomore Swamp, Final Summit
+    this.totalLevels = 3;
   }
 
   /** Returns the level class for a given index. */
   _getLevelClass(index) {
     switch (index) {
       case 0: return Level1;
-      // case 1: return Level2;  // TODO: Sophomore Swamp
-      // case 2: return Level3;  // TODO: Final Summit
+      case 1: return Level2;
+      case 2: return Level3;
       default: return null;
     }
   }
@@ -28,7 +30,7 @@ export class LevelManager {
    * @param {function} onProgress - Callback with 0..1 progress
    * @returns {object} The loaded level instance
    */
-  async loadLevel(index, onProgress) {
+  async loadLevel(index, onProgress, restartState = null) {
     // Dispose current level if any
     if (this.currentLevel) {
       this.currentLevel.dispose();
@@ -40,7 +42,7 @@ export class LevelManager {
       throw new Error(`No level class for index ${index}`);
     }
 
-    const level = new LevelClass(this.scene);
+    const level = new LevelClass(this.scene, restartState);
     await level.load(onProgress);
 
     this.currentLevel = level;
@@ -50,7 +52,8 @@ export class LevelManager {
 
   /** Restart the current level. */
   async restartLevel(onProgress) {
-    return this.loadLevel(this.currentLevelIndex, onProgress);
+    const restartState = this.currentLevel?.getRestartState?.();
+    return this.loadLevel(this.currentLevelIndex, onProgress, restartState);
   }
 
   /** Load the next level. Returns false if there is no next level. */

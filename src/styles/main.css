@@ -35,6 +35,10 @@ html, body {
   height: 100% !important;
 }
 
+#game-container.playing canvas {
+  cursor: none;
+}
+
 /* ---- Overlays (menus, pause, gameover) ---- */
 .overlay {
   position: fixed;
@@ -174,6 +178,53 @@ html, body {
 #hud.hidden {
   display: none;
 }
+
+#challenge-hud {
+  position: absolute;
+  top: 105px;
+  left: 32px;
+  width: min(360px, calc(100vw - 64px));
+  padding: 18px 20px;
+  background: rgba(8, 14, 25, 0.86);
+  border: 1px solid rgba(160, 192, 230, 0.3);
+  border-radius: 8px;
+  color: #dce7f5;
+}
+
+#challenge-hud.hidden { display: none; }
+#challenge-title { font-size: 15px; font-weight: 700; }
+#challenge-detail { margin: 9px 0 14px; font-size: 13px; line-height: 1.6; color: #b9c8d9; }
+#challenge-timer { margin-top: 9px; font-size: 12px; color: #f1c978; }
+#challenge-bar { height: 5px; background: #273547; border-radius: 3px; overflow: hidden; }
+#challenge-progress { height: 100%; background: #f1bb55; }
+#challenge-hud[data-tone="follow"] #challenge-progress { background: #46dd9b; }
+#challenge-hud[data-tone="danger"] #challenge-progress { background: #e55463; }
+#challenge-hud[data-tone="danger"] #challenge-timer { color: #ff8995; }
+#challenge-timer-label:empty { display: none; }
+#challenge-hud[data-mode="encounter"] { background: rgba(36, 27, 19, 0.86); border-color: rgba(232, 186, 117, 0.4); }
+#challenge-hud[data-mode="encounter"] #challenge-title { color: #f5d8a2; letter-spacing: 2px; }
+#challenge-hud[data-mode="encounter"] #challenge-detail { color: #d3c2aa; }
+#challenge-hud[data-mode="encounter"] #challenge-timer-label { margin-top: 15px; font-size: 10px; letter-spacing: 2px; color: #c4ad8c; }
+#challenge-hud[data-mode="encounter"] #challenge-timer { margin-top: 3px; font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#target-hud { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); width: 250px; padding: 14px 20px;
+  background: rgba(35, 25, 17, 0.87); border: 1px solid rgba(236, 190, 122, 0.5); border-radius: 6px; text-align: center; }
+#target-hud.hidden { display: none; }
+#target-title { font-size: 12px; letter-spacing: 2px; color: #f7d8ab; font-weight: 700; }
+#target-health-bar { height: 8px; margin: 9px 0 6px; border-radius: 3px; overflow: hidden; background: #534334; }
+#target-health-fill { height: 100%; background: linear-gradient(90deg, #b88142, #f1cc86); transition: width 0.12s ease; }
+#target-health { color: #f0e4d2; font-size: 12px; font-variant-numeric: tabular-nums; }
+#target-hud[data-destroyed="true"] #target-health { color: #b9d7a5; }
+#world-message { position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%); max-width: min(520px, 85vw);
+  padding: 14px 22px; border: 1px solid #d8ba7a; border-radius: 6px; background: rgba(20, 22, 26, 0.92); color: #ffe0a0;
+  font-size: 14px; text-align: center; }
+#world-message.hidden { display: none; }
+#ammo-hud { position: absolute; bottom: 42px; right: 32px; text-align: right; padding: 12px 16px; border-radius: 6px;
+  background: rgba(12, 17, 21, 0.84); border-right: 3px solid #dfbd75; color: #f5d69e; }
+#ammo-hud.hidden { display: none; }
+#ammo-label { font-size: 10px; letter-spacing: 2px; }
+#ammo-count { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#ammo-hint { margin-top: 3px; font-size: 11px; color: #ccd5c8; }
+#ammo-hud[data-empty="true"] { border-color: #e06862; color: #ffa293; }
 
 #crosshair {
   position: absolute;

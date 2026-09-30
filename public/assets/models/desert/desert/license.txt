@@ -1,0 +1,11 @@
+Model Information:
+* title:	Desert
+* source:	https://sketchfab.com/3d-models/desert-8891baf0be3843fe830a555a8b80b641
+* author:	FIELDFLY3R (https://sketchfab.com/FIELDFLY3R)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Desert" (https://sketchfab.com/3d-models/desert-8891baf0be3843fe830a555a8b80b641) by FIELDFLY3R (https://sketchfab.com/FIELDFLY3R) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

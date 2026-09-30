@@ -9,7 +9,7 @@
  *   Mouse  - Look / Aim
  *   Click  - Shoot
  *   Shift  - Sprint
- *   Space  - Dodge Roll
+ *   Space  - Dodge Roll (Woods) / Jump (Sophomore Room)
  *   C      - Toggle Camera (1st / 3rd person)
  *   R      - Restart Level
  *   Esc    - Pause

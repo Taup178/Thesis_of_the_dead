@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { SurvivorWeapon } from './SurvivorWeapon.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -21,7 +22,13 @@ export class Player {
     this.maxHealth = 100;
     this.health = this.maxHealth;
     this.score = 0;
+    this.ammo = 30;
+    this.maxAmmo = 120;
+    this.bashTime = 0;
+    this.shotTime = 0;
     this.radius = 0.4; // horizontal collision radius
+    this.maxLookPitch = THREE.MathUtils.degToRad(85);
+    this.cameraCollisionRadius = 0.25;
 
     // --- State ---
     this.yaw = 0;
@@ -45,26 +52,15 @@ export class Player {
 
     // Gun (child of body, visible in both modes)
     this.gunGroup = new THREE.Group();
-    const gunBarrel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.08, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.8 })
-    );
-    gunBarrel.position.z = -0.25;
-    const gunBody = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 0.18, 0.2),
-      new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.7 })
-    );
-    this.gunGroup.add(gunBarrel, gunBody);
     this.gunGroup.position.set(0.4, 1.1, -0.3);
     this.group.add(this.gunGroup);
 
-    // Camera holder (child of group so it follows player)
-    this.cameraHolder = new THREE.Group();
-    this.cameraHolder.name = 'CameraHolder';
-    this.group.add(this.cameraHolder);
-
-    // 3rd person camera position (behind and above)
-    this.thirdPersonOffset = new THREE.Vector3(0, 2.5, 5);
+    // A shoulder pivot lets the camera orbit with both axes while keeping the reticle clear.
+    this.cameraPivotOffset = new THREE.Vector3(0, 1.55, 0);
+    this.thirdPersonOffset = new THREE.Vector3(1, 0.65, 4.8);
+    this.cameraObstacles = [];
+    this.cameraGroundY = 0;
+    this.platformSupport = null;
     // 1st person camera position (at head height)
     this.firstPersonOffset = new THREE.Vector3(0, 1.6, 0);
 
@@ -75,18 +71,20 @@ export class Player {
 
     // Start position
     this.group.position.set(0, 0, 0);
+    this.lastSafePosition = this.group.position.clone();
     scene.add(this.group);
 
     // Gravity
     this.verticalVelocity = 0;
     this.gravity = -20;
     this.grounded = true;
+    this._updateCamera();
   }
 
   /**
    * Loads the survivor character model and replaces the placeholder body.
    */
-  async loadCharacter(url = './assets/models/character/character.gltf') {
+  async loadCharacter(url = './assets/models/character/shaun.gltf') {
     const loader = new GLTFLoader();
     return new Promise((resolve, reject) => {
       loader.load(
@@ -94,7 +92,7 @@ export class Player {
         (gltf) => {
           try {
             const character = gltf.scene;
-            character.name = 'MattCharacter';
+            character.name = 'ShaunCharacter';
 
             // Remove any placeholder children
             while (this.bodyMesh.children.length > 0) {
@@ -107,7 +105,7 @@ export class Player {
             character.scale.set(1, 1, 1);
             character.updateMatrix();
 
-            // The Matt model is authored facing +Z; rotate 180 degrees so
+            // The survivor is authored facing +Z; rotate 180 degrees so
             // the character faces game forward (-Z) and the camera sees his back.
             character.rotation.y = Math.PI;
             character.updateMatrix();
@@ -121,7 +119,8 @@ export class Player {
             box.getSize(size);
             const targetHeight = 1.75;
             const scale = targetHeight / Math.max(size.y, 0.01);
-            character.scale.setScalar(scale);
+            // Mirror the rig and its authored grip together to hold the SMG in the right hand.
+            character.scale.set(-scale, scale, scale);
             character.updateMatrix();
             this.bodyMesh.updateMatrixWorld(true);
 
@@ -142,11 +141,6 @@ export class Player {
               }
             });
 
-            // Hide the blocky placeholder gun; the character model carries its own weapon.
-            this.gunGroup.traverse((child) => {
-              if (child.isMesh) child.visible = false;
-            });
-
             this.characterModel = character;
 
             // Set up animation mixer and actions
@@ -159,6 +153,8 @@ export class Player {
             this.currentActionName = null;
             this.currentAction = null;
             this._playAnimation('Idle_Gun', 'Idle');
+            this.mixer.update(0.001);
+            this.weaponPresentation = new SurvivorWeapon(this);
 
             resolve();
           } catch (err) {
@@ -199,21 +195,34 @@ export class Player {
 
   /** Returns world position of the muzzle for raycasting. */
   getMuzzleWorldPosition() {
+    if (this.weaponPresentation) return this.weaponPresentation.getMuzzlePosition();
     const pos = new THREE.Vector3();
     this.muzzlePoint.getWorldPosition(pos);
     return pos;
   }
 
-  /** Returns the forward direction of the player (for raycasting). */
+  /** Returns the aiming direction, including vertical mouse look. */
   getForwardDirection() {
-    const dir = new THREE.Vector3(0, 0, -1);
-    dir.applyQuaternion(this.group.quaternion);
-    return dir.normalize();
+    return this.camera.getWorldDirection(new THREE.Vector3());
   }
 
   toggleCamera() {
     this.isFirstPerson = !this.isFirstPerson;
     this.bodyMesh.visible = !this.isFirstPerson;
+    this._updateCamera();
+    this.weaponPresentation?.update(0);
+  }
+
+  startGunBash() {
+    if (this.bashTime > 0 || this.scriptedMovement || !this.alive) return false;
+    this.bashTime = 0.6;
+    if (this.actions?.Stab) {
+      this._playAnimation('Stab');
+      this.actions.Stab.setLoop(THREE.LoopOnce, 1).setEffectiveTimeScale(this.actions.Stab.getClip().duration / 0.6);
+      this.actions.Stab.clampWhenFinished = true;
+    }
+    this.weaponPresentation?.bash();
+    return true;
   }
 
   takeDamage(amount) {
@@ -233,6 +242,11 @@ export class Player {
   }
 
   reset(spawnPoint) {
+    this.scriptedMovement = false;
+    this.boundaryNoticeTime = 0;
+    this.ammo = 30;
+    this.bashTime = 0;
+    this.shotTime = 0;
     this.health = this.maxHealth;
     this.score = 0;
     this.alive = true;
@@ -244,13 +258,23 @@ export class Player {
     this.velocity.set(0, 0, 0);
     this.verticalVelocity = 0;
     this.grounded = true;
+    this.platformSupport = null;
+    this.cameraGroundY = 0;
+    this.cameraObstacles = [];
     if (spawnPoint) {
       this.group.position.copy(spawnPoint);
     }
+    this.lastSafePosition.copy(this.group.position);
+    this.group.rotation.y = this.yaw;
+    this._updateCamera();
   }
 
-  update(dt, obstacles = []) {
+  update(dt, obstacles = [], worldBounds = null, platforming = null) {
+    this.boundaryNoticeTime = Math.max(0, (this.boundaryNoticeTime || 0) - dt);
+    if (this.scriptedMovement) { this.input.flushMouseDelta(); this.shotTime = 0; this.weaponPresentation?.update(0); return; }
     if (!this.alive) return;
+    this.bashTime = Math.max(0, this.bashTime - dt);
+    this.shotTime = Math.max(0, this.shotTime - dt);
 
     const inp = this.input;
 
@@ -261,7 +285,11 @@ export class Player {
       const isMoving = Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.z) > 0.1;
       const isSprinting = isMoving && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'));
 
-      if (isSprinting) {
+      if (this.bashTime > 0) {
+        // Let the one-shot gun strike finish before locomotion takes over.
+      } else if (platforming && !this.grounded) {
+        this._playAnimation('Jump_Idle', 'Jump', 'Idle');
+      } else if (isSprinting) {
         this._playAnimation('Run_Gun', 'Run');
       } else if (isMoving) {
         this._playAnimation('Walk_Gun', 'Walk');
@@ -274,15 +302,12 @@ export class Player {
     if (inp.pointerLocked) {
       this.yaw -= inp.mouseDeltaX * this.mouseSensitivity;
       this.pitch -= inp.mouseDeltaY * this.mouseSensitivity;
-      this.pitch = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, this.pitch));
+      this.pitch = THREE.MathUtils.clamp(this.pitch, -this.maxLookPitch, this.maxLookPitch);
     }
     inp.flushMouseDelta();
 
     // Apply yaw to player group (horizontal rotation)
     this.group.rotation.y = this.yaw;
-
-    // Apply pitch to camera holder (vertical look)
-    this.cameraHolder.rotation.x = this.pitch;
 
     // ---- Movement ----
     const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -294,8 +319,8 @@ export class Player {
     if (inp.isDown('KeyA')) moveDir.sub(right);
     if (inp.isDown('KeyD')) moveDir.add(right);
 
-    let speed = this.moveSpeed;
-    if (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight')) {
+    let speed = platforming?.moveSpeed ?? this.moveSpeed;
+    if ((!platforming || platforming.allowSprint) && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'))) {
       speed *= this.sprintMultiplier;
     }
 
@@ -304,7 +329,16 @@ export class Player {
       this.dodgeCooldownTimer -= dt;
     }
 
-    if (inp.isDown('Space') && !this.isDodging && this.dodgeCooldownTimer <= 0 && moveDir.length() > 0) {
+    if (platforming) {
+      this.isDodging = false;
+      if (!platforming.canMove) moveDir.set(0, 0, 0);
+      const jumpPressed = inp.consumeKeyPress('Space');
+      if (jumpPressed && platforming.canMove && this.grounded) {
+        this.verticalVelocity = platforming.jumpVelocity;
+        this.grounded = false;
+        if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
+      }
+    } else if (inp.isDown('Space') && !this.isDodging && this.dodgeCooldownTimer <= 0 && moveDir.length() > 0) {
       this.isDodging = true;
       this.dodgeTimer = this.dodgeDuration;
       this.dodgeDirection.copy(moveDir).normalize();
@@ -333,6 +367,7 @@ export class Player {
     this.velocity.y = this.verticalVelocity;
 
     // Integrate position
+    const previousY = this.group.position.y;
     this.group.position.x += this.velocity.x * dt;
     this.group.position.z += this.velocity.z * dt;
     this.group.position.y += this.velocity.y * dt;
@@ -342,8 +377,25 @@ export class Player {
       this._resolveObstacles(obstacles);
     }
 
-    // Simple ground clamp
-    if (this.group.position.y <= 0) {
+    if (platforming) {
+      // Land only when descending across a platform's top. Gaps have no floor.
+      this.grounded = false;
+      this.platformSupport = null;
+      if (this.verticalVelocity <= 0) {
+        for (const surface of platforming.surfaces) {
+          const position = this.group.position;
+          if (position.x < surface.minX || position.x > surface.maxX || position.z < surface.minZ || position.z > surface.maxZ) continue;
+          if (previousY < surface.y - 0.001 || position.y > surface.y) continue;
+          position.y = surface.y;
+          this.verticalVelocity = 0;
+          this.velocity.y = 0;
+          this.grounded = true;
+          this.platformSupport = surface;
+          break;
+        }
+      }
+      this.cameraGroundY = this.grounded ? this.group.position.y : -Infinity;
+    } else if (this.group.position.y <= 0) {
       this.group.position.y = 0;
       this.verticalVelocity = 0;
       this.grounded = true;
@@ -351,13 +403,93 @@ export class Player {
       this.grounded = false;
     }
 
-    // ---- Camera Position ----
-    const offset = this.isFirstPerson ? this.firstPersonOffset : this.thirdPersonOffset;
-    this.camera.position.copy(this.group.position).add(offset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw));
+    // Recover before updating the camera or shooting from an invalid position.
+    if (worldBounds) this._recoverWorldBounds(worldBounds);
 
-    // Camera look target
-    const lookTarget = this.group.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-    this.camera.lookAt(lookTarget);
+    this.cameraObstacles = obstacles || [];
+    if (!platforming) this.cameraGroundY = 0;
+    this._updateCamera();
+    this.weaponPresentation?.update(dt);
+  }
+
+  _updateCamera() {
+    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    if (this.isFirstPerson) {
+      this.camera.position.copy(this.group.position).add(this.firstPersonOffset);
+    } else {
+      const pivot = this.group.position.clone().add(this.cameraPivotOffset);
+      const shoulder = new THREE.Vector3(this.thirdPersonOffset.x, this.thirdPersonOffset.y, 0)
+        .applyQuaternion(this.camera.quaternion).add(pivot);
+      const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
+      let distance = this.thirdPersonOffset.z;
+      // Shorten the boom when looking up so the camera stays above the ground.
+      if (backward.y < 0 && Number.isFinite(this.cameraGroundY)) {
+        distance = Math.min(distance, (shoulder.y - this.cameraGroundY - this.cameraCollisionRadius) / -backward.y);
+      }
+      const desired = shoulder.addScaledVector(backward, Math.max(0, distance));
+      this.camera.position.lerpVectors(pivot, desired, this._cameraClearance(pivot, desired));
+    }
+    // Shooting happens before rendering, so its camera matrices must be current now.
+    this.camera.updateMatrixWorld(true);
+  }
+
+  /** Keep the camera boom outside tree trunks without changing aim direction. */
+  _cameraClearance(start, end) {
+    const dx = end.x - start.x, dz = end.z - start.z;
+    const lengthSquared = dx * dx + dz * dz;
+    if (lengthSquared < 1e-8) return 1;
+    let fraction = 1;
+    for (const obstacle of this.cameraObstacles) {
+      const ox = start.x - obstacle.x, oz = start.z - obstacle.z;
+      const radius = obstacle.radius + this.cameraCollisionRadius;
+      const b = ox * dx + oz * dz;
+      const c = ox * ox + oz * oz - radius * radius;
+      if (c <= 0) continue;
+      const discriminant = b * b - lengthSquared * c;
+      if (discriminant < 0) continue;
+      const entry = (-b - Math.sqrt(discriminant)) / lengthSquared;
+      if (entry >= 0 && entry <= fraction) fraction = Math.max(0, entry - 0.02 / Math.sqrt(lengthSquared));
+    }
+    return fraction;
+  }
+
+  /** Return inside the crossed edge and face back along the direction of travel. */
+  _recoverWorldBounds(bounds) {
+    const minX = bounds.minX + this.radius, maxX = bounds.maxX - this.radius;
+    const minZ = bounds.minZ + this.radius, maxZ = bounds.maxZ - this.radius;
+    const position = this.group.position;
+    if (position.x >= minX && position.x <= maxX && position.z >= minZ && position.z <= maxZ) {
+      this.lastSafePosition.copy(position);
+      return false;
+    }
+
+    const start = this.lastSafePosition;
+    const dx = position.x - start.x, dz = position.z - start.z;
+    let exit = 1;
+    if (position.x > maxX && dx > 0) exit = Math.min(exit, (maxX - start.x) / dx);
+    if (position.x < minX && dx < 0) exit = Math.min(exit, (minX - start.x) / dx);
+    if (position.z > maxZ && dz > 0) exit = Math.min(exit, (maxZ - start.z) / dz);
+    if (position.z < minZ && dz < 0) exit = Math.min(exit, (minZ - start.z) / dz);
+    exit = THREE.MathUtils.clamp(exit, 0, 1);
+    const inset = 1.5;
+    position.set(
+      THREE.MathUtils.clamp(start.x + dx * exit, minX + inset, maxX - inset),
+      0,
+      THREE.MathUtils.clamp(start.z + dz * exit, minZ + inset, maxZ - inset)
+    );
+    this.yaw = Math.atan2(dx, dz);
+    this.pitch = 0;
+    this.group.rotation.y = this.yaw;
+    this.input.flushMouseDelta();
+    this.boundaryNoticeTime = 3.5;
+    this.velocity.set(0, 0, 0);
+    this.verticalVelocity = 0;
+    this.grounded = true;
+    this.isDodging = false;
+    this.dodgeTimer = 0;
+    this.dodgeCooldownTimer = Math.max(this.dodgeCooldownTimer, this.dodgeCooldown);
+    this.lastSafePosition.copy(position);
+    return true;
   }
 
   /**
@@ -398,26 +530,20 @@ export class Player {
     if (this.mixer) {
       this.mixer.stopAllAction();
     }
-    this.bodyMesh.traverse((child) => {
-      if (child.isMesh) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach((m) => m.dispose());
-        } else {
-          child.material.dispose();
-        }
+    this.weaponPresentation?.viewMixer.stopAllAction();
+    const resources = new Set(), skeletons = new Set();
+    for (const root of [this.group, this.weaponPresentation?.viewRoot]) root?.traverse(child => {
+      if (child.skeleton) skeletons.add(child.skeleton);
+      if (!child.isMesh) return;
+      resources.add(child.geometry);
+      for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+        resources.add(material);
+        for (const value of Object.values(material)) if (value?.isTexture) resources.add(value);
       }
     });
-    this.gunGroup.traverse((child) => {
-      if (child.isMesh) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach((m) => m.dispose());
-        } else {
-          child.material.dispose();
-        }
-      }
-    });
+    for (const resource of resources) resource.dispose();
+    for (const skeleton of skeletons) skeleton.dispose();
+    this.weaponPresentation?.viewRoot.removeFromParent();
     this.scene.remove(this.group);
   }
 }
