@@ -5,6 +5,7 @@ import { Zombie } from '../enemies/Zombie.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
 import { NightSky } from '../environment/NightSky.js';
 import { WakeUpIntro } from '../player/WakeUpIntro.js';
+import { StylizedWoods } from '../environment/StylizedWoods.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -44,10 +45,7 @@ export class Level1 {
     this.portalModel = null;
     this.portalMixer = null;
     this.portalLight = null;
-    this.grassGround = null;
-    this.treeModel = null;
-    this.treeVariants = [];
-    this.placedTrees = [];
+    this.woods = null;
     this.obstacles = [];
     this.treeMeshes = [];
 
@@ -58,24 +56,17 @@ export class Level1 {
     this.portalApproachPoint = new THREE.Vector3(0, 0, -43.2);
   }
 
-  /** Async load (procedural, so mostly sync). Returns loading progress callbacks. */
+  /** Load the nature pack, night sky, and encounter assets with progress callbacks. */
   async load(onProgress) {
     this._createLighting();
     await this.nightSky.ready;
     onProgress && onProgress(0.2);
 
-    this._createGround();
-    onProgress && onProgress(0.35);
-
-    await this._loadGrassGround();
-    onProgress && onProgress(0.5);
-
     this._createCredits(8);
-    onProgress && onProgress(0.6);
-
-    await this._loadTreeModel();
-    this._createTrees(35);
-    this._createForestBackdrop();
+    this.woods = new StylizedWoods(this.scene, this.credits);
+    await this.woods.load(progress => onProgress?.(0.2 + progress * 0.5));
+    this.obstacles = this.woods.obstacles;
+    this.treeMeshes = this.woods.bulletMeshes;
     onProgress && onProgress(0.75);
 
     await this._createBossMarker();
@@ -137,258 +128,6 @@ export class Level1 {
     // Fog for depth
     this.fog = new THREE.FogExp2(this.nightSky.horizonColor, 0.0075);
     this.scene.fog = this.fog;
-  }
-
-  _createGround() {
-    // Continue the visible landscape beyond the playable bounds into the distant haze.
-    const groundGeo = new THREE.PlaneGeometry(600, 600);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x4a7a3a,
-      roughness: 0.95,
-      metalness: 0.0
-    });
-    this.ground = new THREE.Mesh(groundGeo, groundMat);
-    this.ground.rotation.x = -Math.PI / 2;
-    this.ground.receiveShadow = true;
-    this.ground.name = 'Ground';
-    this.scene.add(this.ground);
-  }
-
-  async _loadGrassGround() {
-    const loader = new GLTFLoader();
-
-    return new Promise((resolve) => {
-      loader.load(
-        './assets/models/grass_ground/grass_ground.gltf',
-        (gltf) => {
-          try {
-            this.grassGround = gltf.scene;
-            this.grassGround.name = 'GrassGround';
-
-            // Scale the model so it covers the 120x120 ground.
-            const box = new THREE.Box3().setFromObject(this.grassGround);
-            const size = new THREE.Vector3();
-            box.getSize(size);
-            const targetSize = 120;
-            const scale = targetSize / Math.max(size.x, size.z);
-            this.grassGround.scale.setScalar(scale);
-
-            // Recompute bounds after scaling and sit it just above the base ground.
-            const scaledBox = new THREE.Box3().setFromObject(this.grassGround);
-            this.grassGround.position.y = -scaledBox.min.y + 0.01;
-
-            // Tile the grass texture so it keeps its original density.
-            let grassMaterial = null;
-            this.grassGround.traverse((child) => {
-              if (!child.isMesh) return;
-              child.receiveShadow = true;
-              const materials = Array.isArray(child.material) ? child.material : [child.material];
-              for (const material of materials) {
-                grassMaterial ||= material;
-                // Grass is a matte surface; the imported metallic default loses ambient fill.
-                material.metalness = 0;
-                material.roughness = 0.95;
-                material.normalScale.set(0.3, 0.3);
-                material.aoMapIntensity = 0.45;
-                // All channels must describe the same grass patch, including its normals and AO.
-                const maps = new Set([material.map, material.normalMap, material.roughnessMap,
-                  material.metalnessMap, material.aoMap]);
-                for (const map of maps) {
-                  if (!map) continue;
-                  map.wrapS = THREE.RepeatWrapping;
-                  map.wrapT = THREE.RepeatWrapping;
-                  map.repeat.set(scale, scale);
-                  map.anisotropy = 8;
-                  map.needsUpdate = true;
-                }
-              }
-            });
-
-            if (grassMaterial) {
-              this.ground.material.dispose();
-              this.ground.material = grassMaterial.clone();
-              // Share the source textures and preserve their world scale on the wider terrain.
-              const uv = this.ground.geometry.attributes.uv;
-              for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 5, uv.getY(i) * 5);
-              uv.needsUpdate = true;
-              this.ground.position.y = -0.02;
-            }
-
-            this.scene.add(this.grassGround);
-          } catch (err) {
-            console.error('[GrassGround] failed to place grass ground:', err);
-          }
-          resolve();
-        },
-        undefined,
-        (err) => {
-          console.error('[GrassGround] failed to load grass ground model:', err);
-          resolve();
-        }
-      );
-    });
-  }
-
-  async _loadTreeModel() {
-    const loader = new GLTFLoader();
-
-    return new Promise((resolve) => {
-      loader.load(
-        './assets/models/trees/trees.gltf',
-        (gltf) => {
-          try {
-            this.treeModel = gltf.scene;
-
-            this.treeModel.traverse(child => {
-              if (!child.isMesh) return;
-              const materials = Array.isArray(child.material) ? child.material : [child.material];
-              for (const material of materials) {
-                if (material.map) material.map.anisotropy = 8;
-                if (!material.transparent || !material.map) continue;
-                // Leaves need cutouts in both colour and shadow passes, with stable depth ordering.
-                material.transparent = false;
-                material.alphaTest = 0.45;
-                material.alphaToCoverage = true;
-                material.depthWrite = true;
-                material.roughness = 0.9;
-                material.needsUpdate = true;
-              }
-            });
-
-            // The model contains several tree sub-groups (e.g. tree4, tree6).
-            // Wrap each tree variant in an upright container group where:
-            // - Local +Y points straight up (90 degrees to the ground).
-            // - The bottom of the trunk is grounded at local y = 0.
-            // - The trunk base is centered at local x = 0, z = 0.
-            // This ensures subsequent yaw rotations around Y only rotate the tree
-            // around its vertical axis without any slanting or horizontal tilting.
-            this.treeModel.traverse((child) => {
-              if (child.isObject3D && child.children.length > 0 && child.name && child.name.toLowerCase().startsWith('tree')) {
-                child.updateWorldMatrix(true, false);
-                const worldMatrix = child.matrixWorld.clone();
-                const pos = new THREE.Vector3();
-                const quat = new THREE.Quaternion();
-                const scale = new THREE.Vector3();
-                worldMatrix.decompose(pos, quat, scale);
-
-                const inner = child.clone();
-                inner.position.set(0, 0, 0);
-                inner.quaternion.copy(quat);
-                inner.scale.copy(scale);
-                inner.updateMatrixWorld(true);
-
-                const box = new THREE.Box3().setFromObject(inner);
-                const height = box.max.y - box.min.y;
-                const centerX = (box.min.x + box.max.x) / 2;
-                const centerZ = (box.min.z + box.max.z) / 2;
-                inner.position.set(-centerX, -box.min.y, -centerZ);
-
-                const template = new THREE.Group();
-                template.add(inner);
-                template.userData.height = height;
-
-                this.treeVariants.push(template);
-              }
-            });
-
-            if (this.treeVariants.length === 0) {
-              console.warn('[Trees] no tree variants found in model');
-            }
-          } catch (err) {
-            console.error('[Trees] failed to process tree model:', err);
-          }
-          resolve();
-        },
-        undefined,
-        (err) => {
-          console.error('[Trees] failed to load tree model:', err);
-          resolve();
-        }
-      );
-    });
-  }
-
-  _createTree(x, z) {
-    if (this.treeVariants.length === 0) return;
-
-    const template = this.treeVariants[Math.floor(Math.random() * this.treeVariants.length)];
-    const baseHeight = template.userData.height || 25;
-    const tree = template.clone();
-    tree.name = 'Tree';
-
-    // Scale to a visible game height (20-35 units)
-    const targetHeight = 20 + Math.random() * 15;
-    const scale = targetHeight / Math.max(baseHeight, 0.01);
-    tree.scale.setScalar(scale);
-
-    // Sit the base directly on the ground at y = 0
-    tree.position.set(x, 0, z);
-    // Random yaw rotation around the vertical Y axis (trunk stays strictly 90 degrees to ground)
-    tree.rotation.y = Math.random() * Math.PI * 2;
-
-    // Calculate physical collision radius from the model trunk dimensions & scale
-    const trunkRadius = Math.max(0.9, 3.416 * 9 * scale * 1.1);
-    this.obstacles.push({ x, z, radius: trunkRadius });
-
-    tree.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        this.treeMeshes.push(child);
-      }
-    });
-
-    this.scene.add(tree);
-    this.placedTrees.push(tree);
-    return tree;
-  }
-
-  _createTrees(count) {
-    const radius = 50;
-    const minDist = 4;
-    const positions = [];
-
-    for (let i = 0; i < count; i++) {
-      let x, z, valid;
-      let attempts = 0;
-      do {
-        x = (Math.random() - 0.5) * radius * 2;
-        z = (Math.random() - 0.5) * radius * 2;
-        // Keep clear of spawn area (player spawns at 0, 0, 0)
-        valid = Math.hypot(x, z) > 5;
-        // Keep clear of boss path
-        if (z < -35 && Math.abs(x) < 4) valid = false;
-        if (Math.hypot(x, z - 45) < 10) valid = false;
-        // Keep clear of collectible credits
-        for (const c of this.credits) {
-          if (Math.hypot(c.mesh.position.x - x, c.mesh.position.z - z) < 3) {
-            valid = false;
-            break;
-          }
-        }
-        // Min distance from other trees
-        for (const p of positions) {
-          if (Math.hypot(p.x - x, p.z - z) < minDist) {
-            valid = false;
-            break;
-          }
-        }
-        attempts++;
-      } while (!valid && attempts < 30);
-
-      if (valid) {
-        positions.push({ x, z });
-        this._createTree(x, z);
-      }
-    }
-  }
-
-  _createForestBackdrop() {
-    for (let i = 0; i < 24; i++) {
-      const angle = (i / 24) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
-      const distance = 90 + Math.random() * 65;
-      this._createTree(Math.cos(angle) * distance, Math.sin(angle) * distance);
-    }
   }
 
   /** Glowing collectible orbs ("Credits"). */
@@ -1013,6 +752,8 @@ export class Level1 {
 
   /** Clean up EVERYTHING this level created. Critical for LAMP memory. */
   dispose() {
+    this.woods?.dispose();
+    this.woods = null;
     this.wakeUpIntro?.restore();
     this._restorePlayerAppearance();
     this.redPortalMixer?.stopAllAction();
@@ -1040,13 +781,6 @@ export class Level1 {
     }
     this.credits = [];
 
-    // Dispose ground
-    if (this.ground) {
-      this.scene.remove(this.ground);
-      this.ground.geometry.dispose();
-      this.ground.material.dispose();
-    }
-
     // Dispose boss
     this.bossAbsorption = null;
     this.degreeGrip = null;
@@ -1064,54 +798,8 @@ export class Level1 {
       this.bossRing.geometry.dispose();
       this.bossRing.material.dispose();
     }
-    // Dispose grass ground
-    if (this.grassGround) {
-      this.scene.remove(this.grassGround);
-      const resources = new Set();
-      this.grassGround.traverse((child) => {
-        if (!child.isMesh) return;
-        if (child.geometry) resources.add(child.geometry);
-        const materials = Array.isArray(child.material) ? child.material : [child.material];
-        for (const material of materials) {
-          resources.add(material);
-          for (const value of Object.values(material)) {
-            if (value?.isTexture) resources.add(value);
-          }
-        }
-      });
-      for (const resource of resources) resource.dispose();
-      this.grassGround = null;
-    }
-
-    // Dispose placed trees
-    for (const tree of this.placedTrees) {
-      this.scene.remove(tree);
-    }
-    this.placedTrees = [];
-    this.treeVariants = [];
     this.obstacles = [];
     this.treeMeshes = [];
-
-    // Dispose the loaded tree model (and its shared materials/textures)
-    if (this.treeModel) {
-      this.treeModel.traverse((child) => {
-        if (child.isMesh) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m) => {
-                if (m.map) m.map.dispose();
-                m.dispose();
-              });
-            } else {
-              if (child.material.map) child.material.map.dispose();
-              child.material.dispose();
-            }
-          }
-        }
-      });
-      this.treeModel = null;
-    }
 
     // Dispose portal model and mixer
     if (this.portalMixer) {

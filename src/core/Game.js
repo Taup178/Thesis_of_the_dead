@@ -4,6 +4,7 @@ import { Player } from '../player/Player.js';
 import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
+import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 
 /**
  * Game - Top-level orchestrator.
@@ -31,8 +32,7 @@ export class Game {
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
     this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
-    this.motionBlurEnabled = true;
-    try { this.motionBlurEnabled = localStorage.getItem('thesis-motion-blur') !== 'off'; } catch {}
+    this.heartbeat = new Heartbeat();
 
     // ---- Input ----
     this.input = new InputManager();
@@ -91,6 +91,9 @@ export class Game {
   // UI Binding
   // =====================================================================
   _bindUI() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.pause();
+    });
     document.addEventListener('pointerlockchange', () => {
       if (!this.input.pointerLocked) this.pause();
     });
@@ -111,13 +114,6 @@ export class Game {
 
     // Options
     document.getElementById('sensitivity-slider').addEventListener('input', () => this._applyMouseSensitivity());
-    const blurToggle = document.getElementById('motion-blur-toggle');
-    blurToggle.checked = this.motionBlurEnabled;
-    blurToggle.addEventListener('change', () => {
-      this.motionBlurEnabled = blurToggle.checked;
-      this.motionBlur.reset();
-      try { localStorage.setItem('thesis-motion-blur', this.motionBlurEnabled ? 'on' : 'off'); } catch {}
-    });
 
     // Pause (click canvas to resume)
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
@@ -138,6 +134,7 @@ export class Game {
 
   _showOverlay(id) {
     this.motionBlur.reset();
+    if (id) this.heartbeat.stop();
     const overlays = ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
     overlays.forEach(o => document.getElementById(o).classList.add('hidden'));
     if (id) document.getElementById(id).classList.remove('hidden');
@@ -145,6 +142,7 @@ export class Game {
   }
 
   async _captureMouse() {
+    this.heartbeat.unlock();
     this.input.flushMouseDelta();
     if (this.input.pointerLocked) return;
     const captured = await this.input.requestPointerLock(this.renderer.domElement);
@@ -502,7 +500,10 @@ export class Game {
     }
 
     // ---- Render ----
-    this.motionBlur.render(dt, this.motionBlurEnabled && this.state === this.STATE.PLAYING && this.input.pointerLocked);
+    const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
+    const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
+    this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
+    this.motionBlur.render(dt, effects.blur);
   }
 
   _onResize() {

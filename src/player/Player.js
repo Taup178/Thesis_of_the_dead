@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SurvivorWeapon } from './SurvivorWeapon.js';
+import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './DirectionalWalk.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -144,10 +145,11 @@ export class Player {
             this.characterModel = character;
 
             // Set up animation mixer and actions
-            this.animations = gltf.animations;
+            this.animations = [...gltf.animations, ...createDirectionalWalkClips(character,
+              gltf.animations.find(clip => clip.name === 'Idle_Gun'))];
             this.mixer = new THREE.AnimationMixer(character);
             this.actions = {};
-            for (const clip of gltf.animations) {
+            for (const clip of this.animations) {
               this.actions[clip.name] = this.mixer.clipAction(clip);
             }
             this.currentActionName = null;
@@ -242,6 +244,7 @@ export class Player {
   }
 
   reset(spawnPoint) {
+    this.bodyMesh.rotation.y = 0;
     this.scriptedMovement = false;
     this.boundaryNoticeTime = 0;
     this.ammo = 30;
@@ -277,26 +280,6 @@ export class Player {
     this.shotTime = Math.max(0, this.shotTime - dt);
 
     const inp = this.input;
-
-    // ---- Animation ----
-    if (this.mixer) {
-      this.mixer.update(dt);
-
-      const isMoving = Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.z) > 0.1;
-      const isSprinting = isMoving && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'));
-
-      if (this.bashTime > 0) {
-        // Let the one-shot gun strike finish before locomotion takes over.
-      } else if (platforming && !this.grounded) {
-        this._playAnimation('Jump_Idle', 'Jump', 'Idle');
-      } else if (isSprinting) {
-        this._playAnimation('Run_Gun', 'Run');
-      } else if (isMoving) {
-        this._playAnimation('Walk_Gun', 'Walk');
-      } else {
-        this._playAnimation('Idle_Gun', 'Idle');
-      }
-    }
 
     // ---- Mouse Look ----
     if (inp.pointerLocked) {
@@ -406,10 +389,47 @@ export class Player {
     // Recover before updating the camera or shooting from an invalid position.
     if (worldBounds) this._recoverWorldBounds(worldBounds);
 
+    this._updateLocomotion(dt, platforming);
     this.cameraObstacles = obstacles || [];
     if (!platforming) this.cameraGroundY = 0;
     this._updateCamera();
     this.weaponPresentation?.update(dt);
+  }
+
+  /** Body and camera share their heading, keeping the gun aligned with the reticle. */
+  _updateLocomotion(dt, platforming) {
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+    const moving = speed > 0.1;
+    this.bodyMesh.rotation.y = 0;
+
+    if (!this.mixer) return;
+    if (this.bashTime > 0) {
+      // Let the one-shot strike finish.
+    } else if (platforming && !this.grounded) {
+      this._playAnimation('Jump_Idle', 'Jump', 'Idle');
+    } else if (moving && this._directionalWalkName()) {
+      const name = this._directionalWalkName();
+      this._playAnimation(name, 'Walk_Gun', 'Walk');
+      // Speed up the foot cycle with actual movement, including sprint and diagonals.
+      if (this.actions[name]) this.currentAction.setEffectiveTimeScale(Math.min(3, speed * 0.6 / (2 * DIRECTIONAL_STEP_LENGTH)));
+    } else if (moving && speed > (platforming?.moveSpeed ?? this.moveSpeed) * 1.1) {
+      this._playAnimation('Run_Gun', 'Run');
+    } else if (moving) {
+      this._playAnimation('Walk_Gun', 'Walk');
+    } else {
+      this._playAnimation('Idle_Gun', 'Idle');
+    }
+    this.mixer.update(dt);
+  }
+
+  _directionalWalkName() {
+    const sideways = this.velocity.x * Math.cos(this.yaw) - this.velocity.z * Math.sin(this.yaw);
+    const backward = this.velocity.x * Math.sin(this.yaw) + this.velocity.z * Math.cos(this.yaw);
+    if (Math.abs(sideways) > 0.1) {
+      const side = sideways > 0 ? 'Right' : 'Left';
+      return Math.abs(backward) > 0.1 ? `Walk${backward > 0 ? 'Backward' : 'Forward'}${side}` : `Strafe${side}`;
+    }
+    return backward > 0.1 ? 'WalkBackward' : null;
   }
 
   _updateCamera() {

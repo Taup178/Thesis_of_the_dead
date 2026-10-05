@@ -240,7 +240,7 @@ html, body {
   transform: translate(-50%, -50%);
   font-size: 24px;
   color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
   user-select: none;
   font-weight: 300;
 }

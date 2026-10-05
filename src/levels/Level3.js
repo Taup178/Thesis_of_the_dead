@@ -242,12 +242,18 @@ export class Level3 {
   }
 
   _createSpawns() {
+    for (const house of this.houses) this._spawnHouseWave(house, 1);
+  }
+
+  _spawnHouseWave(house, releaseAt = this.elapsed) {
+    if (!house.alive || this.disposed) return;
     const variants = ['Basic', 'Chubby', 'Ribcage'];
-    for (const house of this.houses) for (const door of house.doors) {
+    for (const door of house.doors) {
       const zombie = new Zombie(this.scene, door.start, `./assets/models/zombies/Zombie_${variants[(house.index + door.index) % 3]}.gltf`);
       zombie.group.visible = false; zombie.group.name = `House_${house.index + 1}_Door_${door.index + 1}`;
       zombie.speed = 1.9 + door.index * 0.13; this.root.add(zombie.group); this.zombies.push(zombie);
-      this.spawnRecords.push({ house, door, zombie, phase: 'waiting', progress: 0, route: [], routeTime: door.index * 0.2 });
+      this.spawnRecords.push({ house, door, zombie, phase: 'waiting', progress: 0, route: [],
+        routeTime: door.index * 0.2, releaseAt: releaseAt + door.delay, deathHandled: false });
     }
   }
 
@@ -290,9 +296,16 @@ export class Level3 {
 
   _updateZombie(record, dt, player) {
     const { zombie, house, door } = record;
-    if (!zombie.alive) { zombie.mixer?.update(dt); return; }
+    if (!zombie.alive) {
+      if (!record.deathHandled) {
+        record.deathHandled = true;
+        this._spawnHouseWave(house);
+      }
+      zombie.mixer?.update(dt);
+      return;
+    }
     if (record.phase === 'waiting') {
-      if (this.elapsed < 1 + door.delay && house.alive) return;
+      if (this.elapsed < (record.releaseAt ?? 1 + door.delay) && house.alive) return;
       record.phase = 'exiting'; zombie.group.visible = true; zombie._playAction('Walk');
     }
     if (record.phase === 'exiting') {
@@ -334,7 +347,7 @@ export class Level3 {
       timer: '02:30', label: 'GET READY', progress: 1, tone: 'desert', mode: 'encounter' };
     const destroyed = this.houses.filter(house => !house.alive).length;
     const killed = this.zombies.filter(zombie => !zombie.alive).length;
-    return { title: 'FINAL ENCOUNTER', detail: `Final Year · Mud houses ${destroyed} / ${this.houses.length} · Zombies ${killed} / ${this.zombies.length}`,
+    return { title: 'FINAL ENCOUNTER', detail: `Mud houses ${destroyed} / ${this.houses.length} · Zombies ${killed} / ${this.zombies.length} · Each kill spawns 4 more: destroy their hut!`,
       timer: `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`,
       label: this.timerExpired ? 'TIME ELAPSED' : 'TIME REMAINING', progress: this.timeRemaining / FINAL_ENCOUNTER_SECONDS,
       tone: this.timeRemaining <= 30 ? 'danger' : 'desert', mode: 'encounter' };

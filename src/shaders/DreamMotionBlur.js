@@ -25,14 +25,14 @@ export class DreamMotionBlur {
 
   reset() { this.fresh = true; }
 
-  render(dt, active) {
-    if (!active) {
+  render(dt, strength = 0) {
+    if (strength <= 0) {
       this.reset();
       this.renderer.render(this.scene, this.camera);
       return;
     }
     // The same short trail at different frame rates; never blend across a camera cut.
-    this.blur.uniforms.damp.value = this.fresh ? 0 : Math.exp(-Math.max(dt, 1 / 240) / 0.065);
+    this.blur.uniforms.damp.value = this.fresh ? 0 : Math.exp(-Math.max(dt, 1 / 240) / (0.065 * Math.min(strength, 1)));
     this.composer.render(dt);
     this.fresh = false;
   }

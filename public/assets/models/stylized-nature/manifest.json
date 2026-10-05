@@ -1,0 +1,208 @@
+{
+    "PublicID":  "zyIyYd9yGr",
+    "Owner":  {
+                  "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                  "Socials":  {
+                                  "Twitter":  "quaternius",
+                                  "Pateron":  "quaternius",
+                                  "Website":  "https://quaternius.com/"
+                              },
+                  "Username":  "Quaternius"
+              },
+    "Name":  "Ultimate Stylized Nature Pack",
+    "Models":  [
+                   {
+                       "id":  0,
+                       "title":  "Birch Trees",
+                       "alt":  "Birch Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/R7qMWzb7nk",
+                       "previewUrl":  "https://static.poly.pizza/457b2397-4bfb-41c4-862d-82d1592b2a5f.webp",
+                       "publicID":  "R7qMWzb7nk",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  1,
+                       "title":  "Trees",
+                       "alt":  "Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/etFGNvsiFv",
+                       "previewUrl":  "https://static.poly.pizza/53a83125-e16a-4024-b8f6-1e72679c7ddf.webp",
+                       "publicID":  "etFGNvsiFv",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  2,
+                       "title":  "Maple Trees",
+                       "alt":  "Maple Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/iGFtQd0PJO",
+                       "previewUrl":  "https://static.poly.pizza/cdfcf39f-f8c7-44a6-bb3f-82afe42fc141.webp",
+                       "publicID":  "iGFtQd0PJO",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  3,
+                       "title":  "Rocks",
+                       "alt":  "Rocks",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/gYhoEOKItJ",
+                       "previewUrl":  "https://static.poly.pizza/01671e28-0504-4db1-a5d5-af71ce0a6a1e.webp",
+                       "publicID":  "gYhoEOKItJ",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  4,
+                       "title":  "Dead Trees",
+                       "alt":  "Dead Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/F5I0Q7TwO5",
+                       "previewUrl":  "https://static.poly.pizza/65539ff7-ff6b-4036-ad02-8233b6ce748f.webp",
+                       "publicID":  "F5I0Q7TwO5",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  5,
+                       "title":  "Flower Bushes",
+                       "alt":  "Flower Bushes",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/1X06RgvSr6",
+                       "previewUrl":  "https://static.poly.pizza/029d08a8-f7de-47ab-b00f-34970698ce21.webp",
+                       "publicID":  "1X06RgvSr6",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  6,
+                       "title":  "Flowers",
+                       "alt":  "Flowers",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/NBUxHir6FJ",
+                       "previewUrl":  "https://static.poly.pizza/c25cb5dc-3cd3-470c-a08c-045af0c0fe3d.webp",
+                       "publicID":  "NBUxHir6FJ",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  7,
+                       "title":  "Bushes",
+                       "alt":  "Bushes",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/J2h3HrO356",
+                       "previewUrl":  "https://static.poly.pizza/11bcb3a1-5901-402c-9863-75988b9e21d8.webp",
+                       "publicID":  "J2h3HrO356",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  8,
+                       "title":  "Grass",
+                       "alt":  "Grass",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/UGTOzcO3P2",
+                       "previewUrl":  "https://static.poly.pizza/99357ca2-6364-4990-8d4c-9bc5a1a5e859.webp",
+                       "publicID":  "UGTOzcO3P2",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  9,
+                       "title":  "Palm Trees",
+                       "alt":  "Palm Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/VYslw9DEi6",
+                       "previewUrl":  "https://static.poly.pizza/88fb0209-5e1e-4cb0-9d11-112e6140ab13.webp",
+                       "publicID":  "VYslw9DEi6",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  10,
+                       "title":  "Dead Trees",
+                       "alt":  "Dead Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/26H2UlEtWA",
+                       "previewUrl":  "https://static.poly.pizza/2c85ff04-7223-4ead-93eb-0f171d3bd6c5.webp",
+                       "publicID":  "26H2UlEtWA",
+                       "licence":  "CC0 1.0"
+                   },
+                   {
+                       "id":  11,
+                       "title":  "Pine Trees",
+                       "alt":  "Pine Trees",
+                       "creator":  {
+                                       "username":  "Quaternius",
+                                       "initials":  "Q",
+                                       "DPURL":  "https://static.poly.pizza/dp%2Ff63b655a-051c-4c4b-8dcc-3b346a39ece0.jpg",
+                                       "profileLink":  "/u/Quaternius"
+                                   },
+                       "url":  "/m/w8ZaiYjK8C",
+                       "previewUrl":  "https://static.poly.pizza/42a2a958-040d-4ce3-bae5-2332c1282cb5.webp",
+                       "publicID":  "w8ZaiYjK8C",
+                       "licence":  "CC0 1.0"
+                   }
+               ],
+    "Visibility":  "Public",
+    "Images":  [
+                   "https://static.poly.pizza/listimg/cFqIhWAEwbmrqrlwAcd0.webp"
+               ],
+    "Description":  "{\"blocks\":[{\"key\":\"9ea1o\",\"text\":\"This pack includes 60+ nature assets, with seamless textures and normal maps. All in FBX + GLB formats, free to use in personal and commercial projects\",\"type\":\"unstyled\",\"depth\":0,\"inlineStyleRanges\":[],\"entityRanges\":[],\"data\":{}}],\"entityMap\":{}}",
+    "FeaturedAsset":  null,
+    "Category":  6,
+    "Tags":  [
+
+             ],
+    "LastUpdated":  "2022-07-11T12:00:00.357Z",
+    "Views":  16396,
+    "Downloads":  4651
+}

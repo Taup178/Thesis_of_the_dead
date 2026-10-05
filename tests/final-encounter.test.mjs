@@ -9,6 +9,7 @@ import { ArenaNavigation } from '../src/environment/ArenaNavigation.js';
 import { Game } from '../src/core/Game.js';
 import { WeaponCombat } from '../src/player/WeaponCombat.js';
 import { Player } from '../src/player/Player.js';
+import { Zombie } from '../src/enemies/Zombie.js';
 
 function arrivalFixture(firstPerson = false) {
   const scene = new THREE.Scene(), level = new Level3(scene);
@@ -182,6 +183,51 @@ test('each door releases one zombie along the doorway before normal combat; dest
     assert.ok(records.every(r => r.phase === 'hunting'));
     assert.equal(records.length, 4);
   } finally { level.houses = []; level.dispose(); f.cleanup(); }
+});
+
+test('kills spawn four from the original hut once per death, until that hut is destroyed', async t => {
+  t.mock.method(Zombie.prototype, '_loadModel', async function () { this._loaded = true; });
+  const level = new Level3(new THREE.Scene());
+  const makeHouse = index => ({ index, alive: true, update() {}, dispose() {},
+    doors: Array.from({ length: 4 }, (_, i) => ({ index: i, delay: i * 0.5,
+      start: new THREE.Vector3(index * 20, 0, 0), end: new THREE.Vector3(index * 20, 0, 5),
+      direction: new THREE.Vector3(0, 0, 1) })) });
+  level.houses = [makeHouse(0), makeHouse(1)];
+  level.navigation = new ArenaNavigation([]);
+  const player = { group: { position: new THREE.Vector3(0, 0, 30) }, takeDamage() {} };
+  try {
+    level._createSpawns();
+    await Promise.all(level.zombies.map(zombie => zombie.ready));
+    level.elapsed = 10;
+    const original = level.spawnRecords[0];
+    original.zombie.takeDamage(15);
+    level.update(0.1, player);
+    assert.equal(level.zombies.length, 8, 'Nonlethal damage does not spawn a wave');
+    original.zombie.takeDamage(15);
+    level.update(0.1, player);
+    const wave = level.spawnRecords.slice(8);
+    assert.equal(wave.length, 4);
+    assert.ok(wave.every(record => record.house === original.house));
+    assert.equal(new Set(wave.map(record => record.door)).size, 4);
+    assert.deepEqual(wave.map(record => record.phase), ['exiting', 'waiting', 'waiting', 'waiting']);
+    level.update(0.1, player);
+    assert.equal(level.zombies.length, 12, 'A corpse cannot repeatedly spawn waves');
+    wave[0].zombie.takeDamage(30);
+    level.update(0.1, player);
+    assert.equal(level.zombies.length, 16, 'Replacements also produce four zombies');
+    assert.ok(level.spawnRecords.slice(12).every(record => record.house === original.house));
+    original.house.alive = false;
+    wave[1].zombie.takeDamage(30);
+    level.update(0.1, player);
+    assert.equal(level.zombies.length, 16, 'Destroyed huts cannot reinforce');
+    assert.ok(wave[2].zombie.alive, 'Destroying the hut preserves existing survivors');
+    level.spawnRecords[4].zombie.takeDamage(30);
+    level.update(0.1, player);
+    assert.equal(level.zombies.length, 20, 'Other standing huts still reinforce');
+    assert.ok(level.spawnRecords.slice(16).every(record => record.house === level.houses[1]));
+  } finally { level.dispose(); }
+  assert.equal(level.spawnRecords.length, 0);
+  assert.equal(level.zombies.length, 0);
 });
 
 test('navigation reaches the player around multiple houses with no segment through a wall', () => {
