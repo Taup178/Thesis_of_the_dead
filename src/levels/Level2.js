@@ -3,7 +3,7 @@ import { Zombie } from '../enemies/Zombie.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
 import { createSophomorePatterns } from './sophomorePatterns.js';
 import { createSophomoreRoom, createTileGeometry, createTileFracture } from '../environment/SophomoreRoom.js';
-import { RoomExitPortal, PortalPassage } from '../props/RoomExitPortal.js';
+import { RoomExitPortal, PortalPassage, PortalEmergence } from '../props/RoomExitPortal.js';
 
 const DIFFICULTY = [
   { jumpDuration: 0.72, pause: 0.24, tileTime: 3.2 },
@@ -54,8 +54,8 @@ export class Level2 {
   get pattern() { return this.patterns[this.stageIndex]; }
   get difficulty() { return DIFFICULTY[this.stageIndex]; }
   get spawnPoint() {
-    if (this.stageIndex === 0) return new THREE.Vector3((this.pattern[0][0] - 0.5) * this.tileSpacing, 14, 0);
-    return this.tilePosition(...this.pattern[0]).add(new THREE.Vector3(0, 10, 0));
+    if (this.stageIndex === 0) return new THREE.Vector3((this.pattern[0][0] - 0.5) * this.tileSpacing, 0, 0);
+    return this.tilePosition(...this.pattern[0]);
   }
 
   async load(onProgress) {
@@ -70,7 +70,7 @@ export class Level2 {
     this.bossMarker.name = 'Dean';
     this.bossMarker.scale.setScalar(1.25);
     this.root.add(this.bossMarker);
-    await Promise.all([this.dean.ready, this.exitPortal.load()]);
+    await Promise.all([this.dean.ready, this.exitPortal.load(), this.entrancePortal.load()]);
     this._attachDegree();
     this.dean._playAction('Idle');
     this._setTileColor(this.tiles[i][j], RED);
@@ -82,14 +82,95 @@ export class Level2 {
     player.lastSafePosition.copy(player.group.position);
     player.verticalVelocity = 0;
     player.velocity.set(0, 0, 0);
-    player.grounded = false;
-    player.platformSupport = null;
+    player.grounded = true;
+    player.platformSupport = this.stageIndex === 0 ? this.startSurface : this.tiles[this.pattern[0][0]][this.pattern[0][1]].surface;
     player.cameraObstacles = [];
-    player.cameraGroundY = -Infinity;
+    player.cameraGroundY = 0;
     player.pitch = -0.25;
     player.yaw = 0;
     player.group.rotation.y = 0;
     player._updateCamera();
+    if (this.stageIndex === 0) this._beginArrival(player);
+  }
+
+  _beginArrival(player) {
+    this.phase = 'dean_arrival';
+    this.arrivalPlayer = player;
+    this.arrivalPlayerVisible = player.group.visible;
+    this.arrivalBodyVisible = player.bodyMesh.visible;
+    player.scriptedMovement = true;
+    player.group.visible = false;
+    player.bodyMesh.visible = true;
+    if (player.mixer) player._playAnimation('Idle_Gun', 'Idle');
+    player.weaponPresentation?.update(0);
+    this.bossMarker.position.copy(this.spawnPoint);
+    this.bossMarker.lookAt(this._deanStepPosition(0));
+    this.dean._playAction('Walk');
+    this.dean.mixer?.update(0);
+    this.deanArrival = new PortalEmergence(this.bossMarker, this.entrancePortal.center);
+    player.camera.position.set(7.5, 4.5, -6.5);
+    player.camera.lookAt(0, 1.5, -0.8);
+    player.camera.updateMatrixWorld(true);
+    this.arrivalCameraPosition = player.camera.position.clone();
+    this.arrivalCameraRotation = player.camera.quaternion.clone();
+  }
+
+  _restoreArrivalPlayer() {
+    if (!this.arrivalPlayer) return;
+    const player = this.arrivalPlayer;
+    this.playerArrival?.restore();
+    player.group.visible = this.arrivalPlayerVisible;
+    player.bodyMesh.visible = this.arrivalBodyVisible;
+    player.scriptedMovement = false;
+    player._updateCamera();
+    player.weaponPresentation?.update(0);
+    this.arrivalPlayer = null;
+  }
+
+  _updateArrival(dt, player) {
+    if (this.phase === 'dean_arrival') {
+      this.deanArrival.update(dt);
+      if (this.deanArrival.time < this.deanArrival.duration) return;
+      this.phase = 'dean_to_start';
+      this.introTimer = 0;
+      const jump = this.dean.actions.Jump;
+      if (jump) {
+        jump.setLoop(THREE.LoopOnce, 1);
+        jump.clampWhenFinished = true;
+        jump.setEffectiveTimeScale(jump.getClip().duration);
+      }
+      this.dean._playAction('Jump', 0.08, true);
+    } else if (this.phase === 'dean_to_start') {
+      this.introTimer += dt;
+      const t = Math.min(1, this.introTimer);
+      this.bossMarker.position.lerpVectors(this.spawnPoint, this._deanStepPosition(0), t);
+      this.bossMarker.position.y += Math.sin(t * Math.PI) * 1.4;
+      if (t < 1) return;
+      this.dean._playAction('Idle', 0.08);
+      this.bossMarker.lookAt(this.spawnPoint);
+      this.phase = 'player_arrival';
+      player.group.visible = true;
+      player.mixer?.update(0);
+      this.playerArrival = new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+    } else if (this.phase === 'player_arrival') {
+      this.playerArrival.update(dt);
+      player.mixer?.update(dt);
+      if (this.playerArrival.time < this.playerArrival.duration) return;
+      player.lastSafePosition.copy(player.group.position);
+      this.phase = 'arrival_camera';
+      this.introTimer = 0;
+    } else if (this.phase === 'arrival_camera') {
+      this.introTimer += dt;
+      const t = THREE.MathUtils.smoothstep(this.introTimer, 0, 0.8);
+      player._updateCamera();
+      player.camera.position.lerpVectors(this.arrivalCameraPosition, player.camera.position, t);
+      player.camera.quaternion.slerpQuaternions(this.arrivalCameraRotation, player.camera.quaternion, t);
+      player.camera.updateMatrixWorld(true);
+      if (t < 1) return;
+      this._restoreArrivalPlayer();
+      this.phase = 'arrival';
+      this.introTimer = 0;
+    }
   }
 
   tilePosition(i, j) {
@@ -120,6 +201,7 @@ export class Level2 {
   _createRoom() {
     createSophomoreRoom(this);
     this.exitPortal = new RoomExitPortal(this.root, this.exitPosition);
+    this.entrancePortal = new RoomExitPortal(this.root, this.entrancePosition, { red: true, rotationY: Math.PI });
   }
 
   _label(text, width, height, x, y, z) {
@@ -350,7 +432,10 @@ export class Level2 {
   update(dt, player) {
     const events = { creditCollected: false, levelComplete: false };
     this.exitPortal?.update(dt, this.phase === 'entering' || this.phase === 'dean_exit');
-    if (this.phase === 'arrival' && player.grounded) {
+    this.entrancePortal?.update(dt, !!this.arrivalPlayer);
+    if (this.arrivalPlayer) {
+      this._updateArrival(dt, player);
+    } else if (this.phase === 'arrival' && player.grounded) {
       this.introTimer += dt;
       if (this.introTimer >= 0.9) {
         if (this.stageIndex > 0) this.currentTile = this.tiles[this.pattern[0][0]][this.pattern[0][1]];
@@ -411,10 +496,12 @@ export class Level2 {
 
   getChallengeStatus() {
     const checkpoint = `Checkpoint ${this.stageIndex + 1} / ${this.patterns.length}`;
+    if (this.phase === 'dean_arrival' || this.phase === 'dean_to_start') return { title: 'The Dean arrives first', detail: 'Watch him emerge from the red portal and take his place on the first tile.', progress: 1, timer: 'Entering the Sophomore Room', tone: 'watch' };
+    if (this.phase === 'player_arrival' || this.phase === 'arrival_camera') return { title: 'Your turn to enter', detail: 'The red portal brings you onto the starting platform. Get ready to watch the Dean.', progress: 1, timer: 'Watch / Remember / Jump', tone: 'watch' };
     if (this.phase === 'dean_exit') return { title: 'The Dean is escaping', detail: 'Watch him enter the portal. Your checkpoint is safe.', progress: 1, timer: 'All four routes remembered', tone: 'watch' };
     if (this.phase === 'exit') return { title: 'Follow the Dean', detail: 'Walk onto the landing and into the green portal.', progress: 1, timer: 'The Final Encounter awaits', tone: 'follow' };
     if (this.phase === 'entering') return { title: 'Entering the Final Encounter', detail: 'The portal pulls you through to final year.', progress: 1, timer: 'Second year complete', tone: 'follow' };
-    if (this.phase === 'arrival') return { title: 'The Sophomore Room', detail: 'Land, then watch the Dean. His route disappears when your turn starts.', progress: 1, timer: 'Watch → Memorize → Jump', tone: 'watch' };
+    if (this.phase === 'arrival') return { title: 'The Sophomore Room', detail: 'Watch the Dean. His route disappears when your turn starts.', progress: 1, timer: 'Watch → Memorize → Jump', tone: 'watch' };
     if (this.phase === 'watch') return { title: `Watch the Dean · ${checkpoint}`, detail: `${this.pattern.length - 1} jumps. Remember every landing, including sideways jumps.`, progress: 1, timer: 'You are safe while watching', tone: 'watch' };
     if (this.phase === 'failed') return { title: 'You fell', detail: this.failureReason, progress: 0, timer: 'Retry from your last checkpoint', tone: 'danger' };
     if (this.phase === 'complete') return { title: 'Second year complete', detail: 'Every pattern remembered.', progress: 1, timer: 'All checkpoints reached', tone: 'follow' };
@@ -431,12 +518,14 @@ export class Level2 {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this._restoreArrivalPlayer();
     this.playerPassage?.restore();
     if (this.portalPlayer) {
       this.portalPlayer.bodyMesh.visible = this.playerBodyVisible;
       this.portalPlayer.scriptedMovement = false;
     }
     this.exitPortal?.mixer?.stopAllAction();
+    this.entrancePortal?.mixer?.stopAllAction();
     const resources = new Set(this.extraGeometries);
     if (this.tileMaterial) resources.add(this.tileMaterial);
     const collect = node => {

@@ -6,7 +6,7 @@ import { createSophomorePatterns } from '../src/levels/sophomorePatterns.js';
 import { LevelManager } from '../src/levels/LevelManager.js';
 import { Player } from '../src/player/Player.js';
 
-function createGame(stageIndex = 0, seed = 1234) {
+function createGame(stageIndex = 0, seed = 1234, firstPerson = false) {
   const scene = new THREE.Scene();
   const level = new Level2(scene, { stageIndex, seed });
   level._createRoom();
@@ -19,6 +19,10 @@ function createGame(stageIndex = 0, seed = 1234) {
     isDown(key) { return !!this.keys[key]; }, consumeKeyPress(key) { return this.presses.delete(key); },
     flushMouseDelta() { this.mouseDeltaX = this.mouseDeltaY = 0; } };
   const player = new Player(scene, input, new THREE.PerspectiveCamera(60, 1.5, 0.1, 500));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.4), new THREE.MeshStandardMaterial());
+  body.position.y = 0.9;
+  player.bodyMesh.add(body);
+  if (firstPerson) player.toggleCamera();
   level.preparePlayer(player);
   const step = (dt = 1 / 60) => {
     player.update(dt, [], null, level.getPlatforming());
@@ -128,12 +132,37 @@ test('two columns, valid adjacent jumps, continuous checkpoints and increasing d
   } finally { game.cleanup(); }
 });
 
-test('arrival falls onto the starting deck, freezes movement during watching and erases route hints', () => {
+test('the Dean emerges first, reaches the first tile, then the player emerges onto the starting deck', () => {
   const game = createGame();
   try {
     const originalX = game.player.group.position.x;
+    assert.equal(game.player.group.position.y, 0, 'The player starts on the deck instead of in the sky');
+    assert.equal(game.player.grounded, true);
+    assert.equal(game.player.group.visible, false);
+    assert.equal(game.player.scriptedMovement, true);
+    assert.equal(game.level.entrancePortal.root.rotation.y, Math.PI);
+    assert.ok(game.level.entrancePortal.light.color.r > game.level.entrancePortal.light.color.g);
+    assert.ok(game.level.exitPortal.light.color.g > game.level.exitPortal.light.color.r);
     game.input.keys.KeyW = game.input.keys.KeyD = true;
     game.input.presses.add('Space');
+    game.until(() => game.level.phase === 'dean_to_start');
+    assert.equal(game.player.group.visible, false, 'The player waits while the Dean steps out');
+    assert.equal(game.level.bossMarker.visible, true);
+    assert.ok(game.level.bossMarker.position.distanceTo(game.level.spawnPoint) < 1e-8);
+    game.until(() => game.level.phase === 'player_arrival');
+    assert.equal(game.player.group.visible, false, 'The player only appears after the Dean reaches his tile');
+    assert.ok(game.level.bossMarker.position.distanceTo(game.level._deanStepPosition(0)) < 1e-8);
+    assert.equal(game.level.demonstrationIndex, 0);
+    game.step(0.5);
+    assert.equal(game.player.group.visible, true);
+    assert.ok(game.player.group.scale.x > 0 && game.player.group.scale.x < 1);
+    assert.equal(game.level.tiles.flat().some(tile => tile.timer !== null), false);
+    game.until(() => game.level.phase === 'watch');
+    assert.equal(game.player.scriptedMovement, false);
+    assert.equal(game.player.group.visible, true);
+    assert.equal(game.player.group.scale.x, 1);
+    assert.equal(game.player.verticalVelocity, 0);
+    assert.ok(game.player.lastSafePosition.distanceTo(game.level.spawnPoint) < 1e-8);
     game.until(() => game.level.phase === 'follow');
     assert.equal(game.player.group.position.x, originalX);
     assert.equal(game.player.group.position.z, 0);
@@ -258,6 +287,10 @@ test('walking into a gap falls instead of landing on an invisible ground plane',
 test('retry restores the completed checkpoint and re-demonstrates the unfinished route', async () => {
   const game = createGame(2);
   try {
+    assert.equal(game.player.group.position.y, 0);
+    assert.equal(game.player.grounded, true);
+    assert.equal(game.player.platformSupport.tile, game.level.tiles[game.level.pattern[0][0]][game.level.pattern[0][1]]);
+    assert.equal(game.level.phase, 'arrival', 'Later checkpoints skip the entrance cinematic');
     const manager = new LevelManager(game.scene);
     manager.currentLevel = game.level;
     manager.currentLevelIndex = 1;
@@ -280,6 +313,46 @@ test('retry restores the completed checkpoint and re-demonstrates the unfinished
   } finally { game.cleanup(); }
 });
 
+for (const firstPerson of [false, true]) {
+  test(`arrival restores the selected camera and appearance (first person: ${firstPerson})`, () => {
+    const game = createGame(0, 0, firstPerson);
+    try {
+      game.until(() => game.level.phase === 'watch');
+      assert.equal(game.player.isFirstPerson, firstPerson);
+      assert.equal(game.player.bodyMesh.visible, !firstPerson);
+      assert.equal(game.player.group.visible, true);
+      assert.equal(game.player.group.scale.x, 1);
+      assert.equal(game.player.scriptedMovement, false);
+      const cameraPosition = game.player.camera.position.clone();
+      const cameraRotation = game.player.camera.quaternion.clone();
+      game.player._updateCamera();
+      assert.ok(cameraPosition.distanceTo(game.player.camera.position) < 1e-8);
+      assert.ok(cameraRotation.angleTo(game.player.camera.quaternion) < 1e-7);
+    } finally { game.cleanup(); }
+  });
+}
+
+for (const phase of ['dean_arrival', 'dean_to_start', 'player_arrival', 'arrival_camera']) {
+  test(`retry during ${phase} restores player visibility, materials and movement`, () => {
+    const game = createGame(0, 1234, true);
+    try {
+      const material = game.player.bodyMesh.getObjectByProperty('isMesh', true).material;
+      const opacity = material.opacity, transparent = material.transparent, depthWrite = material.depthWrite;
+      game.until(() => game.level.phase === phase);
+      game.step(0.3);
+      game.level.dispose();
+      assert.equal(game.player.group.visible, true);
+      assert.equal(game.player.bodyMesh.visible, false);
+      assert.equal(game.player.group.scale.x, 1);
+      assert.equal(game.player.isFirstPerson, true);
+      assert.equal(game.player.scriptedMovement, false);
+      assert.equal(material.opacity, opacity);
+      assert.equal(material.transparent, transparent);
+      assert.equal(material.depthWrite, depthWrite);
+    } finally { game.cleanup(); }
+  });
+}
+
 test('disposing the room releases shared resources once and restores its scene', () => {
   const game = createGame();
   const resources = new Set();
@@ -301,7 +374,7 @@ test('retry during exit restores player scale, materials, visibility and camera 
   try {
     const {level, player} = game;
     player.toggleCamera();
-    const material = player.bodyMesh.material;
+    const material = player.bodyMesh.getObjectByProperty('isMesh', true).material;
     const opacity = material?.opacity;
     level.phase = 'exit';
     player.group.position.copy(level.portalApproachPoint); player.grounded = true;

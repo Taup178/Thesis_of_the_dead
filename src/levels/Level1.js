@@ -4,6 +4,7 @@ import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { Zombie } from '../enemies/Zombie.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
 import { NightSky } from '../environment/NightSky.js';
+import { WakeUpIntro } from '../player/WakeUpIntro.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -90,6 +91,14 @@ export class Level1 {
 
   get title() {
     return 'Chapter 1: The Freshman Woods';
+  }
+
+  preparePlayer(player) {
+    player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
+    player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true;
+    player.yaw = 0; player.pitch = -0.12; player.group.rotation.y = 0;
+    player.cameraGroundY = 0; player.cameraObstacles = this.getObstacles();
+    this.wakeUpIntro = new WakeUpIntro(player);
   }
 
   _createLighting() {
@@ -847,6 +856,9 @@ export class Level1 {
   }
 
   getChallengeStatus() {
+    if (this.wakeUpIntro && !this.wakeUpIntro.done) return { title: 'Waking in the woods',
+      detail: 'Find your feet. Your thesis is still out there.', timer: 'A strange dream begins',
+      progress: this.wakeUpIntro.time / this.wakeUpIntro.duration, tone: 'watch' };
     const entering = !!this.playerAbsorption;
     const done = this.bossState === 'done';
     return { title: entering ? 'Entering The Sophomore Room' : done ? 'Follow the Dean into the green portal' : 'The Freshman Woods',
@@ -861,6 +873,10 @@ export class Level1 {
   update(dt, player, time) {
     const events = { creditCollected: false, bossReached: false, levelComplete: false };
     if (this.nightSky) this.nightSky.update(player.group.position);
+    if (this.wakeUpIntro && !this.wakeUpIntro.done) {
+      this.wakeUpIntro.update(dt);
+      return events;
+    }
     this.spawnDelay = Math.max(0, this.spawnDelay - dt);
     this.redPortalMixer?.update(dt);
     if (this.redPortalLight) this.redPortalLight.intensity = 3.5 + Math.sin(time * 4) * 0.8;
@@ -997,6 +1013,7 @@ export class Level1 {
 
   /** Clean up EVERYTHING this level created. Critical for LAMP memory. */
   dispose() {
+    this.wakeUpIntro?.restore();
     this._restorePlayerAppearance();
     this.redPortalMixer?.stopAllAction();
     this.redPortalRoot?.removeFromParent();

@@ -8,6 +8,86 @@ import { LevelManager } from '../src/levels/LevelManager.js';
 import { ArenaNavigation } from '../src/environment/ArenaNavigation.js';
 import { Game } from '../src/core/Game.js';
 import { WeaponCombat } from '../src/player/WeaponCombat.js';
+import { Player } from '../src/player/Player.js';
+
+function arrivalFixture(firstPerson = false) {
+  const scene = new THREE.Scene(), level = new Level3(scene);
+  level._createEntrancePortal();
+  const input = { isDown: () => false, consumeKeyPress: () => false, flushMouseDelta() {} };
+  const player = new Player(scene, input, new THREE.PerspectiveCamera(60, 1.5, 0.1, 500));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.4), new THREE.MeshStandardMaterial());
+  body.position.y = 0.9; player.bodyMesh.add(body);
+  if (firstPerson) player.toggleCamera();
+  const boss = new THREE.Group(); boss.position.set(0, 1.2, -37); level.root.add(boss);
+  level.bossMarker = boss;
+  level.preparePlayer(player);
+  return { level, player, body, boss, cleanup() { level.dispose(); player.dispose(); } };
+}
+
+for (const firstPerson of [false, true]) {
+  test(`only the player emerges in the desert, then regains a clear forward view (first person: ${firstPerson})`, () => {
+    const f = arrivalFixture(firstPerson), { level, player, boss, body } = f;
+    try {
+      const bossPosition = boss.position.clone(), bossScale = boss.scale.clone();
+      let enemyUpdates = 0;
+      level.spawnRecords.push({}); level._updateZombie = () => enemyUpdates++;
+      assert.equal(player.scriptedMovement, true);
+      assert.equal(player.group.visible, false);
+      assert.ok(level.entrancePortal.light.color.r > level.entrancePortal.light.color.g);
+      level.update(0.75, player);
+      assert.equal(player.group.visible, true);
+      assert.ok(player.group.scale.x > 0 && player.group.scale.x < 1);
+      for (let frame = 0; level.arrivalPlayer && frame < 200; frame++) {
+        player.update(1 / 60, level.getObstacles(), level.getWorldBounds());
+        level.update(1 / 60, player);
+      }
+      assert.equal(player.scriptedMovement, false);
+      assert.equal(player.group.visible, true);
+      assert.equal(player.group.scale.x, 1);
+      assert.equal(body.material.opacity, 1);
+      assert.equal(body.material.transparent, false);
+      assert.equal(player.bodyMesh.visible, !firstPerson);
+      assert.equal(player.isFirstPerson, firstPerson);
+      assert.deepEqual(player.group.position.toArray(), level.spawnPoint.toArray());
+      assert.ok(player.camera.position.z < level.entrancePortal.root.position.z - 2);
+      if (!firstPerson) assert.ok(player.camera.position.z > player.group.position.z);
+      assert.ok(player.getForwardDirection().z < -0.99);
+      assert.deepEqual(boss.position.toArray(), bossPosition.toArray());
+      assert.deepEqual(boss.scale.toArray(), bossScale.toArray());
+      assert.equal(boss.visible, true);
+      assert.equal(level.timeRemaining, 150);
+      assert.equal(level.elapsed, 0);
+      assert.equal(enemyUpdates, 0);
+      level.update(0.25, player);
+      assert.equal(level.timeRemaining, 149.75);
+      assert.equal(enemyUpdates, 1);
+    } finally { f.cleanup(); }
+  });
+}
+
+test('retry during the desert entrance restores the player and releases portal resources once', () => {
+  const f = arrivalFixture(true), { level, player, body } = f;
+  try {
+    const disposals = new Map();
+    level.entrancePortal.root.traverse(node => {
+      for (const resource of [node.geometry, node.material].filter(Boolean)) {
+        disposals.set(resource, 0);
+        resource.addEventListener('dispose', () => disposals.set(resource, disposals.get(resource) + 1));
+      }
+    });
+    level.update(0.6, player);
+    level.dispose(); level.dispose();
+    assert.equal(player.scriptedMovement, false);
+    assert.equal(player.group.visible, true);
+    assert.equal(player.group.scale.x, 1);
+    assert.equal(player.bodyMesh.visible, false);
+    assert.equal(body.material.opacity, 1);
+    assert.equal(body.material.transparent, false);
+    assert.equal(body.material.depthWrite, true);
+    assert.equal(player.group.position.y, 0);
+    for (const count of disposals.values()) assert.equal(count, 1);
+  } finally { f.cleanup(); }
+});
 
 // Use the actual supplied house mesh, without a DOM or texture/image decoder.
 function fixture() {

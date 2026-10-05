@@ -4,6 +4,7 @@ import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScr
 import { MudHouse, createHouseFragments, createHouseEffectTextures } from '../props/MudHouse.js';
 import { DESERT_ASSET_ROOT, loadDesertAssets, extractDesertProps, createSandTexture } from '../environment/DesertAssets.js';
 import { ArenaNavigation } from '../environment/ArenaNavigation.js';
+import { RoomExitPortal, PortalEmergence } from '../props/RoomExitPortal.js';
 
 export const FINAL_ENCOUNTER_SECONDS = 150;
 export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
@@ -39,11 +40,12 @@ export class Level3 {
     this.houses = MUD_HOUSE_POSITIONS.map(([x, z], i) => new MudHouse(this.root, this.fragments, template.material,
       new THREE.Vector3(x, 0, z), i, this.effectTextures));
     this._createDeanStage();
+    this._createEntrancePortal();
     this._createSpawns();
     this.dean = new Zombie(this.scene, new THREE.Vector3(0, 1.2, -37), './assets/models/zombies/Zombie_Arm.gltf');
     this.dean.isBoss = true; this.bossMarker = this.dean.group;
     this.bossMarker.name = 'Dean'; this.bossMarker.scale.setScalar(1.25); this.root.add(this.bossMarker);
-    await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready]);
+    await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready, this.entrancePortal.load()]);
     this.dean._playAction('Idle'); this._attachDegree();
     this.bossMarker.traverse(node => { if (node.isMesh) this.bulletObstacles.push(node); });
     this.navigation = new ArenaNavigation(this.getObstacles());
@@ -54,7 +56,52 @@ export class Level3 {
   preparePlayer(player) {
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
     player.pitch = -0.04; player.yaw = 0; player.group.rotation.y = 0;
+    player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true; player.platformSupport = null;
     player.cameraGroundY = 0; player.cameraObstacles = this.getObstacles(); player._updateCamera();
+    this.arrivalPlayer = player; this.arrivalBodyVisible = player.bodyMesh.visible;
+    player.scriptedMovement = true; player.bodyMesh.visible = true;
+    if (player.mixer) { player._playAnimation('Idle_Gun', 'Idle'); player.mixer.update(0); }
+    this.arrivalPassage = new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+    this.arrivalCameraTime = 0;
+    player.camera.position.copy(this.spawnPoint).add(new THREE.Vector3(7.5, 4.5, -6.5));
+    player.camera.lookAt(this.spawnPoint.clone().add(new THREE.Vector3(0, 1.5, 3)));
+    player.camera.updateMatrixWorld(true);
+    this.arrivalCameraPosition = player.camera.position.clone();
+    this.arrivalCameraRotation = player.camera.quaternion.clone();
+    player.weaponPresentation?.update(0);
+  }
+
+  _createEntrancePortal() {
+    // The camera rests 4.8 units behind the player, with the portal farther back.
+    const position = this.spawnPoint.clone().add(new THREE.Vector3(0, 0, 7.5));
+    this.entrancePortal = new RoomExitPortal(this.root, position, { red: true, rotationY: Math.PI });
+    this.entrancePortal.root.name = 'FinalEncounterEntrancePortal';
+  }
+
+  _updateArrival(dt) {
+    const player = this.arrivalPlayer;
+    player.mixer?.update(dt);
+    if (this.arrivalPassage.time < this.arrivalPassage.duration) {
+      this.arrivalPassage.update(dt);
+      return;
+    }
+    this.arrivalCameraTime += dt;
+    const t = THREE.MathUtils.smoothstep(this.arrivalCameraTime, 0, 0.8);
+    player._updateCamera();
+    player.camera.position.lerpVectors(this.arrivalCameraPosition, player.camera.position, t);
+    player.camera.quaternion.slerpQuaternions(this.arrivalCameraRotation, player.camera.quaternion, t);
+    player.camera.updateMatrixWorld(true);
+    if (t === 1) this._restoreArrivalPlayer();
+  }
+
+  _restoreArrivalPlayer() {
+    if (!this.arrivalPlayer) return;
+    const player = this.arrivalPlayer;
+    this.arrivalPassage.restore();
+    player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
+    player.bodyMesh.visible = this.arrivalBodyVisible; player.scriptedMovement = false;
+    player._updateCamera(); player.weaponPresentation?.update(0);
+    this.arrivalPlayer = null;
   }
 
   _collectResources(root) {
@@ -156,7 +203,10 @@ export class Level3 {
     // The supplied desert scene contributes its tall cacti and weathered dead wood.
     for (let i = 0; i < 15; i++) {
       const angle = i / 15 * Math.PI * 2, radius = 38 + random() * 6;
-      place(scenery[i % scenery.length], Math.sin(angle) * radius, Math.cos(angle) * radius, 1.4 + random() * 2.1, random() * 6.28);
+      const x = Math.sin(angle) * radius, z = Math.cos(angle) * radius;
+      const height = 1.4 + random() * 2.1, rotation = random() * 6.28;
+      if (Math.abs(x) < 5 && z > this.spawnPoint.z - 3) continue;
+      place(scenery[i % scenery.length], x, z, height, rotation);
     }
   }
 
@@ -225,11 +275,16 @@ export class Level3 {
   }
 
   update(dt, player) {
+    this.entrancePortal?.update(dt, !!this.arrivalPlayer);
+    this.dean?.mixer?.update(dt); this.degreeGrip?.();
+    if (this.arrivalPlayer) {
+      this._updateArrival(dt);
+      return { levelComplete: false, creditCollected: false };
+    }
     this.elapsed += dt; this.timeRemaining = Math.max(0, this.timeRemaining - dt);
     this.timerExpired = this.timeRemaining === 0; this.targetHold = Math.max(0, this.targetHold - dt);
     for (const house of this.houses) house.update(dt);
     for (const record of this.spawnRecords) this._updateZombie(record, dt, player);
-    this.dean?.mixer?.update(dt); this.degreeGrip?.();
     return { levelComplete: false, creditCollected: false };
   }
 
@@ -275,6 +330,8 @@ export class Level3 {
 
   getChallengeStatus() {
     const seconds = Math.ceil(this.timeRemaining);
+    if (this.arrivalPlayer) return { title: 'ENTERING THE FINAL ENCOUNTER', detail: 'Step through the red portal. The Dean awaits across the arena.',
+      timer: '02:30', label: 'GET READY', progress: 1, tone: 'desert', mode: 'encounter' };
     const destroyed = this.houses.filter(house => !house.alive).length;
     const killed = this.zombies.filter(zombie => !zombie.alive).length;
     return { title: 'FINAL ENCOUNTER', detail: `Final Year · Mud houses ${destroyed} / ${this.houses.length} · Zombies ${killed} / ${this.zombies.length}`,
@@ -285,6 +342,9 @@ export class Level3 {
 
   dispose() {
     if (this.disposed) return; this.disposed = true;
+    this._restoreArrivalPlayer();
+    this.entrancePortal?.mixer?.stopAllAction();
+    if (this.entrancePortal) this._collectResources(this.entrancePortal.root);
     for (const house of this.houses) house.dispose();
     for (const zombie of this.zombies) { zombie.group.removeFromParent(); zombie.dispose(); }
     this._collectResources(this.degreeScroll || new THREE.Group());

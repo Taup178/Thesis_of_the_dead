@@ -74,8 +74,7 @@ export function createSophomoreRoom(level) {
   }
   spikes.instanceMatrix.needsUpdate = true; spikes.receiveShadow = true;
   level.root.add(spikes); level.spikes = spikes;
-  // Leave a real opening above the arrival deck for the player's fall.
-  const ceiling = mesh(scaleUV(new THREE.BoxGeometry(20, 0.5, -backZ - 4), 4, -backZ / 5), darkConcrete, 0, 15, (backZ - 4) / 2);
+  const ceiling = mesh(scaleUV(new THREE.BoxGeometry(20, 0.5, length), 4, length / 5), darkConcrete, 0, 15, center);
   ceiling.castShadow = false; // Broad indirect fill reaches the interior; beams still cast shadows.
   const lamp = new THREE.MeshStandardMaterial({ color: 0xe3cfab, emissive: 0xffd7a0, emissiveIntensity: 1.2 });
   const beam = new THREE.BoxGeometry(0.35, 22, 0.65);
@@ -93,9 +92,12 @@ export function createSophomoreRoom(level) {
     mesh(new THREE.BoxGeometry(5.5, 0.16, 2.8), steel, 0, 14.5, z - 3);
   }
   const width = level.tileSpacing + level.tileSize + 1;
-  level.startPlatform = mesh(new RoundedBoxGeometry(width, 0.7, level.tileSize, 2, 0.08), concrete, 0, -0.35, 0);
+  // Leave room behind the player for the third-person camera, ahead of the portal frame.
+  const startMinZ = -level.tileSize / 2, startMaxZ = 9.5;
+  level.startPlatform = mesh(new RoundedBoxGeometry(width, 0.7, startMaxZ - startMinZ, 2, 0.08), concrete, 0, -0.35, (startMinZ + startMaxZ) / 2);
   level.startPlatform.name = 'ArrivalPlatform';
-  level.startSurface = { minX: -width / 2, maxX: width / 2, minZ: -level.tileSize / 2, maxZ: level.tileSize / 2, y: 0, tile: null };
+  level.startSurface = { minX: -width / 2, maxX: width / 2, minZ: startMinZ, maxZ: startMaxZ, y: 0, tile: null };
+  level.entrancePosition = new THREE.Vector3(0, 0, 7.5);
   const minZ = final.z - 9.5, maxZ = final.z - level.tileSize / 2;
   level.exitDeck = mesh(new RoundedBoxGeometry(width, 0.8, maxZ - minZ, 2, 0.08), concrete, 0, -0.4, (minZ + maxZ) / 2);
   level.exitDeck.name = 'PortalLanding';

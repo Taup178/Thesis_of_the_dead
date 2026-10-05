@@ -146,6 +146,13 @@ html, body {
   accent-color: #c62828;
 }
 
+.option-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: #c62828;
+  cursor: pointer;
+}
+
 /* ---- Loading ---- */
 .progress-bar-container {
   width: 100%;

@@ -3,6 +3,7 @@ import { InputManager } from './InputManager.js';
 import { Player } from '../player/Player.js';
 import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
+import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 
 /**
  * Game - Top-level orchestrator.
@@ -29,6 +30,9 @@ export class Game {
     this.container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+    this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
+    this.motionBlurEnabled = true;
+    try { this.motionBlurEnabled = localStorage.getItem('thesis-motion-blur') !== 'off'; } catch {}
 
     // ---- Input ----
     this.input = new InputManager();
@@ -102,13 +106,24 @@ export class Game {
     document.getElementById('btn-credits').addEventListener('click', () => this._showOverlay('credits-overlay'));
     document.getElementById('btn-options').addEventListener('click', () => this._showOverlay('options-overlay'));
     document.getElementById('btn-credits-back').addEventListener('click', () => this._showOverlay('menu-overlay'));
-    document.getElementById('btn-options-back').addEventListener('click', () => this._showOverlay('menu-overlay'));
+    document.getElementById('btn-options-back').addEventListener('click', () =>
+      this._showOverlay(this.state === this.STATE.PAUSED ? 'pause-overlay' : 'menu-overlay'));
 
     // Options
     document.getElementById('sensitivity-slider').addEventListener('input', () => this._applyMouseSensitivity());
+    const blurToggle = document.getElementById('motion-blur-toggle');
+    blurToggle.checked = this.motionBlurEnabled;
+    blurToggle.addEventListener('change', () => {
+      this.motionBlurEnabled = blurToggle.checked;
+      this.motionBlur.reset();
+      try { localStorage.setItem('thesis-motion-blur', this.motionBlurEnabled ? 'on' : 'off'); } catch {}
+    });
 
     // Pause (click canvas to resume)
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
+    document.getElementById('btn-pause-options').addEventListener('click', event => {
+      event.stopPropagation(); this._showOverlay('options-overlay');
+    });
 
     // Game over
     document.getElementById('btn-retry').addEventListener('click', () => this.restartLevel());
@@ -122,6 +137,7 @@ export class Game {
   }
 
   _showOverlay(id) {
+    this.motionBlur.reset();
     const overlays = ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
     overlays.forEach(o => document.getElementById(o).classList.add('hidden'));
     if (id) document.getElementById(id).classList.remove('hidden');
@@ -452,6 +468,7 @@ export class Game {
     // ---- Handle one-shot key presses ----
     if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && this.input.consumeKeyPress('KeyC')) {
       this.player.toggleCamera();
+      this.motionBlur.reset();
     }
 
     if (this.input.isDown('KeyR') && this.state === this.STATE.PLAYING) {
@@ -485,12 +502,13 @@ export class Game {
     }
 
     // ---- Render ----
-    this.renderer.render(this.scene, this.camera);
+    this.motionBlur.render(dt, this.motionBlurEnabled && this.state === this.STATE.PLAYING && this.input.pointerLocked);
   }
 
   _onResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.motionBlur.setSize(window.innerWidth, window.innerHeight);
   }
 }
