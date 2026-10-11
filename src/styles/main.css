@@ -186,6 +186,118 @@ html, body {
   display: none;
 }
 
+#hud.cinematic { opacity: 0; }
+
+#hit-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(115, 10, 8, 0.3) 68%, rgba(144, 8, 5, 0.85) 100%);
+}
+
+#weapon-wheel {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: rgba(4, 8, 12, 0.63);
+  backdrop-filter: blur(5px);
+  color: #f8edd7;
+  font-family: system-ui, sans-serif;
+}
+
+#weapon-wheel.hidden { display: none; }
+
+.weapon-wheel-ring {
+  position: relative;
+  width: min(480px, 94vw);
+  height: min(480px, 94vw);
+  border: 2px solid rgba(241, 201, 120, 0.6);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(26, 31, 35, 0.88) 0 27%, rgba(14, 18, 22, 0.8) 28% 66%, rgba(66, 49, 27, 0.86) 100%);
+  box-shadow: 0 0 0 10px rgba(5, 8, 12, 0.55), 0 24px 90px rgba(0, 0, 0, 0.7);
+}
+
+.weapon-wheel-item {
+  position: absolute;
+  width: clamp(90px, 19vw, 118px);
+  min-height: 64px;
+  transform: translate(-50%, -50%);
+  padding: 8px;
+  border: 1px solid rgba(232, 207, 157, 0.42);
+  border-radius: 10px;
+  background: rgba(8, 12, 15, 0.78);
+  text-align: center;
+  transition: background 0.14s, border-color 0.14s, transform 0.14s;
+}
+
+.weapon-wheel-item.selected {
+  transform: translate(-50%, -50%) scale(1.13);
+  border-color: #ffe0a1;
+  background: rgba(151, 91, 31, 0.9);
+  box-shadow: 0 0 26px rgba(255, 183, 77, 0.52);
+}
+
+.weapon-wheel-item .weapon-glyph { display: block; font-size: 25px; line-height: 1.1; }
+.weapon-wheel-item strong { display: block; font-size: 12px; }
+.weapon-wheel-item small { color: #e7c996; font-size: 10px; }
+
+.weapon-wheel-center {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 5px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.weapon-wheel-center span { color: #e6c27d; font-size: 10px; letter-spacing: 2px; }
+.weapon-wheel-center strong { font-size: 22px; }
+.weapon-wheel-center small { max-width: 125px; font-size: 10px; line-height: 1.4; color: #baa98e; }
+
+@media (max-width: 520px) {
+  .weapon-wheel-item { min-height: 54px; }
+  .weapon-wheel-center strong { font-size: 17px; }
+}
+
+#boss-cinematic {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+#boss-cinematic.active { visibility: visible; }
+
+.boss-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(58px, 11vh, 120px);
+  background: #050403;
+  transition: transform 0.35s ease;
+}
+
+.boss-bar-top { top: 0; transform: translateY(-100%); }
+.boss-bar-bottom {
+  bottom: 0;
+  transform: translateY(100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d7b58b;
+  font-size: clamp(17px, 2.5vw, 29px);
+  font-weight: 700;
+  letter-spacing: 0.4em;
+}
+
+#boss-cinematic.active .boss-bar { transform: translateY(0); }
+
 #challenge-hud {
   position: absolute;
   top: 105px;
@@ -333,5 +445,6 @@ html, body {
   transform: translateX(-50%);
   font-size: 0.7rem;
   color: rgba(255,255,255,0.35);
-  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  text-align: center;
 }

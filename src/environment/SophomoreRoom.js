@@ -30,7 +30,8 @@ function scaleUV(geometry, x, y) {
 
 export function createSophomoreRoom(level) {
   const final = level.tilePosition(...level.patterns.at(-1).at(-1));
-  const backZ = final.z - 12, frontZ = 10, length = frontZ - backZ, center = (frontZ + backZ) / 2;
+  const backZ = final.z - 12, frontZ = level.puzzleIndex === 3 ? 10 : 95;
+  const length = frontZ - backZ, center = (frontZ + backZ) / 2;
   const mesh = (geometry, material, x, y, z) => level._mesh(geometry, material, x, y, z);
   const map = concreteMap();
   const concrete = new THREE.MeshStandardMaterial({ color: 0x827c70, map, bumpMap: map, bumpScale: 0.055, roughness: 0.94 });
@@ -97,7 +98,7 @@ export function createSophomoreRoom(level) {
   level.startPlatform = mesh(new RoundedBoxGeometry(width, 0.7, startMaxZ - startMinZ, 2, 0.08), concrete, 0, -0.35, (startMinZ + startMaxZ) / 2);
   level.startPlatform.name = 'ArrivalPlatform';
   level.startSurface = { minX: -width / 2, maxX: width / 2, minZ: startMinZ, maxZ: startMaxZ, y: 0, tile: null };
-  level.entrancePosition = new THREE.Vector3(0, 0, 7.5);
+  level.entrancePosition = new THREE.Vector3(0, 0, level.puzzleIndex === 3 ? 7.5 : 92);
   const minZ = final.z - 9.5, maxZ = final.z - level.tileSize / 2;
   level.exitDeck = mesh(new RoundedBoxGeometry(width, 0.8, maxZ - minZ, 2, 0.08), concrete, 0, -0.4, (minZ + maxZ) / 2);
   level.exitDeck.name = 'PortalLanding';

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SurvivorWeapon } from './SurvivorWeapon.js';
 import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './DirectionalWalk.js';
+import { weaponById } from './WeaponInventory.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -16,8 +17,8 @@ export class Player {
     // --- Config ---
     this.moveSpeed = 8;        // units/sec
     this.sprintMultiplier = 1.7;
-    this.dodgeSpeed = 18;
-    this.dodgeDuration = 0.3;  // seconds
+    this.dodgeSpeed = 13;
+    this.dodgeDuration = 0.42;  // seconds; covers roughly the same distance as the old dash
     this.dodgeCooldown = 0.8;
     this.mouseSensitivity = 0.002;
     this.maxHealth = 100;
@@ -25,6 +26,8 @@ export class Player {
     this.score = 0;
     this.ammo = 30;
     this.maxAmmo = 120;
+    this.weapon = 'smg';
+    this.aimTime = 0;
     this.bashTime = 0;
     this.shotTime = 0;
     this.radius = 0.4; // horizontal collision radius
@@ -37,8 +40,14 @@ export class Player {
     this.velocity = new THREE.Vector3();
     this.isDodging = false;
     this.dodgeTimer = 0;
+    this.dodgeProgress = 0;
+    this.dodgeFacing = 0;
+    this.dodgeHeld = false;
     this.dodgeCooldownTimer = 0;
     this.dodgeDirection = new THREE.Vector3();
+    this.hitReactionDuration = 0.48;
+    this.hitReactionTime = 0;
+    this.damageFlashTime = 0;
     this.isFirstPerson = false;
     this.alive = true;
 
@@ -145,8 +154,11 @@ export class Player {
             this.characterModel = character;
 
             // Set up animation mixer and actions
-            this.animations = [...gltf.animations, ...createDirectionalWalkClips(character,
-              gltf.animations.find(clip => clip.name === 'Idle_Gun'))];
+            this.animations = [
+              ...gltf.animations,
+              ...createDirectionalWalkClips(character, gltf.animations.find(clip => clip.name === 'Idle_Gun')),
+              ...createDirectionalWalkClips(character, gltf.animations.find(clip => clip.name === 'Idle'), 'Relaxed'),
+            ];
             this.mixer = new THREE.AnimationMixer(character);
             this.actions = {};
             for (const clip of this.animations) {
@@ -154,7 +166,7 @@ export class Player {
             }
             this.currentActionName = null;
             this.currentAction = null;
-            this._playAnimation('Idle_Gun', 'Idle');
+            this._playAnimation('Idle', 'Idle_Gun');
             this.mixer.update(0.001);
             this.weaponPresentation = new SurvivorWeapon(this);
 
@@ -196,8 +208,8 @@ export class Player {
   }
 
   /** Returns world position of the muzzle for raycasting. */
-  getMuzzleWorldPosition() {
-    if (this.weaponPresentation) return this.weaponPresentation.getMuzzlePosition();
+  getMuzzleWorldPosition(hand = 'right') {
+    if (this.weaponPresentation) return this.weaponPresentation.getMuzzlePosition(hand);
     const pos = new THREE.Vector3();
     this.muzzlePoint.getWorldPosition(pos);
     return pos;
@@ -216,7 +228,7 @@ export class Player {
   }
 
   startGunBash() {
-    if (this.bashTime > 0 || this.scriptedMovement || !this.alive) return false;
+    if (this.bashTime > 0 || this.scriptedMovement || this.isDodging || !this.alive) return false;
     this.bashTime = 0.6;
     if (this.actions?.Stab) {
       this._playAnimation('Stab');
@@ -227,9 +239,49 @@ export class Player {
     return true;
   }
 
+  equipWeapon(id) {
+    if (!weaponById(id) || this.scriptedMovement || !this.alive) return false;
+    this.weapon = id;
+    this.aimTime = 0;
+    this.bashTime = 0;
+    this.weaponPresentation?.select(id);
+    return true;
+  }
+
+  get isAiming() {
+    return weaponById(this.weapon)?.type === 'gun'
+      && (this.aimTime > 0 || (this.input.pointerLocked
+        && (this.input.isMouseButtonDown?.(0) || this.input.isMouseButtonDown?.(2))));
+  }
+
+  startMeleeAttack() {
+    if (this.bashTime > 0 || this.scriptedMovement || this.isDodging || !this.alive) return false;
+    const sword = this.weapon === 'sword';
+    this.bashTime = sword ? 0.62 : 0.4;
+    const clip = sword ? 'Slash' : 'Stab';
+    if (this.actions?.[clip]) {
+      this._playAnimation(clip);
+      this.actions[clip].setLoop(THREE.LoopOnce, 1)
+        .setEffectiveTimeScale(this.actions[clip].getClip().duration / this.bashTime);
+      this.actions[clip].clampWhenFinished = true;
+    }
+    this.weaponPresentation?.bash();
+    return true;
+  }
+
   takeDamage(amount) {
-    if (!this.alive) return;
+    if (!this.alive || this.isDodging || amount <= 0) return;
     this.health = Math.max(0, this.health - amount);
+    this.damageFlashTime = 0.35;
+    this.hitReactionTime = this.hitReactionDuration;
+    const reaction = this.actions?.HitReact;
+    if (reaction) {
+      reaction.setLoop(THREE.LoopOnce, 1);
+      reaction.clampWhenFinished = true;
+      reaction.setEffectiveTimeScale(reaction.getClip().duration / this.hitReactionDuration);
+      if (this.currentAction === reaction) reaction.reset().play();
+      else this._playAnimation('HitReact');
+    }
     if (this.health <= 0) {
       this.alive = false;
     }
@@ -244,18 +296,25 @@ export class Player {
   }
 
   reset(spawnPoint) {
-    this.bodyMesh.rotation.y = 0;
+    this.bodyMesh.position.set(0, 0, 0);
+    this.bodyMesh.rotation.set(0, 0, 0);
     this.scriptedMovement = false;
     this.boundaryNoticeTime = 0;
     this.ammo = 30;
     this.bashTime = 0;
     this.shotTime = 0;
+    this.aimTime = 0;
     this.health = this.maxHealth;
     this.score = 0;
     this.alive = true;
     this.isDodging = false;
     this.dodgeTimer = 0;
+    this.dodgeProgress = 0;
+    this.dodgeFacing = 0;
+    this.dodgeHeld = false;
     this.dodgeCooldownTimer = 0;
+    this.hitReactionTime = 0;
+    this.damageFlashTime = 0;
     this.yaw = 0;
     this.pitch = 0;
     this.velocity.set(0, 0, 0);
@@ -278,6 +337,9 @@ export class Player {
     if (!this.alive) return;
     this.bashTime = Math.max(0, this.bashTime - dt);
     this.shotTime = Math.max(0, this.shotTime - dt);
+    this.aimTime = Math.max(0, this.aimTime - dt);
+    this.hitReactionTime = Math.max(0, this.hitReactionTime - dt);
+    this.damageFlashTime = Math.max(0, this.damageFlashTime - dt);
 
     const inp = this.input;
 
@@ -311,9 +373,13 @@ export class Player {
     if (this.dodgeCooldownTimer > 0) {
       this.dodgeCooldownTimer -= dt;
     }
+    const dodgeDown = inp.isDown('Space');
+    const dodgePressed = dodgeDown && !this.dodgeHeld;
+    this.dodgeHeld = dodgeDown;
 
-    if (platforming) {
+    if (platforming && !platforming.allowDodge) {
       this.isDodging = false;
+      this.dodgeProgress = 0;
       if (!platforming.canMove) moveDir.set(0, 0, 0);
       const jumpPressed = inp.consumeKeyPress('Space');
       if (jumpPressed && platforming.canMove && this.grounded) {
@@ -321,21 +387,34 @@ export class Player {
         this.grounded = false;
         if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
       }
-    } else if (inp.isDown('Space') && !this.isDodging && this.dodgeCooldownTimer <= 0 && moveDir.length() > 0) {
+    } else if (dodgePressed && (!platforming || platforming.canMove) && !this.isDodging && this.dodgeCooldownTimer <= 0) {
+      if (moveDir.lengthSq() === 0) moveDir.copy(forward);
       this.isDodging = true;
       this.dodgeTimer = this.dodgeDuration;
       this.dodgeDirection.copy(moveDir).normalize();
+      const heading = Math.atan2(-this.dodgeDirection.x, -this.dodgeDirection.z);
+      this.dodgeFacing = Math.atan2(Math.sin(heading - this.yaw), Math.cos(heading - this.yaw));
+      this.hitReactionTime = 0;
+      const duck = this.actions?.Duck;
+      if (duck) {
+        duck.setLoop(THREE.LoopOnce, 1);
+        duck.clampWhenFinished = true;
+        duck.setEffectiveTimeScale(duck.getClip().duration / this.dodgeDuration);
+        this._playAnimation('Duck');
+      }
     }
+    if (platforming?.allowDodge) inp.consumeKeyPress('Space');
 
     if (this.isDodging) {
-      this.dodgeTimer -= dt;
+      this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
+      this.dodgeProgress = 1 - this.dodgeTimer / this.dodgeDuration;
       moveDir.copy(this.dodgeDirection);
       speed = this.dodgeSpeed;
       if (this.dodgeTimer <= 0) {
         this.isDodging = false;
         this.dodgeCooldownTimer = this.dodgeCooldown;
       }
-    }
+    } else this.dodgeProgress = 0;
 
     if (moveDir.length() > 0) {
       moveDir.normalize();
@@ -400,26 +479,43 @@ export class Player {
   _updateLocomotion(dt, platforming) {
     const speed = Math.hypot(this.velocity.x, this.velocity.z);
     const moving = speed > 0.1;
-    this.bodyMesh.rotation.y = 0;
+    const aiming = this.isAiming;
+    this._updateRollPose();
 
     if (!this.mixer) return;
-    if (this.bashTime > 0) {
+    if (this.hitReactionTime > 0 || this.isDodging) {
+      // Keep the one-shot impact or crouched roll pose until its timed motion ends.
+    } else if (this.bashTime > 0) {
       // Let the one-shot strike finish.
     } else if (platforming && !this.grounded) {
       this._playAnimation('Jump_Idle', 'Jump', 'Idle');
     } else if (moving && this._directionalWalkName()) {
-      const name = this._directionalWalkName();
-      this._playAnimation(name, 'Walk_Gun', 'Walk');
+      const name = aiming ? this._directionalWalkName() : `Relaxed${this._directionalWalkName()}`;
+      this._playAnimation(name, aiming ? 'Walk_Gun' : 'Walk', 'Walk');
       // Speed up the foot cycle with actual movement, including sprint and diagonals.
       if (this.actions[name]) this.currentAction.setEffectiveTimeScale(Math.min(3, speed * 0.6 / (2 * DIRECTIONAL_STEP_LENGTH)));
     } else if (moving && speed > (platforming?.moveSpeed ?? this.moveSpeed) * 1.1) {
-      this._playAnimation('Run_Gun', 'Run');
+      this._playAnimation(aiming ? 'Run_Gun' : 'Run', 'Run');
     } else if (moving) {
-      this._playAnimation('Walk_Gun', 'Walk');
+      this._playAnimation(aiming ? 'Walk_Gun' : 'Walk', 'Walk');
     } else {
-      this._playAnimation('Idle_Gun', 'Idle');
+      this._playAnimation(aiming ? 'Idle_Gun' : 'Idle', 'Idle');
     }
     this.mixer.update(dt);
+  }
+
+  _updateRollPose() {
+    if (!this.isDodging) {
+      this.bodyMesh.position.set(0, 0, 0);
+      this.bodyMesh.rotation.set(0, 0, 0);
+      return;
+    }
+    const angle = -Math.PI * 2 * this.dodgeProgress;
+    const pivotHeight = 0.85;
+    const pivotOffset = -pivotHeight * Math.sin(angle);
+    this.bodyMesh.rotation.set(angle, this.dodgeFacing, 0, 'YXZ');
+    this.bodyMesh.position.set(Math.sin(this.dodgeFacing) * pivotOffset,
+      pivotHeight * (1 - Math.cos(angle)), Math.cos(this.dodgeFacing) * pivotOffset);
   }
 
   _directionalWalkName() {
@@ -448,6 +544,15 @@ export class Player {
       }
       const desired = shoulder.addScaledVector(backward, Math.max(0, distance));
       this.camera.position.lerpVectors(pivot, desired, this._cameraClearance(pivot, desired));
+    }
+    if (this.isFirstPerson && this.isDodging) {
+      this.camera.position.y -= Math.sin(Math.PI * this.dodgeProgress) * 0.28;
+      this.camera.rotation.z += Math.sin(Math.PI * 2 * this.dodgeProgress) * 0.12;
+    }
+    if (this.hitReactionTime > 0) {
+      const impact = Math.sin(Math.PI * (1 - this.hitReactionTime / this.hitReactionDuration));
+      this.camera.position.y -= impact * 0.08;
+      this.camera.rotation.z += impact * 0.07;
     }
     // Shooting happens before rendering, so its camera matrices must be current now.
     this.camera.updateMatrixWorld(true);
@@ -551,6 +656,7 @@ export class Player {
       this.mixer.stopAllAction();
     }
     this.weaponPresentation?.viewMixer.stopAllAction();
+    this.weaponPresentation?.dispose();
     const resources = new Set(), skeletons = new Set();
     for (const root of [this.group, this.weaponPresentation?.viewRoot]) root?.traverse(child => {
       if (child.skeleton) skeletons.add(child.skeleton);

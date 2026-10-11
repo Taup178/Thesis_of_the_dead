@@ -5,6 +5,7 @@ import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
+import { WEAPONS, weaponById } from '../player/WeaponInventory.js';
 
 /**
  * Game - Top-level orchestrator.
@@ -55,6 +56,8 @@ export class Game {
 
     // ---- HUD references ----
     this.hudEl = document.getElementById('hud');
+    this.hitFlashEl = document.getElementById('hit-flash');
+    this.bossCinematic = document.getElementById('boss-cinematic');
     this.healthBarFill = document.getElementById('health-bar-fill');
     this.scoreDisplay = document.getElementById('score-display');
     this.levelTitleDisplay = document.getElementById('level-title-display');
@@ -73,9 +76,30 @@ export class Game {
     this.controlsHint = document.getElementById('controls-hint');
     this.worldMessage = document.getElementById('world-message');
     this.ammoHud = document.getElementById('ammo-hud');
+    this.ammoLabel = document.getElementById('ammo-label');
     this.ammoCount = document.getElementById('ammo-count');
     this.ammoHint = document.getElementById('ammo-hint');
     this.defaultControlsHint = this.controlsHint.textContent;
+    this.weaponWheelEl = document.getElementById('weapon-wheel');
+    this.weaponWheelName = document.getElementById('weapon-wheel-name');
+    this.weaponWheelRing = document.getElementById('weapon-wheel-ring');
+    this.weaponWheelOpen = false;
+    this.weaponWheelIndex = 0;
+    this.weaponWheelItems = WEAPONS.map((weapon, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI * 2 / WEAPONS.length;
+      const item = document.createElement('div');
+      item.className = 'weapon-wheel-item';
+      item.style.left = `${50 + Math.cos(angle) * 35}%`;
+      item.style.top = `${50 + Math.sin(angle) * 35}%`;
+      const glyph = document.createElement('span');
+      glyph.className = 'weapon-glyph';
+      glyph.textContent = ['▰', '⌁', '✕', '⚔', '†'][index];
+      const name = document.createElement('strong'); name.textContent = weapon.name;
+      const slot = document.createElement('small'); slot.textContent = weapon.slot;
+      item.append(glyph, name, slot);
+      this.weaponWheelRing.appendChild(item);
+      return item;
+    });
 
     // ---- Resize ----
     window.addEventListener('resize', () => this._onResize());
@@ -133,6 +157,7 @@ export class Game {
   }
 
   _showOverlay(id) {
+    if (id) this._closeWeaponWheel();
     this.motionBlur.reset();
     if (id) this.heartbeat.stop();
     const overlays = ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
@@ -169,9 +194,12 @@ export class Game {
     const progressBar = document.getElementById('progress-bar');
     progressBar.style.width = '0%';
 
-    const level = await this.levelManager.loadLevel(0, (p) => {
+    const launch = new URLSearchParams(window.location.search);
+    const directFinal = launch.get('level') === '3';
+    const directSophomore = launch.get('level') === '2';
+    const level = await this.levelManager.loadLevel(directFinal ? 2 : directSophomore ? 1 : 0, (p) => {
       progressBar.style.width = `${p * 100}%`;
-    });
+    }, directFinal && launch.get('boss') === '1' ? { bossPreview: true } : null);
     this.currentLevel = level;
 
     // Create player
@@ -321,6 +349,59 @@ export class Game {
     this.combat.update(dt, this.player, this.currentLevel, this.input, () => this._getShotTargets());
   }
 
+  _openWeaponWheel() {
+    if (!this.player || this.player.scriptedMovement || this.currentLevel?.allowsShooting === false) return;
+    this.weaponWheelOpen = true;
+    this.weaponWheelEl.classList.remove('hidden');
+    this.weaponWheelEl.setAttribute('aria-hidden', 'false');
+    this.wheelClickHeld = this.input.isMouseButtonDown(0);
+    this.weaponWheelIndex = Math.max(0, WEAPONS.findIndex(weapon => weapon.id === this.player.weapon));
+    const angle = -Math.PI / 2 + this.weaponWheelIndex * Math.PI * 2 / WEAPONS.length;
+    this.wheelX = Math.cos(angle) * 95;
+    this.wheelY = Math.sin(angle) * 95;
+    this._showWheelSelection();
+    this.input.flushMouseDelta();
+  }
+
+  _closeWeaponWheel() {
+    this.weaponWheelOpen = false;
+    this.weaponWheelEl?.classList.add('hidden');
+    this.weaponWheelEl?.setAttribute('aria-hidden', 'true');
+  }
+
+  _equipWeapon(id) {
+    if (!this.player?.equipWeapon(id)) return;
+    this.combat.pendingBash = null;
+    this.combat.pendingMelee = null;
+    this._closeWeaponWheel();
+  }
+
+  _showWheelSelection() {
+    this.weaponWheelItems.forEach((item, index) => item.classList.toggle('selected', index === this.weaponWheelIndex));
+    this.weaponWheelName.textContent = WEAPONS[this.weaponWheelIndex].name;
+  }
+
+  _updateWeaponWheel() {
+    this.wheelX += this.input.mouseDeltaX;
+    this.wheelY += this.input.mouseDeltaY;
+    const length = Math.hypot(this.wheelX, this.wheelY);
+    if (length > 120) { this.wheelX *= 120 / length; this.wheelY *= 120 / length; }
+    if (length > 28) {
+      let nearest = 0, best = -Infinity;
+      for (let index = 0; index < WEAPONS.length; index++) {
+        const angle = -Math.PI / 2 + index * Math.PI * 2 / WEAPONS.length;
+        const dot = this.wheelX * Math.cos(angle) + this.wheelY * Math.sin(angle);
+        if (dot > best) { nearest = index; best = dot; }
+      }
+      this.weaponWheelIndex = nearest;
+      this._showWheelSelection();
+    }
+    const clicked = this.input.isMouseButtonDown(0);
+    if (clicked && !this.wheelClickHeld) this._equipWeapon(WEAPONS[this.weaponWheelIndex].id);
+    this.wheelClickHeld = clicked;
+    this.input.flushMouseDelta();
+  }
+
   _getShotTargets() {
     const meshes = [];
     for (const zombie of this.currentLevel.zombies) {
@@ -345,17 +426,23 @@ export class Game {
     // Health bar
     const healthPct = (this.player.health / this.player.maxHealth) * 100;
     this.healthBarFill.style.width = `${healthPct}%`;
+    this.hitFlashEl.style.opacity = String(Math.min(0.85, this.player.damageFlashTime / 0.35 * 0.85));
     this.healthBarFill.classList.remove('low', 'medium');
     if (healthPct < 30) this.healthBarFill.classList.add('low');
     else if (healthPct < 60) this.healthBarFill.classList.add('medium');
 
     // Score
     this.scoreDisplay.textContent = `Credits: ${this.player.score}`;
-    this.controlsHint.textContent = this.currentLevel.controlsHint || this.defaultControlsHint;
+    this.controlsHint.textContent = `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
     this.ammoHud.classList.toggle('hidden', this.currentLevel.allowsShooting === false);
-    this.ammoCount.textContent = String(this.player.ammo);
-    this.ammoHud.dataset.empty = String(this.player.ammo === 0);
-    this.ammoHint.textContent = this.combat.noticeTime > 0 ? this.combat.notice : this.player.ammo === 0 ? 'EMPTY · Click or F to bash' : 'F: Gun bash · Collect green ammo boxes';
+    const equipped = weaponById(this.player.weapon) || WEAPONS[0];
+    this.ammoLabel.textContent = equipped.type === 'gun' ? `${equipped.name.toUpperCase()} · BULLETS` : equipped.name.toUpperCase();
+    this.ammoCount.textContent = equipped.type === 'gun' ? String(this.player.ammo) : '∞';
+    this.ammoHud.dataset.empty = String(equipped.type === 'gun' && this.player.ammo === 0);
+    this.ammoHint.textContent = equipped.type === 'melee' ? `Click: ${equipped.id === 'sword' ? 'Slash' : 'Stab'}`
+      : this.combat.noticeTime > 0 ? this.combat.notice
+        : this.player.ammo === 0 ? 'EMPTY · Click or F to bash'
+          : equipped.id === 'dual' ? 'Click: both · Right click: one · F: Bash' : 'F: Gun bash · Collect green ammo boxes';
     const challenge = this.currentLevel.getChallengeStatus?.();
     this.challengeHud.classList.toggle('hidden', !challenge);
     if (challenge) {
@@ -464,6 +551,19 @@ export class Game {
     this.elapsedTime += dt;
 
     // ---- Handle one-shot key presses ----
+    let inventoryFrame = this.weaponWheelOpen;
+    if (this.state === this.STATE.PLAYING && this.player && !this.player.scriptedMovement
+      && this.currentLevel?.allowsShooting !== false) {
+      if (this.input.consumeKeyPress('Digit1')) {
+        if (this.weaponWheelOpen) this._closeWeaponWheel();
+        else this._openWeaponWheel();
+        inventoryFrame = true;
+      }
+      for (const weapon of WEAPONS) {
+        if (this.input.consumeKeyPress(`Digit${weapon.slot}`)) this._equipWeapon(weapon.id);
+      }
+      if (this.weaponWheelOpen) { this._updateWeaponWheel(); inventoryFrame = true; }
+    }
     if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && this.input.consumeKeyPress('KeyC')) {
       this.player.toggleCamera();
       this.motionBlur.reset();
@@ -475,7 +575,7 @@ export class Game {
     }
 
     // ---- Update logic ----
-    if (this.state === this.STATE.PLAYING && this.input.pointerLocked && this.player && this.currentLevel) {
+    if (this.state === this.STATE.PLAYING && this.input.pointerLocked && this.player && this.currentLevel && !inventoryFrame) {
       this.player.update(
         dt, this.currentLevel.getObstacles?.() || [], this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
       );
@@ -500,6 +600,9 @@ export class Game {
     }
 
     // ---- Render ----
+    const cinematic = this.state === this.STATE.PLAYING && this.input.pointerLocked && !!this.currentLevel?.bossCutscene;
+    this.bossCinematic?.classList.toggle('active', cinematic);
+    this.hudEl?.classList.toggle('cinematic', cinematic);
     const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);

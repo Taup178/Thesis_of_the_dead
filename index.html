@@ -69,6 +69,7 @@
 
   <!-- HUD (in-game) -->
   <div id="hud" class="hidden">
+    <div id="hit-flash" aria-hidden="true"></div>
     <div id="crosshair">+</div>
     <div id="world-message" class="hidden" role="status" aria-live="polite"></div>
     <div id="health-bar-container">
@@ -100,8 +101,22 @@
       <canvas id="minimap" width="150" height="150"></canvas>
     </div>
     <div id="controls-hint">
-      WASD: Move | Mouse: Look | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge | C: Camera | R: Restart
+      WASD: Move | Mouse: Look | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge Roll | C: Camera | R: Restart
     </div>
+  </div>
+
+  <div id="weapon-wheel" class="hidden" aria-hidden="true">
+    <div class="weapon-wheel-ring" id="weapon-wheel-ring"></div>
+    <div class="weapon-wheel-center">
+      <span>WEAPON SELECT</span>
+      <strong id="weapon-wheel-name">SMG</strong>
+      <small>Move mouse · Click to equip · 1 to close</small>
+    </div>
+  </div>
+
+  <div id="boss-cinematic" aria-hidden="true">
+    <div class="boss-bar boss-bar-top"></div>
+    <div class="boss-bar boss-bar-bottom"><span>THE DEAN</span></div>
   </div>
 
   <!-- Pause Overlay -->

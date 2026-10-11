@@ -3,7 +3,7 @@ import * as THREE from 'three';
 export const DIRECTIONAL_STEP_LENGTH = 0.36;
 
 /** Build in-place footwork on this rig while preserving its authored aiming pose. */
-export function createDirectionalWalkClips(model, idleClip) {
+export function createDirectionalWalkClips(model, idleClip, prefix = '') {
   if (!idleClip) return [];
   const mixer = new THREE.AnimationMixer(model);
   mixer.clipAction(idleClip).play(); mixer.update(0);
@@ -79,7 +79,7 @@ export function createDirectionalWalkClips(model, idleClip) {
     });
     for (const bone of bones) tracks.push(new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`, times, rotations.get(bone)));
     for (const bone of translatedBones) tracks.push(new THREE.VectorKeyframeTrack(`${bone.name}.position`, times, positions.get(bone)));
-    clips.push(new THREE.AnimationClip(name, 0.6, tracks));
+    clips.push(new THREE.AnimationClip(`${prefix}${name}`, 0.6, tracks));
   }
   restore(); mixer.stopAllAction(); mixer.uncacheRoot(model);
   return clips;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Zombie } from '../enemies/Zombie.js';
+import { DeanBoss } from '../enemies/DeanBoss.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
 import { MudHouse, createHouseFragments, createHouseEffectTextures } from '../props/MudHouse.js';
 import { DESERT_ASSET_ROOT, loadDesertAssets, extractDesertProps, createSandTexture } from '../environment/DesertAssets.js';
@@ -9,9 +10,9 @@ import { RoomExitPortal, PortalEmergence } from '../props/RoomExitPortal.js';
 export const FINAL_ENCOUNTER_SECONDS = 150;
 export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
 
-/** Final Year combat foundation. Story victory and timer failure are intentionally deferred. */
+/** Final Year settlement, arena clearance, and Dean encounter. */
 export class Level3 {
-  constructor(scene) {
+  constructor(scene, options = {}) {
     this.scene = scene; this.previousBackground = scene.background; this.previousFog = scene.fog;
     this.root = new THREE.Group(); this.root.name = 'FinalEncounter'; scene.add(this.root);
     this.zombies = []; this.credits = []; this.houses = []; this.spawnRecords = [];
@@ -20,11 +21,13 @@ export class Level3 {
     this.props = []; this.staticObstacles = []; this.bulletObstacles = [];
     this.resources = new Set(); this.targetHouse = null; this.lastHitHouse = null; this.targetHold = 0;
     this.failureReason = 'The desert overwhelmed you. Regroup and try the encounter again.';
+    this.bossPreview = !!options?.bossPreview;
+    this.bossCutscene = null;
   }
 
   get title() { return 'Chapter 3: The Final Encounter'; }
   get spawnPoint() { return new THREE.Vector3(0, 0, 31); }
-  get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge | C: Camera | R: Restart | Esc: Pause'; }
+  get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge Roll | C: Camera | R: Restart | Esc: Pause'; }
 
   async load(onProgress) {
     const assets = await loadDesertAssets(p => onProgress?.(p * 0.4));
@@ -37,16 +40,17 @@ export class Level3 {
     for (const fragment of this.fragments) this.resources.add(fragment.geometry);
     this.effectTextures = createHouseEffectTextures();
     Object.values(this.effectTextures).forEach(texture => this.resources.add(texture));
-    this.houses = MUD_HOUSE_POSITIONS.map(([x, z], i) => new MudHouse(this.root, this.fragments, template.material,
+    this.houses = (this.bossPreview ? [] : MUD_HOUSE_POSITIONS).map(([x, z], i) => new MudHouse(this.root, this.fragments, template.material,
       new THREE.Vector3(x, 0, z), i, this.effectTextures));
     this._createDeanStage();
     this._createEntrancePortal();
     this._createSpawns();
     this.dean = new Zombie(this.scene, new THREE.Vector3(0, 1.2, -37), './assets/models/zombies/Zombie_Arm.gltf');
     this.dean.isBoss = true; this.bossMarker = this.dean.group;
-    this.bossMarker.name = 'Dean'; this.bossMarker.scale.setScalar(1.25); this.root.add(this.bossMarker);
+    this.bossMarker.name = 'Dean'; this.bossMarker.scale.setScalar(1.6); this.root.add(this.bossMarker);
     await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready, this.entrancePortal.load()]);
     this.dean._playAction('Idle'); this._attachDegree();
+    this.bossFight = new DeanBoss(this.root, this.dean);
     this.bossMarker.traverse(node => { if (node.isMesh) this.bulletObstacles.push(node); });
     this.navigation = new ArenaNavigation(this.getObstacles());
     this._collectResources(this.environment);
@@ -102,6 +106,60 @@ export class Level3 {
     player.bodyMesh.visible = this.arrivalBodyVisible; player.scriptedMovement = false;
     player._updateCamera(); player.weaponPresentation?.update(0);
     this.arrivalPlayer = null;
+  }
+
+  _beginBossCutscene(player) {
+    if (!player.camera || this.bossCutscene) return;
+    this.bossCutscene = { player, time: 0, returnTime: 0,
+      startPosition: player.camera.position.clone(), startRotation: player.camera.quaternion.clone(),
+      bodyVisible: player.bodyMesh?.visible ?? true, scriptedMovement: !!player.scriptedMovement };
+    player.scriptedMovement = true;
+    if (player.bodyMesh) player.bodyMesh.visible = true;
+    player.velocity?.set(0, 0, 0);
+  }
+
+  _updateBossCutscene(dt) {
+    const cut = this.bossCutscene;
+    if (!cut) return;
+    const { player } = cut, camera = player.camera;
+    if (this.bossFight.phase === 'approach') {
+      cut.time += dt;
+      const boss = this.dean.group.position;
+      const close = boss.clone().add(new THREE.Vector3(6.5, 3.2, 8));
+      const wide = player.group.position.clone().add(new THREE.Vector3(6.5, 3.3, 9));
+      const desired = close.lerp(wide, THREE.MathUtils.smoothstep(cut.time, 1.1, 3));
+      const blend = THREE.MathUtils.smoothstep(cut.time, 0, 0.65);
+      camera.position.lerpVectors(cut.startPosition, desired, blend);
+      camera.lookAt(boss.x, boss.y + 1.6, boss.z);
+      const aimRotation = camera.quaternion.clone();
+      camera.quaternion.slerpQuaternions(cut.startRotation, aimRotation, blend);
+      camera.updateMatrixWorld(true);
+      return;
+    }
+    if (this.bossFight.phase === 'introEnd') {
+      if (!cut.returnPosition) {
+        cut.returnPosition = camera.position.clone();
+        cut.returnRotation = camera.quaternion.clone();
+      }
+      cut.returnTime += dt;
+      player._updateCamera();
+      const normalPosition = camera.position.clone(), normalRotation = camera.quaternion.clone();
+      const blend = THREE.MathUtils.smoothstep(cut.returnTime, 0, 0.8);
+      camera.position.lerpVectors(cut.returnPosition, normalPosition, blend);
+      camera.quaternion.slerpQuaternions(cut.returnRotation, normalRotation, blend);
+      camera.updateMatrixWorld(true);
+      return;
+    }
+    this._endBossCutscene();
+  }
+
+  _endBossCutscene() {
+    if (!this.bossCutscene) return;
+    const { player, bodyVisible, scriptedMovement } = this.bossCutscene;
+    player.scriptedMovement = scriptedMovement;
+    if (player.bodyMesh) player.bodyMesh.visible = bodyVisible;
+    player._updateCamera?.();
+    this.bossCutscene = null;
   }
 
   _collectResources(root) {
@@ -258,10 +316,16 @@ export class Level3 {
   }
 
   getWorldBounds() { return { minX: -46, maxX: 46, minZ: -46, maxZ: 46 }; }
+  getRestartState() { return this.bossPreview ? { bossPreview: true } : null; }
+  getCompletionText() { return 'The Dean has fallen. You claimed your degree and survived the final encounter.'; }
   getObstacles() { return [...this.staticObstacles, ...this.houses.filter(house => house.alive).map(house => house.obstacle)]; }
   getBulletObstacles() { return [...this.bulletObstacles, ...this.houses.flatMap(house => house.shootableMeshes)]; }
 
   handleBulletHit(hit, damage, player) {
+    if (this._isDeanMesh(hit.object)) {
+      if (this.bossFight?.takeDamage(damage)) { player.addScore(1000); this.levelComplete = true; }
+      return true;
+    }
     const house = hit.object.userData.mudHouse;
     if (!house?.alive) return false;
     this.lastHitHouse = house; this.targetHold = 2.5;
@@ -273,8 +337,23 @@ export class Level3 {
     return true;
   }
 
+  _isDeanMesh(object) {
+    for (let node = object; node; node = node.parent) if (node === this.bossMarker) return true;
+    return false;
+  }
+
+  handleMeleeHit(zombie, damage, player) {
+    if (zombie !== this.dean) return false;
+    if (this.bossFight?.takeDamage(damage)) { player.addScore(1000); this.levelComplete = true; }
+    return true;
+  }
+
   updateTarget(hit) { this.targetHouse = hit?.object.userData.mudHouse || null; }
   getTargetStatus() {
+    if (this.bossFight && this.bossFight.phase !== 'waiting') {
+      return { title: 'THE DEAN', health: this.dean.health, maxHealth: this.dean.maxHealth,
+        destroyed: this.bossFight.phase === 'defeated' };
+    }
     const destructionFeedback = this.lastHitHouse && !this.lastHitHouse.alive && this.targetHold > 1.3;
     const house = destructionFeedback ? this.lastHitHouse : this.targetHouse?.alive ? this.targetHouse : this.targetHold > 0 ? this.lastHitHouse : null;
     return house ? { title: `MUD HOUSE ${house.index + 1}`, health: house.health, maxHealth: house.maxHealth, destroyed: !house.alive } : null;
@@ -291,7 +370,16 @@ export class Level3 {
     this.timerExpired = this.timeRemaining === 0; this.targetHold = Math.max(0, this.targetHold - dt);
     for (const house of this.houses) house.update(dt);
     for (const record of this.spawnRecords) this._updateZombie(record, dt, player);
-    return { levelComplete: false, creditCollected: false };
+    const arenaClear = this.houses.every(house => !house.alive) && this.zombies.every(zombie => !zombie.alive);
+    if (this.bossFight?.centerMarker) this.bossFight.centerMarker.visible = this.bossFight.phase === 'waiting' && arenaClear;
+    if (this.bossFight?.phase === 'waiting' && arenaClear
+      && player.group?.position && Math.hypot(player.group.position.x, player.group.position.z) < 5) {
+      this.bossFight.start(player);
+      this._beginBossCutscene(player);
+    }
+    this.bossFight?.update(dt, player);
+    this._updateBossCutscene(dt);
+    return { levelComplete: this.levelComplete, creditCollected: false };
   }
 
   _updateZombie(record, dt, player) {
@@ -345,8 +433,21 @@ export class Level3 {
     const seconds = Math.ceil(this.timeRemaining);
     if (this.arrivalPlayer) return { title: 'ENTERING THE FINAL ENCOUNTER', detail: 'Step through the red portal. The Dean awaits across the arena.',
       timer: '02:30', label: 'GET READY', progress: 1, tone: 'desert', mode: 'encounter' };
+    if (this.bossFight && this.bossFight.phase !== 'waiting') {
+      const boss = this.bossFight;
+      return { title: boss.phase === 'approach' || boss.phase === 'introEnd' ? 'THE DEAN APPROACHES'
+        : boss.enraged ? 'ENRAGED DEAN' : 'BOSS FIGHT: THE DEAN',
+        detail: boss.enrageNoticeTime > 0 ? 'The Dean is relentless now. Keep dodging.'
+          : boss.warning || 'Stay mobile. Dodge the shadow, punches, and incoming rocks.',
+        timer: `${Math.ceil(this.dean.health / this.dean.maxHealth * 100)}%`, label: 'BOSS HEALTH',
+        progress: this.dean.health / this.dean.maxHealth, tone: 'danger', mode: 'encounter' };
+    }
     const destroyed = this.houses.filter(house => !house.alive).length;
     const killed = this.zombies.filter(zombie => !zombie.alive).length;
+    if (this.bossFight && destroyed === this.houses.length && killed === this.zombies.length) {
+      return { title: 'ARENA CLEAR', detail: 'Go to the center to challenge the Dean.', timer: 'READY',
+        label: 'BOSS FIGHT', progress: 1, tone: 'desert', mode: 'encounter' };
+    }
     return { title: 'FINAL ENCOUNTER', detail: `Mud houses ${destroyed} / ${this.houses.length} · Zombies ${killed} / ${this.zombies.length} · Each kill spawns 4 more: destroy their hut!`,
       timer: `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`,
       label: this.timerExpired ? 'TIME ELAPSED' : 'TIME REMAINING', progress: this.timeRemaining / FINAL_ENCOUNTER_SECONDS,
@@ -356,6 +457,8 @@ export class Level3 {
   dispose() {
     if (this.disposed) return; this.disposed = true;
     this._restoreArrivalPlayer();
+    this._endBossCutscene();
+    this.bossFight?.dispose(); this.bossFight = null;
     this.entrancePortal?.mixer?.stopAllAction();
     if (this.entrancePortal) this._collectResources(this.entrancePortal.root);
     for (const house of this.houses) house.dispose();

@@ -6,8 +6,9 @@ import { WeaponCombat } from '../src/player/WeaponCombat.js';
 
 function setup() {
   const scene = new THREE.Scene(), presses = new Set();
-  const input = { pointerLocked: true, mouseDeltaX: 0, mouseDeltaY: 0, shooting: false,
-    isDown: () => false, flushMouseDelta() {}, consumeKeyPress: key => presses.delete(key), isMouseButtonDown() { return this.shooting; } };
+  const input = { pointerLocked: true, mouseDeltaX: 0, mouseDeltaY: 0, shooting: false, secondary: false,
+    isDown: () => false, flushMouseDelta() {}, consumeKeyPress: key => presses.delete(key),
+    isMouseButtonDown(button = 0) { return button === 2 ? this.secondary : this.shooting; } };
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200), player = new Player(scene, input, camera);
   player.toggleCamera(); player.getMuzzleWorldPosition = () => new THREE.Vector3(0, 1.1, -0.5);
   const combat = new WeaponCombat(scene), level = { zombies: [], allowsShooting: true }, cover = [];
@@ -95,5 +96,58 @@ test('the memory room and portal travel prevent shooting and melee', () => {
     assert.equal(f.player.ammo, 30); assert.equal(f.player.bashTime, 0);
     f.level.allowsShooting = true; f.player.scriptedMovement = true; f.step();
     assert.equal(f.combat.projectiles.length, 0); assert.equal(f.player.bashTime, 0);
+  } finally { f.cleanup(); }
+});
+
+test('rolling blocks new shots and cancels a pending gun bash', () => {
+  const f = setup();
+  try {
+    f.input.shooting = true;
+    f.player.isDodging = true;
+    f.combat.pendingBash = 0.1;
+    f.combat.update(0.2, f.player, f.level, f.input, f.targets);
+    assert.equal(f.combat.pendingBash, null);
+    assert.equal(f.player.ammo, 30);
+    assert.equal(f.combat.projectiles.length, 0);
+    assert.equal(f.combat.fire(f.player, f.targets()), false);
+  } finally { f.cleanup(); }
+});
+
+test('single and dual pistols spend one and two rounds and launch separate projectiles', () => {
+  const f = setup();
+  try {
+    f.player.equipWeapon('pistol');
+    f.input.shooting = true; f.step(0);
+    assert.equal(f.player.ammo, 29);
+    assert.equal(f.combat.projectiles.length, 1);
+    assert.equal(f.combat.projectiles[0].damage, 22);
+    f.player.equipWeapon('dual');
+    f.combat.shootCooldown = 0;
+    f.step(0);
+    assert.equal(f.player.ammo, 27);
+    assert.equal(f.combat.projectiles.length, 3);
+    assert.equal(f.combat.projectiles[1].damage, 14);
+    assert.equal(f.combat.projectiles[2].damage, 14);
+    f.input.shooting = false; f.input.secondary = true;
+    f.combat.shootCooldown = 0;
+    f.step(0);
+    assert.equal(f.player.ammo, 26, 'Right click fires only one of the dual pistols');
+    assert.equal(f.combat.projectiles.length, 4);
+  } finally { f.cleanup(); }
+});
+
+test('sword reaches farther than dagger and both strike without ammunition', () => {
+  const f = setup();
+  try {
+    const enemy = f.zombie(0, -2.4); enemy.health = 100;
+    f.player.equipWeapon('dagger');
+    f.input.shooting = true; f.step(0.01); f.step(0.17);
+    assert.equal(enemy.health, 100, 'The dagger cannot reach the distant target');
+    f.input.shooting = false; f.step(0.5);
+    f.player.equipWeapon('sword');
+    f.input.shooting = true; f.step(0.01); f.step(0.29);
+    assert.equal(enemy.health, 55, 'The sword lands its longer slash');
+    assert.equal(f.player.ammo, 30);
+    assert.equal(f.combat.projectiles.length, 0);
   } finally { f.cleanup(); }
 });

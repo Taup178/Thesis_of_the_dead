@@ -43,6 +43,9 @@ export class InputManager {
     window.addEventListener('mouseup', (e) => {
       this.mouseButtons[e.button] = false;
     });
+    window.addEventListener('contextmenu', e => {
+      if (this._pointerLocked) e.preventDefault();
+    });
 
     // Pointer lock change
     document.addEventListener('pointerlockchange', () => {

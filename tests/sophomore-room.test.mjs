@@ -6,9 +6,9 @@ import { createSophomorePatterns } from '../src/levels/sophomorePatterns.js';
 import { LevelManager } from '../src/levels/LevelManager.js';
 import { Player } from '../src/player/Player.js';
 
-function createGame(stageIndex = 0, seed = 1234, firstPerson = false) {
+function createGame(stageIndex = 0, seed = 1234, firstPerson = false, puzzleIndex = 3) {
   const scene = new THREE.Scene();
-  const level = new Level2(scene, { stageIndex, seed });
+  const level = new Level2(scene, { stageIndex, seed, puzzleIndex });
   level._createRoom();
   level._createTiles();
   level.bossMarker = new THREE.Group();
@@ -331,6 +331,134 @@ for (const firstPerson of [false, true]) {
     } finally { game.cleanup(); }
   });
 }
+
+test('the Dean clears each non-memory puzzle before Shaun follows, and stays out of reach', () => {
+  const game = createGame(0, 1234, false, 0);
+  try {
+    assert.equal(game.level.spawnPoint.z, 82);
+    assert.equal(game.level.blades.length, 4);
+    assert.equal(game.level.bridgePlatforms.length, 3);
+    assert.equal(game.level.runePads.length, 3);
+    game.until(() => game.level.phase === 'dean_challenge');
+    assert.equal(game.level.getPlatforming().canMove, false);
+    const waitPosition = game.player.group.position.clone();
+    game.input.keys.KeyW = true;
+    for (let frame = 0; frame < 40; frame++) game.step();
+    game.input.keys.KeyW = false;
+    assert.ok(game.player.group.position.distanceTo(waitPosition) < 1e-8);
+    game.until(() => game.level.phase === 'chase');
+    assert.equal(game.level.getPlatforming().allowDodge, true);
+    assert.deepEqual(game.level.bossMarker.position.toArray(), [6.45, 0, 55]);
+    game.player.group.position.set(6.1, 0, 56.1);
+    game.level.update(0, game.player);
+    assert.ok(game.player.group.position.distanceTo(game.level.bossMarker.position) >= 2.7 - 1e-8);
+    game.player.group.position.set(0, 0, 55.5);
+    game.level.update(0, game.player);
+    assert.equal(game.level.puzzleIndex, 1);
+    assert.equal(game.level.phase, 'dean_challenge');
+    assert.equal(game.level.getPlatforming().allowDodge, false);
+    assert.equal(game.level.getRestartState().puzzleIndex, 1);
+    const bridgeWait = game.player.group.position.clone();
+    game.until(() => game.level.phase === 'chase');
+    assert.ok(game.player.group.position.distanceTo(bridgeWait) < 1e-8);
+    assert.deepEqual(game.level.bossMarker.position.toArray(), [-6.45, 0, 33.5]);
+    game.player.group.position.set(0, 0, 33);
+    game.player.grounded = true;
+    game.level.update(0, game.player);
+    assert.equal(game.level.puzzleIndex, 2);
+    assert.equal(game.level.phase, 'dean_challenge');
+    game.until(() => game.level.phase === 'chase');
+    assert.ok(game.level.bossMarker.position.distanceTo(game.level._deanStepPosition(0)) < 1e-8);
+    assert.match(game.level.getChallengeStatus().title, /Rune path/);
+  } finally { game.cleanup(); }
+});
+
+test('slicing disks hit on contact, while a timed roll passes through safely', () => {
+  const game = createGame(0, 1234, false, 0);
+  try {
+    game.until(() => game.level.phase === 'chase');
+    const blade = game.level.blades[0];
+    game.level.gauntletTime = -blade.phase / 1.75;
+    game.player.group.position.set(0, 0, blade.z);
+    const before = game.player.health;
+    game.level.update(0, game.player);
+    assert.equal(game.player.health, before - 28);
+    blade.hitCooldown = 0;
+    game.player.group.position.set(0, 0, blade.z);
+    game.input.keys.Space = game.input.keys.KeyW = true;
+    game.player.update(1 / 60, [], null, game.level.getPlatforming());
+    assert.equal(game.player.isDodging, true);
+    const after = game.player.health;
+    game.level.update(0, game.player);
+    assert.equal(game.player.health, after);
+  } finally { game.cleanup(); }
+});
+
+test('moving bridge platforms carry a standing player over a real floor gap', () => {
+  const game = createGame(0, 1234, false, 1);
+  try {
+    const bridge = game.level.bridgePlatforms[0];
+    assert.ok(!game.level.getPlatforming().surfaces.some(surface => surface.y === 0 && surface.minZ <= 44 && surface.maxZ >= 53),
+      'No invisible floor spans the bridge at running height');
+    assert.equal(game.level.bridgeCatchSurface.y, -3.8);
+    game.player.group.position.set(bridge.platform.position.x, 0, bridge.platform.position.z);
+    game.player.platformSupport = bridge.surface;
+    game.player.grounded = true;
+    const previousX = game.player.group.position.x;
+    game.level.update(0.2, game.player);
+    assert.ok(game.player.group.position.x !== previousX);
+    assert.equal(game.player.group.position.x, bridge.platform.position.x);
+  } finally { game.cleanup(); }
+});
+
+test('bridge checkpoint starts on solid ground, and a missed jump returns there after the saws', () => {
+  const game = createGame(0, 1234, false, 1);
+  try {
+    assert.equal(game.player.group.position.z, 56.5);
+    assert.equal(game.player.platformSupport, game.level.bladeSurface);
+    game.step();
+    assert.equal(game.player.grounded, true, 'The bridge checkpoint is on the entry deck');
+    game.input.keys.KeyW = true;
+    game.until(() => game.player.group.position.z < 54.5);
+    game.input.presses.add('Space');
+    game.step();
+    assert.equal(game.player.grounded, false, 'The first jump launches from solid ground');
+    game.until(() => game.player.grounded, 1 / 60, 100);
+    assert.equal(game.player.platformSupport, game.level.bridgePlatforms[0].surface);
+    game.player.group.position.set(0, -0.2, 46.9);
+    game.player.verticalVelocity = -2;
+    game.player.grounded = false;
+    game.input.keys.KeyW = false;
+    game.until(() => game.player.platformSupport === game.level.bridgeCatchSurface, 1 / 60, 120);
+    assert.equal(game.level.phase, 'chase');
+    game.until(() => game.player.group.position.z === 56.5, 1 / 60, 120);
+    assert.equal(game.level.puzzleIndex, 1);
+    assert.equal(game.player.platformSupport, game.level.bladeSurface);
+    assert.equal(game.player.alive, true);
+  } finally { game.cleanup(); }
+});
+
+test('rune pads reject the wrong lane and unlock memory only after the ordered path', () => {
+  const game = createGame(0, 1234, false, 2);
+  try {
+    game.player.group.position.set(0, 0, 30.8);
+    game.level.update(0, game.player);
+    assert.equal(game.level.runeStep, 0);
+    assert.equal(game.player.group.position.z, 32.5);
+    assert.equal(game.player.health, game.player.maxHealth - 14);
+    for (const [x, z] of [[-4.5, 30.8], [4.5, 24.3], [0, 17.8]]) {
+      game.player.group.position.set(x, 0, z);
+      game.player.grounded = true;
+      game.level.update(0, game.player);
+    }
+    assert.equal(game.level.runeStep, 3);
+    game.player.group.position.set(0, 0, 6.5);
+    game.level.update(0, game.player);
+    assert.equal(game.level.puzzleIndex, 3);
+    assert.equal(game.level.phase, 'watch');
+    assert.equal(game.player.score, 300);
+  } finally { game.cleanup(); }
+});
 
 for (const phase of ['dean_arrival', 'dean_to_start', 'player_arrival', 'arrival_camera']) {
   test(`retry during ${phase} restores player visibility, materials and movement`, () => {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { weaponById } from './WeaponInventory.js';
 
 const belongsTo = (object, group) => {
   for (let node = object; node; node = node.parent) if (node === group) return true;
@@ -26,7 +27,7 @@ export class WeaponCombat {
 
   reset() {
     this.root.clear(); this.projectiles = []; this.pickups = [];
-    this.shootCooldown = 0; this.bashCooldown = 0; this.pendingBash = null;
+    this.shootCooldown = 0; this.bashCooldown = 0; this.pendingBash = null; this.pendingMelee = null;
     this.kills = 0; this.rewarded = new WeakSet(); this.notice = ''; this.noticeTime = 0;
   }
 
@@ -36,51 +37,79 @@ export class WeaponCombat {
     this.bashCooldown = Math.max(0, this.bashCooldown - dt);
     this.noticeTime = Math.max(0, this.noticeTime - dt);
     if (level.allowsShooting === false || player.scriptedMovement) {
-      this.pendingBash = null;
+      this.pendingBash = null; this.pendingMelee = null;
       for (const projectile of this.projectiles) projectile.mesh.removeFromParent();
       this.projectiles = []; return;
     }
+    if (player.isDodging) {
+      this.pendingBash = null; this.pendingMelee = null;
+      input.consumeKeyPress?.('KeyF');
+      this.updateProjectiles(dt, player, level, this.projectiles.length ? getTargets() : []);
+      this.updatePickups(dt, player);
+      return;
+    }
     if (this.pendingBash) {
       this.pendingBash -= dt;
-      if (this.pendingBash <= 0) { this.pendingBash = null; this.hitWithGun(player, level, getTargets()); }
+      if (this.pendingBash <= 0) {
+        this.pendingBash = null;
+        this.hitWithGun(player, level, getTargets(), this.pendingMelee);
+        this.pendingMelee = null;
+      }
     }
+    const weapon = weaponById(player.weapon) || weaponById('smg');
     const bashPressed = input.consumeKeyPress?.('KeyF');
     if (input.pointerLocked && player.alive) {
-      if (bashPressed || input.isMouseButtonDown(0) && player.ammo === 0) {
+      if (weapon.type === 'melee') {
+        if ((bashPressed || input.isMouseButtonDown(0)) && this.bashCooldown <= 0 && player.startMeleeAttack()) {
+          this.pendingMelee = { damage: weapon.damage, reach: weapon.reach, arc: weapon.arc };
+          this.pendingBash = weapon.id === 'sword' ? 0.28 : 0.16;
+          this.bashCooldown = weapon.cooldown;
+        }
+      } else if (bashPressed || input.isMouseButtonDown(0) && player.ammo === 0) {
         if (this.bashCooldown <= 0 && player.startGunBash()) {
+          this.pendingMelee = null;
           this.pendingBash = 0.22; this.bashCooldown = 0.75;
         }
-      } else if (input.isMouseButtonDown(0) && this.shootCooldown <= 0 && player.bashTime <= 0) {
-        this.fire(player, getTargets());
+      } else if ((input.isMouseButtonDown(0) || weapon.id === 'dual' && input.isMouseButtonDown(2))
+        && this.shootCooldown <= 0 && player.bashTime <= 0) {
+        const single = weapon.id === 'dual' && !input.isMouseButtonDown(0) && input.isMouseButtonDown(2);
+        this.fire(player, getTargets(), single ? 1 : null);
       }
     }
     this.updateProjectiles(dt, player, level, this.projectiles.length ? getTargets() : []);
     this.updatePickups(dt, player);
   }
 
-  fire(player, targets) {
-    if (!player.alive || player.ammo <= 0 || player.bashTime > 0 || this.shootCooldown > 0) return false;
+  fire(player, targets, requestedShots = null) {
+    if (!player.alive || player.isDodging || player.ammo <= 0 || player.bashTime > 0 || this.shootCooldown > 0) return false;
+    const weapon = weaponById(player.weapon) || weaponById('smg');
+    if (weapon.type !== 'gun') return false;
     player.camera.updateMatrixWorld(true);
     this.ray.near = 0; this.ray.far = 100; this.ray.setFromCamera(this.center, player.camera);
     const aimHit = this.ray.intersectObjects(targets, false)[0];
     const destination = aimHit?.point || this.ray.ray.at(100, new THREE.Vector3());
-    let origin = player.getMuzzleWorldPosition(), direction = destination.clone().sub(origin).normalize();
-    // A barrel poking into nearby cover must hit that cover, even if the camera sees past it.
-    if (player.group) {
-      const grip = player.group.position.clone().add(new THREE.Vector3(0, 1.1, 0));
-      const barrelDirection = origin.clone().sub(grip).normalize();
-      this.ray.set(grip, barrelDirection); this.ray.far = grip.distanceTo(origin);
-      const obstruction = this.ray.intersectObjects(targets, false)[0];
-      if (obstruction) { origin = obstruction.point.clone().addScaledVector(barrelDirection, -0.03); direction = barrelDirection; }
+    const shots = Math.min(player.ammo, requestedShots ?? weapon.ammo);
+    for (let i = 0; i < shots; i++) {
+      const hand = weapon.id === 'dual' && i === 1 ? 'left' : 'right';
+      let origin = player.getMuzzleWorldPosition(hand), direction = destination.clone().sub(origin).normalize();
+      // A barrel poking into nearby cover must hit that cover, even if the camera sees past it.
+      if (player.group) {
+        const grip = player.group.position.clone().add(new THREE.Vector3(0, 1.1, 0));
+        const barrelDirection = origin.clone().sub(grip).normalize();
+        this.ray.set(grip, barrelDirection); this.ray.far = grip.distanceTo(origin);
+        const obstruction = this.ray.intersectObjects(targets, false)[0];
+        if (obstruction) { origin = obstruction.point.clone().addScaledVector(barrelDirection, -0.03); direction = barrelDirection; }
+      }
+      const mesh = new THREE.Group();
+      const bullet = new THREE.Mesh(this.bulletGeometry, this.bulletMaterial);
+      const trail = new THREE.Mesh(this.trailGeometry, this.trailMaterial); trail.position.y = -0.42;
+      mesh.add(bullet, trail); mesh.position.copy(origin);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); this.root.add(mesh);
+      this.projectiles.push({ mesh, direction, distance: 0, damage: weapon.damage });
     }
-    const mesh = new THREE.Group();
-    const bullet = new THREE.Mesh(this.bulletGeometry, this.bulletMaterial);
-    const trail = new THREE.Mesh(this.trailGeometry, this.trailMaterial); trail.position.y = -0.42;
-    mesh.add(bullet, trail); mesh.position.copy(origin);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); this.root.add(mesh);
-    this.projectiles.push({ mesh, direction, distance: 0 });
-    player.ammo--; player.shotTime = 0.14; player.weaponPresentation?.update(0);
-    this.shootCooldown = 0.22;
+    player.ammo -= shots; player.shotTime = 0.14; player.aimTime = 0.38;
+    player.weaponPresentation?.update(0);
+    this.shootCooldown = weapon.cooldown;
     return true;
   }
 
@@ -90,27 +119,31 @@ export class WeaponCombat {
       this.ray.set(bullet.mesh.position, bullet.direction); this.ray.near = 0; this.ray.far = travel;
       const hit = this.ray.intersectObjects(targets, false)[0];
       if (hit) {
-        if (!level.handleBulletHit?.(hit, 15, player)) {
+        if (!level.handleBulletHit?.(hit, bullet.damage ?? 15, player)) {
           const zombie = level.zombies.find(z => z.alive && z.group.visible && belongsTo(hit.object, z.group));
-          if (zombie) this.damageZombie(zombie, 15, player);
+          if (zombie) this.damageZombie(zombie, bullet.damage ?? 15, player);
         }
       } else { bullet.mesh.position.addScaledVector(bullet.direction, travel); bullet.distance += travel; }
       if (hit || bullet.distance >= 100) { bullet.mesh.removeFromParent(); this.projectiles.splice(i, 1); }
     }
   }
 
-  hitWithGun(player, level, targets) {
+  hitWithGun(player, level, targets, attack = null) {
     const origin = player.group.position.clone().add(new THREE.Vector3(0, 1.1, 0));
     const forward = player.getForwardDirection();
-    const candidates = level.zombies.filter(zombie => zombie.alive && zombie.group.visible && !zombie.isBoss)
+    const reach = attack?.reach ?? 2.25, arc = attack?.arc ?? 0.45;
+    const candidates = [...level.zombies, ...(level.dean?.alive && level.bossFight?.phase === 'combat' ? [level.dean] : [])]
+      .filter(zombie => zombie.alive && zombie.group.visible)
       .map(zombie => ({ zombie, center: zombie.group.position.clone().add(new THREE.Vector3(0, 1, 0)) }))
-      .filter(({ center }) => center.distanceTo(origin) <= 2.25 && center.clone().sub(origin).normalize().dot(forward) > 0.45)
+      .filter(({ center }) => center.distanceTo(origin) <= reach && center.clone().sub(origin).normalize().dot(forward) > arc)
       .sort((a, b) => a.center.distanceToSquared(origin) - b.center.distanceToSquared(origin));
     for (const { zombie, center } of candidates) {
       this.ray.set(origin, center.clone().sub(origin).normalize()); this.ray.near = 0; this.ray.far = origin.distanceTo(center) + 0.1;
       const hit = this.ray.intersectObjects(targets, false)[0];
       if (!hit || !belongsTo(hit.object, zombie.group)) continue;
-      this.damageZombie(zombie, 30, player); return zombie;
+      if (zombie.isBoss) level.handleMeleeHit?.(zombie, attack ? attack.damage : 20, player);
+      else this.damageZombie(zombie, attack ? attack.damage : 30, player);
+      return zombie;
     }
     return null;
   }
