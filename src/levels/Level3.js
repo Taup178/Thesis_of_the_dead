@@ -26,8 +26,9 @@ export class Level3 {
   }
 
   get title() { return 'Chapter 3: The Final Encounter'; }
+  get portalCinematicActive() { return !!this.arrivalPlayer; }
   get spawnPoint() { return new THREE.Vector3(0, 0, 31); }
-  get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Dodge Roll | C: Camera | R: Restart | Esc: Pause'; }
+  get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Jump | Q: Roll | C: Camera | R: Restart | Esc: Pause'; }
 
   async load(onProgress) {
     const assets = await loadDesertAssets(p => onProgress?.(p * 0.4));

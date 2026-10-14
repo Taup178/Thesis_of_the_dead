@@ -3,6 +3,7 @@ import { InputManager } from './InputManager.js';
 import { Player } from '../player/Player.js';
 import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
+import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { WEAPONS, weaponById } from '../player/WeaponInventory.js';
@@ -199,7 +200,8 @@ export class Game {
     const directSophomore = launch.get('level') === '2';
     const level = await this.levelManager.loadLevel(directFinal ? 2 : directSophomore ? 1 : 0, (p) => {
       progressBar.style.width = `${p * 100}%`;
-    }, directFinal && launch.get('boss') === '1' ? { bossPreview: true } : null);
+    }, directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
+      directSophomore && launch.get('section') === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } : null);
     this.currentLevel = level;
 
     // Create player
@@ -600,13 +602,20 @@ export class Game {
     }
 
     // ---- Render ----
-    const cinematic = this.state === this.STATE.PLAYING && this.input.pointerLocked && !!this.currentLevel?.bossCutscene;
-    this.bossCinematic?.classList.toggle('active', cinematic);
-    this.hudEl?.classList.toggle('cinematic', cinematic);
+    this._updateCinematicPresentation();
     const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     this.motionBlur.render(dt, effects.blur);
+  }
+
+  _updateCinematicPresentation() {
+    const playing = this.state === this.STATE.PLAYING && this.input.pointerLocked;
+    const bossIntro = !!this.currentLevel?.bossCutscene;
+    const cinematic = playing && (bossIntro || !!this.currentLevel?.portalCinematicActive);
+    this.bossCinematic?.classList.toggle('active', cinematic);
+    this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
+    this.hudEl?.classList.toggle('cinematic', cinematic);
   }
 
   _onResize() {

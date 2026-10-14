@@ -265,6 +265,7 @@ html, body {
 }
 
 #boss-cinematic {
+  --cinematic-bar-height: clamp(58px, 11vh, 120px);
   position: fixed;
   inset: 0;
   z-index: 70;
@@ -278,9 +279,8 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  height: clamp(58px, 11vh, 120px);
-  background: #050403;
-  transition: transform 0.35s ease;
+  height: var(--cinematic-bar-height);
+  background: #000;
 }
 
 .boss-bar-top { top: 0; transform: translateY(-100%); }
@@ -297,6 +297,8 @@ html, body {
 }
 
 #boss-cinematic.active .boss-bar { transform: translateY(0); }
+.boss-bar-bottom span { visibility: hidden; }
+#boss-cinematic.boss-intro .boss-bar-bottom span { visibility: visible; }
 
 #challenge-hud {
   position: absolute;

@@ -17,6 +17,7 @@ export class Player {
     // --- Config ---
     this.moveSpeed = 8;        // units/sec
     this.sprintMultiplier = 1.7;
+    this.jumpVelocity = 7.2;
     this.dodgeSpeed = 13;
     this.dodgeDuration = 0.42;  // seconds; covers roughly the same distance as the old dash
     this.dodgeCooldown = 0.8;
@@ -43,6 +44,7 @@ export class Player {
     this.dodgeProgress = 0;
     this.dodgeFacing = 0;
     this.dodgeHeld = false;
+    this.jumpHeld = false;
     this.dodgeCooldownTimer = 0;
     this.dodgeDirection = new THREE.Vector3();
     this.hitReactionDuration = 0.48;
@@ -312,6 +314,7 @@ export class Player {
     this.dodgeProgress = 0;
     this.dodgeFacing = 0;
     this.dodgeHeld = false;
+    this.jumpHeld = false;
     this.dodgeCooldownTimer = 0;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
@@ -373,21 +376,23 @@ export class Player {
     if (this.dodgeCooldownTimer > 0) {
       this.dodgeCooldownTimer -= dt;
     }
-    const dodgeDown = inp.isDown('Space');
-    const dodgePressed = dodgeDown && !this.dodgeHeld;
+    const dodgeDown = inp.isDown('KeyQ');
+    const dodgePressed = inp.consumeKeyPress?.('KeyQ') || (dodgeDown && !this.dodgeHeld);
     this.dodgeHeld = dodgeDown;
+    const jumpDown = inp.isDown('Space');
+    const jumpPressed = inp.consumeKeyPress?.('Space') || (jumpDown && !this.jumpHeld);
+    this.jumpHeld = jumpDown;
+    const canMove = !platforming || platforming.canMove;
 
-    if (platforming && !platforming.allowDodge) {
+    if (!canMove) {
       this.isDodging = false;
       this.dodgeProgress = 0;
-      if (!platforming.canMove) moveDir.set(0, 0, 0);
-      const jumpPressed = inp.consumeKeyPress('Space');
-      if (jumpPressed && platforming.canMove && this.grounded) {
-        this.verticalVelocity = platforming.jumpVelocity;
-        this.grounded = false;
-        if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
-      }
-    } else if (dodgePressed && (!platforming || platforming.canMove) && !this.isDodging && this.dodgeCooldownTimer <= 0) {
+      moveDir.set(0, 0, 0);
+    } else if (jumpPressed && this.grounded && !this.isDodging) {
+      this.verticalVelocity = platforming?.jumpVelocity ?? this.jumpVelocity;
+      this.grounded = false;
+      if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
+    } else if (dodgePressed && (!platforming || platforming.allowDodge) && this.grounded && !this.isDodging && this.dodgeCooldownTimer <= 0) {
       if (moveDir.lengthSq() === 0) moveDir.copy(forward);
       this.isDodging = true;
       this.dodgeTimer = this.dodgeDuration;
@@ -403,7 +408,6 @@ export class Player {
         this._playAnimation('Duck');
       }
     }
-    if (platforming?.allowDodge) inp.consumeKeyPress('Space');
 
     if (this.isDodging) {
       this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
@@ -487,7 +491,7 @@ export class Player {
       // Keep the one-shot impact or crouched roll pose until its timed motion ends.
     } else if (this.bashTime > 0) {
       // Let the one-shot strike finish.
-    } else if (platforming && !this.grounded) {
+    } else if (!this.grounded) {
       this._playAnimation('Jump_Idle', 'Jump', 'Idle');
     } else if (moving && this._directionalWalkName()) {
       const name = aiming ? this._directionalWalkName() : `Relaxed${this._directionalWalkName()}`;

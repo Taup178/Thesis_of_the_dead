@@ -6,6 +6,7 @@ import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScr
 import { NightSky } from '../environment/NightSky.js';
 import { WakeUpIntro } from '../player/WakeUpIntro.js';
 import { StylizedWoods } from '../environment/StylizedWoods.js';
+import { getPortalTravelDuration } from '../props/RoomExitPortal.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -83,6 +84,8 @@ export class Level1 {
   get title() {
     return 'Chapter 1: The Freshman Woods';
   }
+
+  get portalCinematicActive() { return !!this.playerAbsorption; }
 
   preparePlayer(player) {
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
@@ -284,6 +287,7 @@ export class Level1 {
         emissiveIntensity: material.emissiveIntensity,
       })),
     };
+    this.bossAbsorption.duration = getPortalTravelDuration(this.bossAbsorption.path);
     for (const { material } of this.bossAbsorption.materials) {
       material.transparent = true;
       material.needsUpdate = true;
@@ -294,9 +298,8 @@ export class Level1 {
 
   _updateBossAbsorption(dt, time) {
     this.portalTimer += dt;
-    const t = Math.min(this.portalTimer / 2.2, 1);
+    const t = Math.min(this.portalTimer / this.bossAbsorption.duration, 1);
     const ease = THREE.MathUtils.smoothstep(t, 0, 1);
-    const travelEase = 1 - Math.pow(1 - ease, 2);
     const absorption = this.bossAbsorption;
     const scale = absorption.startScale * Math.max(0.001, Math.pow(1 - ease, 1.25));
 
@@ -304,10 +307,10 @@ export class Level1 {
     this.bossMarker.rotation.y = absorption.startYaw + ease * Math.PI / 6;
     const centerOffset = absorption.localCenter.clone().multiplyScalar(scale)
       .applyQuaternion(this.bossMarker.quaternion);
-    this.bossMarker.position.copy(absorption.path.getPoint(travelEase)).sub(centerOffset);
+    this.bossMarker.position.copy(absorption.path.getPointAt(t)).sub(centerOffset);
 
     // Keep the degree gripped as his stride settles into a floating pose.
-    if (this.boss.mixer) this.boss.mixer.timeScale = 1 - ease * 0.65;
+    if (this.boss.mixer) this.boss.mixer.timeScale = 1;
     this._updateBossAnimation(dt);
 
     const opacity = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
@@ -563,25 +566,27 @@ export class Level1 {
       localCenter, path: new THREE.QuadraticBezierCurve3(center, control, destination),
       cameraStart: player.camera.position.clone(), cameraEnd: destination.clone().add(new THREE.Vector3(5, 1.8, 9)),
       materials: [...materials].map(material => ({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })) };
+    this.playerAbsorption.duration = getPortalTravelDuration(this.playerAbsorption.path);
     for (const entry of this.playerAbsorption.materials) { entry.material.transparent = true; entry.material.needsUpdate = true; }
   }
 
   _updatePlayerAbsorption(dt) {
     const travel = this.playerAbsorption, player = travel.player;
     travel.time += dt;
-    const t = Math.min(1, travel.time / 2.2), ease = THREE.MathUtils.smoothstep(t, 0, 1);
+    const t = Math.min(1, travel.time / travel.duration), ease = THREE.MathUtils.smoothstep(t, 0, 1);
     const scale = Math.max(0.001, Math.pow(1 - ease, 1.25));
-    const center = travel.path.getPoint(1 - (1 - ease) ** 2);
+    const center = travel.path.getPointAt(t);
     player.group.scale.copy(travel.scale).multiplyScalar(scale);
     player.group.position.copy(center).sub(travel.localCenter.clone().multiply(player.group.scale).applyQuaternion(player.group.quaternion));
-    player.mixer?.update(dt * 0.6);
+    player.mixer?.update(dt);
     const opacity = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
     for (const { material, opacity: original } of travel.materials) { material.opacity = original * opacity; material.depthWrite = opacity > 0.95; }
-    player.camera.position.lerpVectors(travel.cameraStart, travel.cameraEnd, THREE.MathUtils.smoothstep(t, 0, 0.3));
+    player.camera.position.lerpVectors(travel.cameraStart, travel.cameraEnd,
+      THREE.MathUtils.smoothstep(travel.time, 0, Math.min(0.4, travel.duration + 0.12)));
     player.camera.lookAt(center); player.camera.updateMatrixWorld(true);
     if (this.portalLight) this.portalLight.intensity = 4 + Math.sin(t * Math.PI) * 4;
     if (t >= 1) player.group.visible = false;
-    if (travel.time >= 2.45) this.levelComplete = true;
+    if (travel.time >= travel.duration + 0.12) this.levelComplete = true;
   }
 
   _restorePlayerAppearance() {

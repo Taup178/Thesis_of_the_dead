@@ -1,0 +1,8 @@
+Model Information:
+* title:	Spike Trap 01
+* source:	https://sketchfab.com/3d-models/spike-trap-01-4022678cac214fd2963894aa152fc6f2
+* author:	Nichgon (https://sketchfab.com/nichgon)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works

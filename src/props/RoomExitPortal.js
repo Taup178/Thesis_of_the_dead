@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+// Portal travel uses the same world-space pace as the Dean's blade run.
+export const PORTAL_TRAVEL_SPEED = 12;
+export function getPortalTravelDuration(path) {
+  return Math.max(1 / 60, path.getLength() / PORTAL_TRAVEL_SPEED);
+}
+
 /** The same animated portal used in the woods, scaled for the room's landing. */
 export class RoomExitPortal {
   constructor(parent, position, { red = false, rotationY = 0 } = {}) {
@@ -86,17 +92,19 @@ export class PortalPassage {
     const end = center.clone().addScaledVector(outward, -0.25);
     const control = start.clone().lerp(end, 0.4); control.y = end.y + 0.35;
     this.path = new THREE.QuadraticBezierCurve3(start, control, end);
+    this.duration = getPortalTravelDuration(this.path);
     const materials = new Set(); body.traverse(node => { if (node.isMesh) for (const mat of Array.isArray(node.material) ? node.material : [node.material]) materials.add(mat); });
     this.materials = [...materials].map(material => ({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite }));
     for (const { material } of this.materials) { material.transparent = true; material.needsUpdate = true; }
   }
   update(dt) {
     this.time += dt;
-    return this._pose(Math.min(1, this.time / 2.2));
+    return this._pose(Math.min(1, this.time / this.duration));
   }
+  get complete() { return this.time >= this.duration + 0.12; }
   _pose(t) {
     const ease = THREE.MathUtils.smoothstep(t, 0, 1);
-    const center = this.path.getPoint(1 - (1 - ease) ** 2);
+    const center = this.path.getPointAt(t);
     this.group.scale.copy(this.scale).multiplyScalar(Math.max(0.001, (1 - ease) ** 1.25));
     this.group.position.copy(center).sub(this.localCenter.clone().multiply(this.group.scale).applyQuaternion(this.group.quaternion));
     const alpha = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
@@ -115,7 +123,6 @@ export class PortalEmergence extends PortalPassage {
   constructor(group, center, body = group) {
     super(group, center, body, new THREE.Vector3(0, 0, -1));
     this.destination = group.position.clone();
-    this.duration = 1.5;
     this.update(0);
   }
   update(dt) {

@@ -33,9 +33,10 @@ for (const firstPerson of [false, true]) {
       let enemyUpdates = 0;
       level.spawnRecords.push({}); level._updateZombie = () => enemyUpdates++;
       assert.equal(player.scriptedMovement, true);
+      assert.equal(level.portalCinematicActive, true);
       assert.equal(player.group.visible, false);
       assert.ok(level.entrancePortal.light.color.r > level.entrancePortal.light.color.g);
-      level.update(0.75, player);
+      level.update(level.arrivalPassage.duration / 2, player);
       assert.equal(player.group.visible, true);
       assert.ok(player.group.scale.x > 0 && player.group.scale.x < 1);
       for (let frame = 0; level.arrivalPlayer && frame < 200; frame++) {
@@ -43,6 +44,7 @@ for (const firstPerson of [false, true]) {
         level.update(1 / 60, player);
       }
       assert.equal(player.scriptedMovement, false);
+      assert.equal(level.portalCinematicActive, false);
       assert.equal(player.group.visible, true);
       assert.equal(player.group.scale.x, 1);
       assert.equal(body.material.opacity, 1);

@@ -109,10 +109,32 @@ test('relaxed stance keeps sideways, backward and diagonal footwork', () => {
   } finally { f.cleanup(); }
 });
 
-test('Space rolls the actual Shaun model, avoids damage during the roll, then recovers', () => {
+test('Space jumps in combat, keeps the real Shaun jump pose and does not roll', () => {
   const f = setup(), { player, input } = f;
   try {
+    input.keys.KeyW = input.keys.ShiftLeft = true;
+    player.update(0.01);
+    assert.ok(Math.abs(player.velocity.z + player.moveSpeed * player.sprintMultiplier) < 1e-8);
     input.keys.Space = true;
+    player.update(0.01);
+    assert.equal(player.grounded, false);
+    assert.equal(player.isDodging, false);
+    assert.ok(player.group.position.y > 0);
+    assert.match(player.currentActionName, /Jump/);
+    input.keys.KeyW = input.keys.ShiftLeft = false;
+    for (let frame = 0; frame < 60; frame++) player.update(1 / 60);
+    assert.equal(player.grounded, true);
+    assert.equal(player.group.position.y, 0);
+    input.keys.KeyQ = true;
+    player.update(0.01);
+    assert.equal(player.isDodging, true, 'Q rolls independently while Space is still held');
+  } finally { f.cleanup(); }
+});
+
+test('Q rolls the actual Shaun model, avoids damage during the roll, then recovers', () => {
+  const f = setup(), { player, input } = f;
+  try {
+    input.keys.KeyQ = true;
     player.update(0.1);
     assert.equal(player.isDodging, true);
     assert.equal(player.currentActionName, 'Duck');
@@ -128,10 +150,10 @@ test('Space rolls the actual Shaun model, avoids damage during the roll, then re
     assert.equal(player.bodyMesh.rotation.x, 0);
     assert.equal(player.bodyMesh.position.y, 0);
     player.update(1);
-    assert.equal(player.isDodging, false, 'Holding Space cannot start repeated rolls');
-    input.keys.Space = false;
+    assert.equal(player.isDodging, false, 'Holding Q cannot start repeated rolls');
+    input.keys.KeyQ = false;
     player.update(0.01);
-    input.keys.Space = true;
+    input.keys.KeyQ = true;
     player.update(0.01);
     assert.equal(player.isDodging, true, 'Releasing and pressing starts the next roll');
   } finally { f.cleanup(); }
