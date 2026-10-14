@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { Zombie } from '../enemies/Zombie.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
+import { CreditEnergyEffects } from '../props/CreditEnergyEffects.js';
 import { NightSky } from '../environment/NightSky.js';
 import { WakeUpIntro } from '../player/WakeUpIntro.js';
 import { StylizedWoods } from '../environment/StylizedWoods.js';
@@ -29,6 +30,7 @@ export class Level1 {
     this.playerAbsorption = null;
     this.allowsShooting = true;
     this.credits = [];       // collectible orbs
+    this.creditEffects = null; // Academic Credit Energy System visuals
     this.disposables = [];   // track for cleanup
     this.creditsCollected = 0;
     this.bossSpawned = false;
@@ -135,21 +137,14 @@ export class Level1 {
 
   /** Glowing collectible orbs ("Credits"). */
   _createCredits(count) {
+    this.creditEffects = new CreditEnergyEffects(this.scene);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const r = 10 + Math.random() * 25;
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r;
 
-      const orbGeo = new THREE.SphereGeometry(0.3, 12, 8);
-      const orbMat = new THREE.MeshStandardMaterial({
-        color: 0xffd700,
-        emissive: 0xffa000,
-        emissiveIntensity: 1.5,
-        roughness: 0.2,
-        metalness: 0.8
-      });
-      const orb = new THREE.Mesh(orbGeo, orbMat);
+      const orb = this.creditEffects.createCoreMesh();
       orb.position.set(x, 1.5, z);
       orb.name = 'Credit';
 
@@ -159,8 +154,8 @@ export class Level1 {
 
       this.scene.add(orb);
       this.credits.push({ mesh: orb, collected: false });
-      this.disposables.push(orbGeo, orbMat);
     }
+    this.creditEffects.attach(this.credits);
   }
 
   async _createBossMarker() {
@@ -624,6 +619,7 @@ export class Level1 {
     this.spawnDelay = Math.max(0, this.spawnDelay - dt);
     this.redPortalMixer?.update(dt);
     if (this.redPortalLight) this.redPortalLight.intensity = 3.5 + Math.sin(time * 4) * 0.8;
+    this.creditEffects?.update(dt, player);
     if (this.playerAbsorption) {
       this.portalMixer?.update(dt);
       this._updatePlayerAbsorption(dt);
@@ -641,11 +637,10 @@ export class Level1 {
       if (dist < 2.0) {
         credit.collected = true;
         this.scene.remove(credit.mesh);
-        credit.mesh.geometry.dispose();
-        credit.mesh.material.dispose();
         this.creditsCollected++;
         this._spawnOrbZombies();
         player.addScore(100);
+        this.creditEffects.onCollected(credit, player, this.creditsCollected === this.credits.length);
         events.creditCollected = true;
       }
     }
@@ -776,12 +771,12 @@ export class Level1 {
     this.zombies = [];
     this.zombieReserve = [];
 
-    // Dispose credit orbs
+    // Dispose credit orbs and their energy effects
+    this.creditEffects?.dispose();
+    this.creditEffects = null;
     for (const credit of this.credits) {
       if (!credit.collected) {
         this.scene.remove(credit.mesh);
-        credit.mesh.geometry.dispose();
-        credit.mesh.material.dispose();
       }
     }
     this.credits = [];
