@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { readFileSync } from 'node:fs';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DeanBoss } from '../src/enemies/DeanBoss.js';
 import { Level3 } from '../src/levels/Level3.js';
 import { Player } from '../src/player/Player.js';
@@ -105,7 +107,7 @@ test('at 40% health the Dean advances faster, chains attacks, and hits harder', 
   } finally { f.cleanup(); }
 });
 
-test('a killing shot on the Dean completes Chapter 3 exactly once', () => {
+test('a killing shot on the Dean starts the transformation and awards the kill exactly once', () => {
   const level = new Level3(new THREE.Scene());
   const boss = new THREE.Group(), mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
   boss.add(mesh); level.bossMarker = boss;
@@ -117,7 +119,9 @@ test('a killing shot on the Dean completes Chapter 3 exactly once', () => {
   const player = { addScore(amount) { score += amount; } };
   try {
     assert.equal(level.handleBulletHit({ object: mesh }, 15, player), true);
-    assert.equal(level.levelComplete, true);
+    assert.equal(level.levelComplete, false, 'A completion overlay must not interrupt the transformation');
+    assert.equal(level.transformationPending, true);
+    assert.equal(level.allowsShooting, false);
     level.handleBulletHit({ object: mesh }, 15, player);
     assert.equal(score, 1000);
   } finally {
@@ -181,14 +185,17 @@ test('the Dean chooses close combos nearby and cycles ranged attacks when the pl
         f.dean.group.position.set(0, 0, -3);
         const previousCracks = f.boss.cracks.length;
         f.boss._updateMove(0.8, f.player);
-        assert.equal(f.boss.rocks.length, 3);
+        const wave = f.boss.earthWave.pool.find(wave => wave.active);
+        assert.equal(wave.tiles.length, 27);
         assert.equal(f.boss.cracks.length, previousCracks + 1, 'The ground visibly fractures under the smash');
-        const firstZ = f.boss.rocks[1].mesh.position.z;
-        f.boss._updateRocks(0.1, f.player);
-        assert.ok(f.boss.rocks[1].mesh.position.z > firstZ);
+        const firstZ = wave.tiles[1].position.z;
         const health = f.player.health;
+        f.boss._updateRocks(0.2, f.player);
+        assert.equal(wave.tiles[1].position.z, firstZ, 'Slabs stay planted rather than bouncing toward the player');
+        assert.ok(f.player.health < health, 'The advancing rupture hits an undodged player');
+        const afterHit = f.player.health;
         f.boss._updateRocks(0.1, f.player);
-        assert.ok(f.player.health < health, 'Incoming stone hits an undodged player');
+        assert.equal(f.player.health, afterHit, 'Overlapping slabs do not multiply a single wave hit');
       }
       f.boss._updateMove(10, f.player);
       assert.equal(f.boss.move, null);
@@ -212,3 +219,73 @@ test('while the player stays far away the Dean begins a ranged move before closi
 });
 
 function flatDistanceForTest(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+
+test('earth smash erupts in rows, can be evaded, and reuses bounded effect batches', () => {
+  const f = bossFixture();
+  try {
+    f.dean.group.position.set(0, 0, -12);
+    f.boss.farMoveIndex = 1;
+    f.boss._beginMove(f.player);
+    f.boss._updateMove(0.78, f.player);
+    const wave = f.boss.earthWave.pool.find(wave => wave.active);
+    assert.ok(wave.tiles[25].delay > wave.tiles[1].delay, 'The far rows erupt after the near rows');
+    assert.ok(wave.tiles[25].height > wave.tiles[1].height, 'The earth ridge builds toward the player');
+    f.player.isDodging = true;
+    for (let i = 0; i < 25; i++) f.boss._updateRocks(0.04, f.player);
+    assert.equal(f.player.health, 100, 'Rolling avoids the active rupture');
+    f.boss._updateRocks(2, f.player);
+    assert.equal(wave.active, false);
+    assert.equal(wave.slabs.visible, false);
+    const meshes = f.boss.earthWave.root.children.slice();
+    for (let i = 0; i < 6; i++) f.boss.earthWave.launch(f.dean.group.position, f.boss.direction, false);
+    assert.deepEqual(f.boss.earthWave.root.children, meshes, 'Repeated smashes reuse the same instanced meshes');
+    // Defeat clears effects through the ordinary combat path.
+    f.boss.phase = 'combat'; f.boss.takeDamage(300);
+    assert.ok(f.boss.earthWave.pool.every(wave => !wave.active));
+  } finally { f.cleanup(); }
+});
+
+test('authored Dean attacks play from windup through contact on the normal mixer clock', async () => {
+  globalThis.ProgressEvent ??= class { constructor(type, values) { this.type = type; Object.assign(this, values); } };
+  const asset = JSON.parse(readFileSync(new URL('../public/assets/models/zombies/Zombie_Arm.gltf', import.meta.url)));
+  asset.materials = asset.materials.map(() => ({ pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1] } }));
+  const gltf = await new GLTFLoader().parseAsync(JSON.stringify(asset), '');
+  const f = bossFixture(); f.cleanup();
+  f.dean.group.clear(); f.dean.group.add(gltf.scene);
+  f.dean.mixer = new THREE.AnimationMixer(gltf.scene);
+  f.dean.actions = Object.fromEntries(gltf.animations.map(clip => [clip.name, f.dean.mixer.clipAction(clip)]));
+  f.dean._playAction = function(name, fade = 0.12, restart = false) {
+    const next = this.actions[name];
+    if (!next || (next === this.currentAction && !restart)) return;
+    next.reset().play();
+    if (this.currentAction && this.currentAction !== next) this.currentAction.crossFadeTo(next, fade, false);
+    this.currentAction = next;
+  };
+  f.dean._playAction('Idle'); f.dean.mixer.update(0);
+  const boss = new DeanBoss(f.root, f.dean);
+  try {
+    assert.equal(boss.attackClips.length, 6);
+    boss.phase = 'combat'; f.dean.group.position.set(0, 0, -2);
+    boss._beginMove(f.player);
+    assert.equal(f.dean.currentAction.getClip().name, 'Dean Double jab');
+    f.dean.mixer.update(0.3); boss._updateMove(0.3, f.player);
+    assert.equal(f.player.health, 100, 'The visible windup cannot damage the player');
+    f.dean.mixer.update(0.041); boss._updateMove(0.041, f.player);
+    assert.equal(f.player.health, 92);
+    assert.equal(f.dean.currentAction.getClip().name, 'Dean Double jab', 'Contact never restarts the punch animation');
+    boss._updateMove(2, f.player);
+    f.dean.group.position.set(0, 0, -12); boss.farMoveIndex = 1;
+    boss._beginMove(f.player);
+    f.dean.mixer.update(0.62);
+    const hand = gltf.scene.getObjectByName('Middle1L');
+    const raised = hand.getWorldPosition(new THREE.Vector3()).y;
+    f.dean.mixer.update(0.16);
+    const impact = hand.getWorldPosition(new THREE.Vector3()).y;
+    assert.ok(raised > 1.2, `Both hands lift above the head before the smash (${raised})`);
+    assert.ok(impact < 0.4, `The fist reaches the ground at the smash contact (${impact})`);
+    assert.equal(f.dean.currentAction.getClip().name, 'Dean Ground smash');
+  } finally {
+    boss.dispose(); f.dean.mixer.stopAllAction();
+    gltf.scene.traverse(node => { if (node.isMesh) { node.geometry.dispose(); node.material.dispose(); } });
+  }
+});

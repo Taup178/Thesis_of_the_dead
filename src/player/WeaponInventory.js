@@ -8,3 +8,5 @@ export const WEAPONS = Object.freeze([
 
 export const weaponById = id => WEAPONS.find(weapon => weapon.id === id);
 export const weaponBySlot = slot => WEAPONS.find(weapon => weapon.slot === slot);
+
+export const weaponImage = id => `./assets/ui/weapons/${id}.svg`;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { weaponById } from './WeaponInventory.js';
+import { SWORD_ATTACKS, SWORD_COMBO_WINDOW } from './SwordSwings.js';
 
 const belongsTo = (object, group) => {
   for (let node = object; node; node = node.parent) if (node === group) return true;
@@ -28,21 +29,32 @@ export class WeaponCombat {
   reset() {
     this.root.clear(); this.projectiles = []; this.pickups = [];
     this.shootCooldown = 0; this.bashCooldown = 0; this.pendingBash = null; this.pendingMelee = null;
+    this.cancelMelee(); this.attackClickHeld = false; this.weaponId = null;
     this.kills = 0; this.rewarded = new WeakSet(); this.notice = ''; this.noticeTime = 0;
+  }
+
+  cancelMelee() {
+    this.pendingBash = null; this.pendingMelee = null;
+    this.swordQueue = []; this.swordComboStep = 0; this.swordComboTime = 0;
   }
 
   update(dt, player, level, input, getTargets) {
     if (this.level !== level) { this.reset(); this.level = level; }
     this.shootCooldown = Math.max(0, this.shootCooldown - dt);
     this.bashCooldown = Math.max(0, this.bashCooldown - dt);
+    this.swordComboTime = Math.max(0, this.swordComboTime - dt);
     this.noticeTime = Math.max(0, this.noticeTime - dt);
-    if (level.allowsShooting === false || player.scriptedMovement) {
-      this.pendingBash = null; this.pendingMelee = null;
+    const held = input.isMouseButtonDown(0);
+    const clicks = input.consumeMousePresses?.(0) ?? (held && !this.attackClickHeld ? 1 : 0);
+    this.attackClickHeld = held;
+    if (this.weaponId !== player.weapon) { this.cancelMelee(); this.weaponId = player.weapon; }
+    if (level.allowsShooting === false || player.scriptedMovement || !player.alive || !input.pointerLocked) {
+      this.cancelMelee();
       for (const projectile of this.projectiles) projectile.mesh.removeFromParent();
       this.projectiles = []; return;
     }
     if (player.isDodging) {
-      this.pendingBash = null; this.pendingMelee = null;
+      this.cancelMelee();
       input.consumeKeyPress?.('KeyF');
       this.updateProjectiles(dt, player, level, this.projectiles.length ? getTargets() : []);
       this.updatePickups(dt, player);
@@ -59,13 +71,34 @@ export class WeaponCombat {
     const weapon = weaponById(player.weapon) || weaponById('smg');
     const bashPressed = input.consumeKeyPress?.('KeyF');
     if (input.pointerLocked && player.alive) {
-      if (weapon.type === 'melee') {
+      if (weapon.id === 'sword') {
+        if (clicks || bashPressed) {
+          if (this.swordComboTime === 0 || (this.swordComboStep === SWORD_ATTACKS.length
+            && this.swordQueue.length === 0 && player.bashTime <= 0)) this.swordComboStep = 0;
+        }
+        for (let press = 0; press < Math.min(SWORD_ATTACKS.length, clicks + (bashPressed ? 1 : 0)); press++) {
+          if (this.swordComboStep >= SWORD_ATTACKS.length
+            || this.swordQueue.length + (player.bashTime > 0 ? 1 : 0) >= SWORD_ATTACKS.length) break;
+          this.swordQueue.push(SWORD_ATTACKS[this.swordComboStep++]);
+          this.swordComboTime = SWORD_COMBO_WINDOW;
+        }
+        const attack = this.swordQueue[0];
+        const previous = player.swordAttack;
+        const chain = attack && previous?.chainAt && player.bashTime > 0 && !this.pendingBash
+          && previous.duration - player.bashTime >= previous.chainAt
+          && SWORD_ATTACKS[SWORD_ATTACKS.indexOf(previous) + 1] === attack;
+        if (attack && (chain || this.bashCooldown <= 0) && player.startMeleeAttack(attack, { chain: !!chain })) {
+          this.swordQueue.shift();
+          this.pendingMelee = { damage: attack.damage, reach: attack.reach, arc: attack.arc };
+          this.pendingBash = attack.contact; this.bashCooldown = attack.cooldown;
+        }
+      } else if (weapon.type === 'melee') {
         if ((bashPressed || input.isMouseButtonDown(0)) && this.bashCooldown <= 0 && player.startMeleeAttack()) {
           this.pendingMelee = { damage: weapon.damage, reach: weapon.reach, arc: weapon.arc };
           this.pendingBash = weapon.id === 'sword' ? 0.28 : 0.16;
           this.bashCooldown = weapon.cooldown;
         }
-      } else if (bashPressed || input.isMouseButtonDown(0) && player.ammo === 0) {
+      } else if (bashPressed || input.isMouseButtonDown(0) && player.ammo === 0 && !level.hasUnlimitedAmmo?.(weapon.id)) {
         if (this.bashCooldown <= 0 && player.startGunBash()) {
           this.pendingMelee = null;
           this.pendingBash = 0.22; this.bashCooldown = 0.75;
@@ -81,14 +114,15 @@ export class WeaponCombat {
   }
 
   fire(player, targets, requestedShots = null) {
-    if (!player.alive || player.isDodging || player.ammo <= 0 || player.bashTime > 0 || this.shootCooldown > 0) return false;
     const weapon = weaponById(player.weapon) || weaponById('smg');
+    const unlimited = this.level?.hasUnlimitedAmmo?.(weapon.id) === true;
+    if (!player.alive || player.isDodging || (!unlimited && player.ammo <= 0) || player.bashTime > 0 || this.shootCooldown > 0) return false;
     if (weapon.type !== 'gun') return false;
     player.camera.updateMatrixWorld(true);
     this.ray.near = 0; this.ray.far = 100; this.ray.setFromCamera(this.center, player.camera);
     const aimHit = this.ray.intersectObjects(targets, false)[0];
     const destination = aimHit?.point || this.ray.ray.at(100, new THREE.Vector3());
-    const shots = Math.min(player.ammo, requestedShots ?? weapon.ammo);
+    const shots = unlimited ? (requestedShots ?? weapon.ammo) : Math.min(player.ammo, requestedShots ?? weapon.ammo);
     for (let i = 0; i < shots; i++) {
       const hand = weapon.id === 'dual' && i === 1 ? 'left' : 'right';
       let origin = player.getMuzzleWorldPosition(hand), direction = destination.clone().sub(origin).normalize();
@@ -107,7 +141,8 @@ export class WeaponCombat {
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); this.root.add(mesh);
       this.projectiles.push({ mesh, direction, distance: 0, damage: weapon.damage });
     }
-    player.ammo -= shots; player.shotTime = 0.14; player.aimTime = 0.38;
+    if (!unlimited) player.ammo -= shots;
+    player.shotTime = 0.14; player.aimTime = 0.38;
     player.weaponPresentation?.update(0);
     this.shootCooldown = weapon.cooldown;
     return true;

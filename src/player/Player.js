@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SurvivorWeapon } from './SurvivorWeapon.js';
 import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './DirectionalWalk.js';
 import { weaponById } from './WeaponInventory.js';
+import { SWORD_ATTACKS, createSwordSwingClips } from './SwordSwings.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -30,6 +31,7 @@ export class Player {
     this.weapon = 'smg';
     this.aimTime = 0;
     this.bashTime = 0;
+    this.swordAttack = null;
     this.shotTime = 0;
     this.radius = 0.4; // horizontal collision radius
     this.maxLookPitch = THREE.MathUtils.degToRad(85);
@@ -158,6 +160,7 @@ export class Player {
             // Set up animation mixer and actions
             this.animations = [
               ...gltf.animations,
+              ...createSwordSwingClips(gltf.animations),
               ...createDirectionalWalkClips(character, gltf.animations.find(clip => clip.name === 'Idle_Gun')),
               ...createDirectionalWalkClips(character, gltf.animations.find(clip => clip.name === 'Idle'), 'Relaxed'),
             ];
@@ -244,6 +247,7 @@ export class Player {
   equipWeapon(id) {
     if (!weaponById(id) || this.scriptedMovement || !this.alive) return false;
     this.weapon = id;
+    this.swordAttack = null;
     this.aimTime = 0;
     this.bashTime = 0;
     this.weaponPresentation?.select(id);
@@ -256,18 +260,23 @@ export class Player {
         && (this.input.isMouseButtonDown?.(0) || this.input.isMouseButtonDown?.(2))));
   }
 
-  startMeleeAttack() {
-    if (this.bashTime > 0 || this.scriptedMovement || this.isDodging || !this.alive) return false;
+  startMeleeAttack(swordAttack = SWORD_ATTACKS[0], { chain = false } = {}) {
+    const canChain = chain && this.weapon === 'sword' && this.swordAttack?.chainAt
+      && this.swordAttack.duration - this.bashTime >= this.swordAttack.chainAt
+      && SWORD_ATTACKS[SWORD_ATTACKS.indexOf(this.swordAttack) + 1] === swordAttack;
+    if ((this.bashTime > 0 && !canChain) || this.scriptedMovement || this.isDodging || !this.alive) return false;
     const sword = this.weapon === 'sword';
-    this.bashTime = sword ? 0.62 : 0.4;
-    const clip = sword ? 'Slash' : 'Stab';
+    this.swordAttack = sword ? swordAttack : null;
+    this.bashTime = sword ? swordAttack.duration : 0.4;
+    const clip = sword ? (this.actions?.[swordAttack.clip] ? swordAttack.clip : swordAttack.source) : 'Stab';
     if (this.actions?.[clip]) {
       this._playAnimation(clip);
-      this.actions[clip].setLoop(THREE.LoopOnce, 1)
+      this.actions[clip].reset().play().setLoop(THREE.LoopOnce, 1)
         .setEffectiveTimeScale(this.actions[clip].getClip().duration / this.bashTime);
       this.actions[clip].clampWhenFinished = true;
     }
-    this.weaponPresentation?.bash();
+    this.weaponPresentation?.bash({ chain: !!canChain });
+    this.weaponPresentation?.update(0);
     return true;
   }
 
@@ -298,6 +307,7 @@ export class Player {
   }
 
   reset(spawnPoint) {
+    this.swordAttack = null;
     this.bodyMesh.position.set(0, 0, 0);
     this.bodyMesh.rotation.set(0, 0, 0);
     this.scriptedMovement = false;

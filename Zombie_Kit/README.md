@@ -18,3 +18,5 @@ Used non-character assets live in `public/assets/models/`. Their duplicate sourc
 | `spike_trap_01` | `public/assets/models/spike-trap-01/` |
 
 The standalone environment, vehicle and weapon packs are unused and have been removed. Shaun's embedded SMG remains part of his character model; the other equipped weapons are built in code.
+
+The user-supplied laugh recording in `Sounds/` is retained and served unchanged from `public/assets/audio/dean-laugh.mp3`.

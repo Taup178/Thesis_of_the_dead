@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Zombie } from '../enemies/Zombie.js';
 import { SOPHOMORE_LAYOUT as layout } from './SophomoreLayout.js';
 
-export const AMBUSH_WAVES = 4, ZOMBIES_PER_WAVE = 4;
+export const AMBUSH_WAVES = 4, ZOMBIES_PER_WAVE = 3;
 const TOTAL = AMBUSH_WAVES * ZOMBIES_PER_WAVE;
 const ARRIVAL_INTERVAL = 0.65, WAVE_PAUSE = 2, JUMP_DURATION = 1.65, GRAVITY = -20;
 
@@ -16,7 +16,7 @@ export class SophomoreAmbush {
 
   load() {
     if (this.ready) return this.ready;
-    const variants = ['Basic', 'Chubby', 'Ribcage'];
+    const variants = ['Basic', 'Chubby'];
     this.records = Array.from({ length: TOTAL }, (_, index) => {
       const side = index % 2 === 0 ? -1 : 1;
       const zombie = this.createZombie(new THREE.Vector3(side * 8.4, -12, layout.spikeCorridorMaxZ - 4),
@@ -77,6 +77,7 @@ export class SophomoreAmbush {
     if (this.disposed || !this.started) return;
     const canFight = player.alive && !player.scriptedMovement && !this.level.deanBladeIntro &&
       ['dean_challenge', 'chase'].includes(this.level.phase);
+    const canPursue = canFight || (player.alive && !player.scriptedMovement && this.level.phase === 'failed');
     if (canFight) {
       this.time += dt;
       let wave = this.records.filter(record => record.wave === this.currentWave);
@@ -94,17 +95,37 @@ export class SophomoreAmbush {
     for (const record of this.records) {
       const zombie = record.zombie;
       if (record.phase === 'jumping') {
-        if (canFight || !zombie.alive) this._updateJump(record, record.justLaunched ? 0 : dt);
+        if (canPursue || !zombie.alive) this._updateJump(record, record.justLaunched ? 0 : dt);
         record.justLaunched = false;
       } else if (!zombie.alive) {
         record.phase = 'dead'; zombie.mixer?.update(dt);
-      } else if (record.phase === 'active' && canFight && player.group.position.y >= -0.6) {
-        const result = zombie.update(dt, player.group.position);
+      } else if (record.phase === 'active' && canPursue) {
+        const edgeZ = this.level.startSurface.minZ + 0.45;
+        const farEdgeZ = this.level.bridgeExitSurface.maxZ - 0.5;
+        const target = new THREE.Vector3(THREE.MathUtils.clamp(player.group.position.x, -6.45, 6.45), 0,
+          THREE.MathUtils.clamp(player.group.position.z, edgeZ, farEdgeZ));
+        const beyondEdge = target.x !== player.group.position.x || target.z !== player.group.position.z;
+        let result = { hit: false };
+        if (beyondEdge) {
+          // Follow to the visible cliff edge, then idle there instead of walking into an invisible barrier.
+          zombie.mixer?.update(dt);
+          zombie.damageCooldown = Math.max(0, zombie.damageCooldown - dt);
+          zombie.attackTimer = Math.max(0, zombie.attackTimer - dt);
+          const direction = target.clone().sub(zombie.group.position); direction.y = 0;
+          const distance = direction.length();
+          zombie.group.lookAt(player.group.position.x, zombie.group.position.y, player.group.position.z);
+          if (zombie.attackTimer === 0) {
+            if (distance > 0.1) {
+              zombie.group.position.addScaledVector(direction.normalize(), Math.min(distance, zombie.speed * dt));
+              zombie._playAction('Walk');
+            } else zombie._playAction('Idle');
+          }
+        } else result = zombie.update(dt, player.group.position);
         const position = zombie.group.position;
         position.x = THREE.MathUtils.clamp(position.x, -6.45, 6.45);
-        position.z = THREE.MathUtils.clamp(position.z, layout.memoryTriggerZ + 1.6, layout.spikeEntryMaxZ - 0.5);
+        position.z = THREE.MathUtils.clamp(position.z, edgeZ, farEdgeZ);
         position.y = 0; // Spikes do not interrupt the zombies' movement.
-        if (result.hit && player.group.position.y < 1.8) {
+        if (result.hit && player.group.position.y >= -0.6 && player.group.position.y < 1.8) {
           player.takeDamage(result.damage);
           if (!player.alive) this.level._fail(player, 'The zombies overwhelmed you. Retry from your spike checkpoint.');
         }

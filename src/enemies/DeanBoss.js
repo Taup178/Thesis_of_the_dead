@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { installDeanAttackMotion } from './DeanAttackMotion.js';
+import { DeanEarthWave } from './DeanEarthWave.js';
 
 const CENTER = new THREE.Vector3(0, 0, -4);
 const MOVES = [
@@ -38,8 +40,9 @@ export class DeanBoss {
     this.model = dean.group.children[0] || null;
     this.modelRestY = this.model?.position.y ?? 0;
     this.modelRestPitch = this.model?.rotation.x ?? 0;
+    this.attackClips = installDeanAttackMotion(dean);
+    this.turnQuaternion = new THREE.Quaternion();
     this.hitWindows = new Set();
-    this.rocks = [];
     this.cracks = [];
     this.slideMarks = [];
     this.warning = '';
@@ -55,7 +58,7 @@ export class DeanBoss {
       side: THREE.DoubleSide, depthWrite: false });
     this.circleGeometry = new THREE.CircleGeometry(1, 40);
     this.ringGeometry = new THREE.RingGeometry(0.88, 1, 40);
-    this.rockGeometry = new THREE.IcosahedronGeometry(0.52, 0);
+    this.earthWave = new DeanEarthWave(this.effects, this.rockMaterial, this.crackMaterial);
     this.stripGeometry = new THREE.BufferGeometry();
     this.stripGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
     this.stripGeometry.setIndex([0, 1, 2, 0, 2, 3]);
@@ -103,6 +106,7 @@ export class DeanBoss {
       this.warning = '';
       this.floorWarning.visible = this.shadow.visible = this.aimStrip.visible = false;
       this._clearRocks();
+      this.enrageLight.intensity = 0;
       this.dean.group.position.y = 0;
       this._setButtPose(0);
     } else if (!this.enraged && this.dean.health <= this.dean.maxHealth * 0.4) {
@@ -112,6 +116,7 @@ export class DeanBoss {
       this.cooldown = Math.min(this.cooldown, 0.16);
       this.enrageLight.intensity = 1.7;
       this.warningMaterial.color.setHex(0xff352b);
+      if (this.move) this.dean.actions[`Dean ${this.move.name}`]?.setEffectiveTimeScale(1.28);
     }
     return died;
   }
@@ -151,13 +156,13 @@ export class DeanBoss {
       this._updateMove(dt, player);
       return;
     }
-    this.dean.group.lookAt(target.x, boss.y, target.z);
+    this._face(target, dt);
     const distance = flatDistance(boss, target);
     if (distance > 6) {
       const step = Math.min(distance - 6, (this.enraged ? 6.8 : 4.4) * dt);
       boss.addScaledVector(directionTo(boss, target), step);
       this.dean._playAction('Run');
-    } else this.dean._playAction('Idle');
+    } else this.dean._playAction('Idle', 0.2);
     this.cooldown -= dt;
     if (this.cooldown <= 0) this._beginMove(player);
   }
@@ -173,6 +178,7 @@ export class DeanBoss {
     this.hitWindows.clear();
     this.aim = player.group.position.clone();
     this.aim.y = 0;
+    this.leapOrigin = this.dean.group.position.clone();
     this.direction = directionTo(this.dean.group.position, this.aim);
     this.warning = this.move.name.toUpperCase();
     this.floorWarning.visible = true;
@@ -187,7 +193,20 @@ export class DeanBoss {
     }
     this.aimStrip.visible = ['Charging uppercut', 'Fist slide', 'Rush punches', 'Ground smash'].includes(this.move.name);
     if (this.aimStrip.visible) this._updateAimStrip();
-    this.dean._playAction(this.move.name === 'Shadow leap' ? 'Jump' : 'Idle');
+    const actionName = `Dean ${this.move.name}`;
+    const action = this.dean.actions[actionName];
+    if (action) {
+      action.setEffectiveTimeScale(this.enraged ? 1.28 : 1);
+      this.dean._playAction(actionName, 0.12, true);
+    } else if (leap) this.dean._playAction('Jump', 0.15, true);
+    else this._playPunch(this.move.name === 'Fist slide' || this.move.name === 'Rush punches' ? 'Run_Attack' : 'Punch');
+  }
+
+  _face(target, dt) {
+    const position = this.dean.group.position;
+    if (flatDistance(position, target) < 0.01) return;
+    this.turnQuaternion.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(target.x - position.x, target.z - position.z));
+    this.dean.group.quaternion.rotateTowards(this.turnQuaternion, dt * 7);
   }
 
   _updateAimStrip() {
@@ -216,29 +235,31 @@ export class DeanBoss {
       this.direction.copy(directionTo(boss, player.group.position));
       this.aim.copy(player.group.position); this.aim.y = 0;
       if (this.aimStrip.visible) this._updateAimStrip();
-      this.dean.group.lookAt(player.group.position.x, boss.y, player.group.position.z);
+      this._face(player.group.position, scaledDt);
     }
     this.floorWarning.material.opacity = 0.27 + 0.2 * Math.sin(t * 19) ** 2;
     if (name !== 'Shadow leap') this.floorWarning.position.set(boss.x, 0.055, boss.z);
     if (name === 'Double jab' || name === 'Sweeping hook') {
       const stepTime = Math.max(0, Math.min(t, this.move.windup) - last);
-      const reach = name === 'Double jab' ? 2.1 : 2.5;
+      const reach = name === 'Double jab' ? 1.65 : 1.8;
       const gap = flatDistance(boss, player.group.position) - reach;
       if (stepTime > 0 && gap > 0) boss.addScaledVector(directionTo(boss, player.group.position), Math.min(gap, 5 * stepTime));
     }
 
     if (name === 'Double jab') {
+      for (const [start, end] of [[0.19, 0.34], [0.48, 0.65]]) {
+        const stepTime = Math.max(0, Math.min(t, end) - Math.max(last, start));
+        boss.addScaledVector(this.direction, Math.min(stepTime * 2, Math.max(0, flatDistance(boss, this.aim) - 1.3)));
+      }
       this._strikeAt('jab1', 0.34, last, t, player, 2.25, 8, 0.45);
       this._strikeAt('jab2', 0.65, last, t, player, 2.35, 9, 0.45);
     } else if (name === 'Sweeping hook') {
       this._strikeAt('hook', 0.55, last, t, player, 2.8, 17, -0.15);
     } else if (name === 'Charging uppercut') {
-      if (last < 0.4 && t >= 0.4) this._playPunch('Run_Attack');
       const chargeTime = Math.max(0, Math.min(t, 0.62) - Math.max(last, 0.4));
-      if (chargeTime) boss.addScaledVector(this.direction, Math.min(15 * chargeTime, flatDistance(boss, this.aim)));
+      if (chargeTime) boss.addScaledVector(this.direction, Math.min(15 * chargeTime, Math.max(0, flatDistance(boss, this.aim) - 1.1)));
       this._strikeAt('uppercut', 0.6, last, t, player, 2.2, 20, 0.2);
     } else if (name === 'Fist slide') {
-      if (last < 0.55 && t >= 0.55) this._playPunch('Run_Attack');
       const slideTime = this.slideStopped ? 0 : Math.max(0, Math.min(t, 1.45) - Math.max(last, 0.55));
       if (slideTime > 0) {
         const previous = boss.clone();
@@ -268,8 +289,8 @@ export class DeanBoss {
       if (last < 0.55 && t >= 0.55) this.dean._playAction('Jump_Idle', 0.1);
       if (t >= 0.55 && t < 1.55) {
         const flight = (t - 0.55) / 1;
-        boss.x = THREE.MathUtils.lerp(boss.x, this.aim.x, Math.min(1, scaledDt * 4));
-        boss.z = THREE.MathUtils.lerp(boss.z, this.aim.z, Math.min(1, scaledDt * 4));
+        boss.x = THREE.MathUtils.lerp(this.leapOrigin.x, this.aim.x, flight);
+        boss.z = THREE.MathUtils.lerp(this.leapOrigin.z, this.aim.z, flight);
         boss.y = Math.sin(Math.PI * flight) * 6.5;
         this._setButtPose(THREE.MathUtils.smoothstep(flight, 0.55, 0.95));
         this.shadow.material.opacity = 0.42 + flight * 0.42;
@@ -290,21 +311,20 @@ export class DeanBoss {
           this.aim.copy(player.group.position); this.aim.y = 0;
           this.direction.copy(directionTo(boss, this.aim));
           this._updateAimStrip();
-          this._playPunch('Run_Attack');
+          this._face(this.aim, 0.12);
         }
         const burstTime = Math.max(0, Math.min(t, start + 0.21) - Math.max(last, start));
         if (burstTime > 0) {
-          boss.addScaledVector(this.direction, 22 * burstTime);
+          boss.addScaledVector(this.direction, Math.min(22 * burstTime, Math.max(0, flatDistance(boss, this.aim) - 1.1)));
           const facing = directionTo(boss, player.group.position).dot(this.direction);
-          if (flatDistance(boss, player.group.position) < 1.8 && facing > -0.45) this._hitOnce(`rush${i}`, player, 10);
+          if (t >= start + 0.11 && flatDistance(boss, player.group.position) < 1.8 && facing > -0.45) this._hitOnce(`rush${i}`, player, 10);
         }
       }
     } else if (name === 'Ground smash') {
       if (last < 0.78 && t >= 0.78) {
-        this._playPunch('Punch');
         this._radialHit(player, 2.8, 18);
         this._fractureGround();
-        this._launchRocks(player);
+        this._launchRocks();
       }
     }
     if (t >= this.move.duration) {
@@ -314,7 +334,7 @@ export class DeanBoss {
       this.move = null;
       this.warning = '';
       this.cooldown = this.enraged ? 0.12 : 0.48;
-      this.dean._playAction('Idle');
+      this.dean._playAction('Idle', 0.2);
     }
   }
 
@@ -350,7 +370,6 @@ export class DeanBoss {
 
   _strikeAt(key, strikeTime, last, now, player, radius, damage, arc) {
     if (last >= strikeTime || now < strikeTime) return;
-    this._playPunch('Punch');
     const boss = this.dean.group.position, target = player.group.position;
     if (flatDistance(boss, target) <= radius && directionTo(boss, target).dot(this.direction) > arc) this._hitOnce(key, player, damage);
   }
@@ -365,17 +384,8 @@ export class DeanBoss {
     if (!player.isDodging) player.takeDamage(damage * (this.enraged ? 1.25 : 1));
   }
 
-  _launchRocks(player) {
-    const origin = this.dean.group.position;
-    const direction = directionTo(origin, player.group.position);
-    for (const offset of [-0.22, 0, 0.22]) {
-      const mesh = new THREE.Mesh(this.rockGeometry, this.rockMaterial);
-      mesh.position.set(origin.x, 0.5, origin.z);
-      mesh.scale.setScalar(offset === 0 ? 1.3 : 0.95);
-      mesh.castShadow = true;
-      this.effects.add(mesh);
-      this.rocks.push({ mesh, direction: direction.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, offset), age: 0, hit: false });
-    }
+  _launchRocks() {
+    this.earthWave.launch(this.dean.group.position, this.direction, this.enraged);
   }
 
   _fractureGround() {
@@ -425,26 +435,11 @@ export class DeanBoss {
         crack.mesh.removeFromParent(); crack.mesh.geometry.dispose(); this.cracks.splice(i, 1);
       }
     }
-    for (let i = this.rocks.length - 1; i >= 0; i--) {
-      const rock = this.rocks[i];
-      rock.age += dt;
-      rock.mesh.position.addScaledVector(rock.direction, (this.enraged ? 15.5 : 12.5) * dt);
-      rock.mesh.position.y = 0.48 + Math.abs(Math.sin(rock.age * 15)) * 0.25;
-      rock.mesh.rotation.x += dt * 8;
-      if (!rock.hit && flatDistance(rock.mesh.position, player.group.position) < 1.1) {
-        rock.hit = true;
-        if (!player.isDodging) player.takeDamage(this.enraged ? 16 : 13);
-      }
-      if (rock.age > 2.5 || rock.hit) {
-        rock.mesh.removeFromParent();
-        this.rocks.splice(i, 1);
-      }
-    }
+    this.earthWave.update(dt, player);
   }
 
   _clearRocks() {
-    for (const rock of this.rocks) rock.mesh.removeFromParent();
-    this.rocks.length = 0;
+    this.earthWave.clear();
     for (const crack of this.cracks) { crack.mesh.removeFromParent(); crack.mesh.geometry.dispose(); }
     this.cracks.length = 0;
     for (const mark of this.slideMarks) mark.mesh.removeFromParent();
@@ -456,7 +451,13 @@ export class DeanBoss {
     this._setButtPose(0);
     this.enrageLight.removeFromParent();
     this.effects.removeFromParent();
+    this.earthWave.dispose();
+    for (const clip of this.attackClips) {
+      this.dean.actions[clip.name]?.stop();
+      this.dean.mixer?.uncacheClip(clip);
+      delete this.dean.actions[clip.name];
+    }
     for (const resource of [this.warningMaterial, this.shadowMaterial, this.rockMaterial, this.crackMaterial, this.slideMaterial,
-      this.centerMaterial, this.circleGeometry, this.ringGeometry, this.rockGeometry, this.stripGeometry]) resource.dispose();
+      this.centerMaterial, this.circleGeometry, this.ringGeometry, this.stripGeometry]) resource.dispose();
   }
 }

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 160" role="img" aria-label="Dual pistols">
+<defs>
+  <linearGradient id="steel" x2=".2" y2="1"><stop stop-color="#edf4f5"/><stop offset=".4" stop-color="#b7c6ce"/><stop offset=".5" stop-color="#758a98"/><stop offset="1" stop-color="#d4dce0"/></linearGradient>
+  <linearGradient id="metal" x2=".15" y2="1"><stop stop-color="#657480"/><stop offset=".45" stop-color="#35424c"/><stop offset="1" stop-color="#19232d"/></linearGradient>
+  <linearGradient id="grip" x2="1" y2="1"><stop stop-color="#4b4540"/><stop offset="1" stop-color="#1c2024"/></linearGradient>
+</defs>
+<g transform="translate(68 60) scale(.72) rotate(-10 150 80)" opacity=".85"><g stroke="#111a22" stroke-width="2" stroke-linejoin="round">
+  <path d="M60 56h164l13 7v22H114l-10 13H67z" fill="url(#metal)"/>
+  <path d="M62 49h166l9 7v13H60z" fill="url(#steel)"/>
+  <path d="M69 83h37l13 57-36 4-15-49z" fill="url(#grip)"/>
+  <path d="M107 86h38v20l-28 6-5-9h21V91h-23z" fill="url(#metal)"/>
+  <path d="M118 88l4 13" fill="none" stroke="#9cabb5" stroke-width="3"/>
+  <path d="M231 56h13v14h-7" fill="#25333d"/>
+  <path d="M219 49v-7h8v7M70 49v-5h8v5" fill="#546674"/>
+  <path d="M72 58v8m7-8v8m7-8v8m7-8v8m7-8v8" stroke="#384c5a"/>
+  <path d="M75 97l31-4m-29 12l32-5m-30 13l31-5m-29 13l31-5m-29 13l31-4" stroke="#787670" opacity=".5"/>
+  <path d="M112 58h101" stroke="#f5fafb" stroke-width="1" opacity=".65"/>
+  <circle cx="80" cy="87" r="2" fill="#aebbc4"/>
+</g></g><g transform="translate(0 -15) scale(.84) rotate(-10 150 80)"><g stroke="#111a22" stroke-width="2" stroke-linejoin="round">
+  <path d="M60 56h164l13 7v22H114l-10 13H67z" fill="url(#metal)"/>
+  <path d="M62 49h166l9 7v13H60z" fill="url(#steel)"/>
+  <path d="M69 83h37l13 57-36 4-15-49z" fill="url(#grip)"/>
+  <path d="M107 86h38v20l-28 6-5-9h21V91h-23z" fill="url(#metal)"/>
+  <path d="M118 88l4 13" fill="none" stroke="#9cabb5" stroke-width="3"/>
+  <path d="M231 56h13v14h-7" fill="#25333d"/>
+  <path d="M219 49v-7h8v7M70 49v-5h8v5" fill="#546674"/>
+  <path d="M72 58v8m7-8v8m7-8v8m7-8v8m7-8v8" stroke="#384c5a"/>
+  <path d="M75 97l31-4m-29 12l32-5m-30 13l31-5m-29 13l31-5m-29 13l31-4" stroke="#787670" opacity=".5"/>
+  <path d="M112 58h101" stroke="#f5fafb" stroke-width="1" opacity=".65"/>
+  <circle cx="80" cy="87" r="2" fill="#aebbc4"/>
+</g></g>
+</svg>
+

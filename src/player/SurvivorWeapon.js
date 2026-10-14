@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
+import { SWORD_ATTACKS, getSwordViewPose, getSwordBodyTurn, getSwordThrustWeight, getSwordSpinLevelWeight } from './SwordSwings.js';
 
 const steel = new THREE.MeshStandardMaterial({ color: 0xdce9ef, metalness: 0.35, roughness: 0.25, emissive: 0x242b30 });
 const darkMetal = new THREE.MeshStandardMaterial({ color: 0x30353a, metalness: 0.75, roughness: 0.38 });
@@ -29,6 +30,7 @@ function makeBlade(length) {
     [0, 0, -0.12 - length * 0.4]);
   part(group, new THREE.ConeGeometry(length > 0.7 ? 0.055 : 0.04, length * 0.2, 4), steel,
     [0, 0, -0.12 - length * 0.9]).rotation.x = -Math.PI / 2;
+  const tip = new THREE.Object3D(); tip.name = 'BladeTip'; tip.position.z = -0.12 - length; group.add(tip);
   return group;
 }
 
@@ -68,6 +70,24 @@ function poseSecondArm(model, weight) {
     const q = aimingArm.quaternion;
     secondArm.quaternion.slerp(new THREE.Quaternion(q.x, -q.y, -q.z, q.w), weight);
   }
+  model.updateMatrixWorld(true);
+}
+
+function alignSwordArm(model, sword, forward, weight) {
+  const arm = model.getObjectByName('UpperArmL') || model.getObjectByName('UpperArm.L');
+  const tip = sword.getObjectByName('BladeTip');
+  if (!arm || !tip) return;
+  model.updateWorldMatrix(true, true);
+  const inverseModel = model.matrixWorld.clone().invert();
+  const direction = tip.getWorldPosition(new THREE.Vector3())
+    .sub(sword.getWorldPosition(new THREE.Vector3())).transformDirection(inverseModel);
+  const target = forward.clone().transformDirection(inverseModel);
+  const correction = new THREE.Quaternion().slerp(
+    new THREE.Quaternion().setFromUnitVectors(direction, target), weight);
+  const parent = new THREE.Quaternion();
+  inverseModel.clone().multiply(arm.parent.matrixWorld).decompose(new THREE.Vector3(), parent, new THREE.Vector3());
+  const local = parent.clone().invert().multiply(correction).multiply(parent);
+  arm.quaternion.premultiply(local);
   model.updateMatrixWorld(true);
 }
 
@@ -141,6 +161,8 @@ export class SurvivorWeapon {
   }
 
   select(id) {
+    this.bashing = false;
+    this.swordTransition = null;
     for (const weapons of [this.worldWeapons, this.viewWeapons]) {
       weapons.smg.visible = id === 'smg';
       weapons.pistolRight.visible = id === 'pistol' || id === 'dual';
@@ -151,14 +173,18 @@ export class SurvivorWeapon {
     for (const { node, single, dual } of this.armGeometries || []) node.geometry = id === 'dual' ? dual : single;
   }
 
-  bash() {
+  bash({ chain = false } = {}) {
+    this.swordTransition = chain && this.swordGripPosition ? {
+      grip: this.swordGripPosition.clone(), rotation: this.viewModel.quaternion.clone(), time: 0,
+    } : null;
     this.bashing = true;
   }
 
   update(dt) {
     const p = this.player;
     this.viewRoot.visible = p.isFirstPerson && !p.scriptedMovement && p.group.visible;
-    if (p.bashTime <= 0) this.bashing = false;
+    if (p.bashTime <= 0 || p.isDodging || p.scriptedMovement) this.bashing = false;
+    if (!this.bashing) this.swordTransition = null;
     const aiming = p.isAiming && !p.isDodging;
     if (aiming !== this.viewAiming) {
       (aiming ? this.viewIdle : this.viewAim).fadeOut(0.16);
@@ -174,28 +200,76 @@ export class SurvivorWeapon {
     this.aimBlend = THREE.MathUtils.damp(this.aimBlend ?? 0, aiming ? 1 : 0, 12, dt);
     this.viewModel.position.set(0, 0, 0);
     this.viewModel.rotation.copy(this.viewBaseRotation);
+    const attack = p.swordAttack || SWORD_ATTACKS[0];
+    const progress = 1 - p.bashTime / attack.duration;
+    const swordPose = this.bashing && p.weapon === 'sword'
+      ? getSwordViewPose(attack, progress) : null;
+    const thrustWeight = swordPose ? getSwordThrustWeight(attack, progress) : 0;
+    const levelWeight = swordPose ? getSwordSpinLevelWeight(attack, progress) : 0;
+    if (thrustWeight > 0 && this.worldWeapons?.sword && p.getForwardDirection) {
+      alignSwordArm(p.characterModel, this.worldWeapons.sword, p.getForwardDirection(), thrustWeight);
+    }
+    if (p.bodyMesh && !p.isDodging && !p.scriptedMovement) {
+      p.bodyMesh.rotation.y = swordPose ? getSwordBodyTurn(attack, 1 - p.bashTime / attack.duration) : 0;
+    }
+    if (levelWeight > 0 && this.worldWeapons?.sword) {
+      const sword = this.worldWeapons.sword, tip = sword.getObjectByName('BladeTip');
+      p.characterModel.updateWorldMatrix(true, true);
+      const target = tip.getWorldPosition(new THREE.Vector3()).sub(sword.getWorldPosition(new THREE.Vector3()));
+      if (Math.hypot(target.x, target.z) < 0.001) target.copy(p.getForwardDirection());
+      target.y = -0.08 * Math.max(0.01, Math.hypot(target.x, target.z));
+      alignSwordArm(p.characterModel, sword, target.normalize(), levelWeight);
+    }
+    if (swordPose) {
+      const [, , , pitch, yaw, roll] = swordPose;
+      this.viewModel.quaternion.premultiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, roll)));
+    }
     const anchor = p.weapon === 'smg' ? this.viewWeapons.smg
       : p.weapon === 'pistol' || p.weapon === 'dual' ? this.viewWeapons.pistolRight
         : this.viewWeapons[p.weapon];
     this.viewRoot.updateMatrixWorld(true);
+    const bladeTip = anchor.getObjectByName('BladeTip');
+    if ((thrustWeight > 0 || levelWeight > 0) && bladeTip) {
+      // Correct the blade angle before calculating the grip pivot; the entire arm follows it.
+      const direction = this.viewRoot.worldToLocal(bladeTip.getWorldPosition(new THREE.Vector3()))
+        .sub(this.viewRoot.worldToLocal(anchor.getWorldPosition(new THREE.Vector3()))).normalize();
+      const target = thrustWeight > 0 ? new THREE.Vector3(0, 0, -1)
+        : new THREE.Vector3(direction.x, -0.08 * Math.max(0.01, Math.hypot(direction.x, direction.z)), direction.z).normalize();
+      if (levelWeight > 0 && Math.hypot(target.x, target.z) < 0.001) target.set(0, -0.08, -1).normalize();
+      const alignment = new THREE.Quaternion().slerp(
+        new THREE.Quaternion().setFromUnitVectors(direction, target), Math.max(thrustWeight, levelWeight));
+      this.viewModel.quaternion.premultiply(alignment);
+      this.viewRoot.updateMatrixWorld(true);
+    }
+    let transitionAlpha = 1;
+    if (swordPose && this.swordTransition) {
+      this.swordTransition.time += dt;
+      transitionAlpha = THREE.MathUtils.smoothstep(this.swordTransition.time, 0, 0.14);
+      this.viewModel.quaternion.slerpQuaternions(this.swordTransition.rotation,
+        this.viewModel.quaternion.clone(), transitionAlpha);
+      this.viewRoot.updateMatrixWorld(true);
+    }
     const grip = this.viewRoot.worldToLocal(anchor.getWorldPosition(new THREE.Vector3()));
     const handHeight = p.weapon === 'smg' ? -0.34
       : p.weapon === 'pistol' ? -0.12 : p.weapon === 'dual' ? -0.2 : -0.14;
     const handDistance = p.weapon === 'dual' ? -1.05 : p.weapon === 'pistol' ? -0.82 : -0.65;
-    this.viewModel.position.set(0.24 + (1 - this.aimBlend) * 0.09 - grip.x,
-      handHeight - (1 - this.aimBlend) * 0.12 - grip.y,
-      handDistance + recoil * 0.055 - grip.z);
+    // Re-anchor after rotating so the swing pivots at the gripping hand, rather than the rig's feet.
+    const handPosition = new THREE.Vector3(0.24 + (1 - this.aimBlend) * 0.09 + (swordPose?.[0] ?? 0),
+      handHeight - (1 - this.aimBlend) * 0.12 + (swordPose?.[1] ?? 0),
+      handDistance + recoil * 0.055 + (swordPose?.[2] ?? 0));
+    if (swordPose && this.swordTransition) {
+      handPosition.lerpVectors(this.swordTransition.grip, handPosition.clone(), transitionAlpha);
+      if (transitionAlpha === 1) this.swordTransition = null;
+    }
+    this.swordGripPosition = handPosition.clone();
+    this.viewModel.position.copy(handPosition).sub(grip);
     if (this.bashing) {
-      const progress = 1 - p.bashTime / (p.weapon === 'sword' ? 0.62 : p.weapon === 'dagger' ? 0.4 : 0.6);
+      const progress = 1 - p.bashTime / (p.weapon === 'sword' ? attack.duration : p.weapon === 'dagger' ? 0.4 : 0.6);
       const strike = progress < 0.36 ? THREE.MathUtils.smoothstep(progress, 0, 0.36) : 1 - THREE.MathUtils.smoothstep(progress, 0.36, 1);
-      if (p.weapon === 'sword') {
-        this.viewModel.rotation.z += -0.65 * strike;
-        this.viewModel.position.x -= 0.18 * strike;
-        this.viewModel.position.z -= 0.18 * strike;
-      } else if (p.weapon === 'dagger') {
+      if (p.weapon === 'dagger') {
         this.viewModel.position.z -= 0.42 * strike;
         this.viewModel.rotation.x += -0.14 * strike;
-      } else this.viewModel.position.add(new THREE.Vector3(-0.2, -0.1, -0.2).multiplyScalar(strike));
+      } else if (p.weapon !== 'sword') this.viewModel.position.add(new THREE.Vector3(-0.2, -0.1, -0.2).multiplyScalar(strike));
     }
     for (let i = 0; i < this.flashes.length; i++) {
       const flash = this.flashes[i];

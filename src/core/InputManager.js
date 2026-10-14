@@ -11,6 +11,7 @@ export class InputManager {
     this.mouseDeltaX = 0;
     this.mouseDeltaY = 0;
     this.mouseButtons = {};
+    this.mousePresses = {};
     this._pointerLocked = false;
     this._pointerLockTarget = null;
     this._pointerLockRequest = null;
@@ -38,6 +39,9 @@ export class InputManager {
 
     // Mouse buttons
     window.addEventListener('mousedown', (e) => {
+      if (this._pointerLocked && !this.mouseButtons[e.button]) {
+        this.mousePresses[e.button] = (this.mousePresses[e.button] || 0) + 1;
+      }
       this.mouseButtons[e.button] = true;
     });
     window.addEventListener('mouseup', (e) => {
@@ -53,6 +57,7 @@ export class InputManager {
         && document.pointerLockElement === this._pointerLockTarget;
       this.flushMouseDelta();
       this.mouseButtons = {};
+      this.mousePresses = {};
       this.pressedKeys.clear();
       if (!this._pointerLocked) this.keys = {};
     });
@@ -61,6 +66,7 @@ export class InputManager {
       this.keys = {};
       this.pressedKeys.clear();
       this.mouseButtons = {};
+      this.mousePresses = {};
       this.flushMouseDelta();
       if (this._pointerLocked) document.exitPointerLock();
     });
@@ -77,6 +83,13 @@ export class InputManager {
 
   isMouseButtonDown(button = 0) {
     return !!this.mouseButtons[button];
+  }
+
+  /** Count individual clicks, including clicks pressed and released between frames. */
+  consumeMousePresses(button = 0) {
+    const count = this.mousePresses[button] || 0;
+    delete this.mousePresses[button];
+    return count;
   }
 
   /** Call once per frame AFTER reading mouseDelta to reset it. */

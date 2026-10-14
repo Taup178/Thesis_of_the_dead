@@ -72,7 +72,7 @@ function createGame(stageIndex = 0, seed = 1234, firstPerson = false, puzzleInde
 }
 
 async function attachAmbush(game) {
-  const createZombie = position => {
+  const createZombie = (position, modelPath) => {
     // Exercise the real combat/AI methods without loading models in a physics check.
     const zombie = Object.create(Zombie.prototype);
     const group = new THREE.Group(); group.position.copy(position);
@@ -80,7 +80,7 @@ async function attachAmbush(game) {
     body.position.y = 0.9; group.add(body);
     Object.assign(zombie, { group, scene: game.scene, alive: true, isBoss: false, health: 30, speed: 3.2,
       damage: 10, damageCooldown: 0, damageRate: 1, attackTimer: 0, actions: {}, mixer: null,
-      _loaded: true, _disposed: false, _ownsGeometry: true, deathPlayed: false, ready: Promise.resolve() });
+      _modelPath: modelPath, _loaded: true, _disposed: false, _ownsGeometry: true, deathPlayed: false, ready: Promise.resolve() });
     return zombie;
   };
   game.level.ambush = new SophomoreAmbush(game.level, { createZombie });
@@ -88,29 +88,32 @@ async function attachAmbush(game) {
   return game.level.ambush;
 }
 
-test('spike ambush has four staggered waves of four that leap from both pit edges and never refill', async () => {
+test('spike ambush has four staggered waves of three that leap from both pit edges and never refill', async () => {
   const game = createGame(0, 1234, false, SPIKE_CORRIDOR_PUZZLE);
   try {
     const ambush = await attachAmbush(game);
+    assert.equal(ambush.records.filter(record => record.zombie._modelPath.endsWith('Zombie_Basic.gltf')).length, 6);
+    assert.equal(ambush.records.filter(record => record.zombie._modelPath.endsWith('Zombie_Chubby.gltf')).length, 6);
+    assert.ok(ambush.records.every(record => !record.zombie._modelPath.includes('Ribcage')));
     game.level.update(0, game.player);
     assert.equal(ambush.started, false, 'The safe bridge exit does not start the ambush');
     game.player.group.position.set(0, 0, layout.spikeCorridorMaxZ - 1);
     game.player.platformSupport = game.level.retractingSpikes.surface;
     game.player.takeDamage = () => {}; // Keep the observer alive while all four waves play out.
     game.level.update(0, game.player);
-    assert.equal(ambush.remaining, 16);
+    assert.equal(ambush.remaining, 12);
     assert.equal(ambush.records.filter(record => record.phase === 'jumping').length, 1);
     assert.equal(ambush.records[0].from.y, game.level.spikeTipY);
     for (let waveIndex = 0; waveIndex < 4; waveIndex++) {
       const wave = ambush.records.filter(record => record.wave === waveIndex);
-      assert.deepEqual(wave.map(record => record.side), [-1, 1, -1, 1]);
+      assert.deepEqual(wave.map(record => record.side), waveIndex % 2 === 0 ? [-1, 1, -1] : [1, -1, 1]);
       let frames = 0;
       while (wave.some(record => record.phase !== 'active') && frames++ < 600) {
         const before = ambush.records.filter(record => record.phase !== 'waiting').length;
         game.level.update(1 / 60, game.player);
         const after = ambush.records.filter(record => record.phase !== 'waiting').length;
         assert.ok(after - before <= 1, 'Zombies arrive individually, never as an immediate group');
-        assert.equal(ambush.records.filter(record => record.zombie.alive && record.phase !== 'waiting').length <= 4, true);
+        assert.equal(ambush.records.filter(record => record.zombie.alive && record.phase !== 'waiting').length <= 3, true);
       }
       assert.ok(wave.every(record => record.phase === 'active'), 'Each wave finishes its real jumps');
       assert.ok(wave.every(record => record.zombie.group.position.y === 0 && record.zombie.group.visible));
@@ -125,12 +128,12 @@ test('spike ambush has four staggered waves of four that leap from both pit edge
     assert.equal(ambush.cleared, true);
     assert.equal(ambush.start(), false, 'Crossing the trigger again cannot create another wave');
     game.level.update(10, game.player);
-    assert.equal(game.level.zombies.length, 16);
+    assert.equal(game.level.zombies.length, 12);
     assert.equal(ambush.remaining, 0);
   } finally { game.cleanup(); }
 });
 
-test('ambush zombies walk through raised spikes and remain outside the memory tiles', async () => {
+test('ambush zombies cross raised spikes, chase to the physical memory edge and idle there', async () => {
   const game = createGame(0, 1234, false, SPIKE_CORRIDOR_PUZZLE);
   try {
     const ambush = await attachAmbush(game);
@@ -147,12 +150,80 @@ test('ambush zombies walk through raised spikes and remain outside the memory ti
     assert.ok(record.zombie.group.position.z < row.z, 'The zombie keeps pursuing through the raised row');
     assert.equal(record.zombie.group.position.y, 0);
     game.player.group.position.set(0, 0, -10);
+    const actions = [];
+    record.zombie._playAction = name => actions.push(name);
     ambush.update(20, game.player);
-    assert.ok(record.zombie.group.position.z > layout.memoryTriggerZ, 'Combat zombies cannot enter the memory area');
+    const edge = game.level.startSurface.minZ + 0.45;
+    assert.ok(Math.abs(record.zombie.group.position.z - edge) < 1e-8, 'Zombies reach the actual visible drop');
+    assert.ok(record.zombie.group.position.z < layout.memoryTriggerZ, 'There is no barrier at the memory trigger');
+    const atEdge = record.zombie.group.position.clone();
+    ambush.update(0.1, game.player);
+    assert.equal(actions.at(-1), 'Idle', 'Waiting at the cliff does not keep playing a walking or attacking animation');
+    assert.ok(record.zombie.group.position.distanceTo(atEdge) < 1e-8);
+    game.level.phase = 'failed';
+    record.zombie.group.position.z = 3;
+    ambush.update(1, game.player);
+    assert.ok(record.zombie.group.position.z < 3, 'Pursuit continues while the player falls from a broken tile');
   } finally { game.cleanup(); }
 });
 
-test('memory waits for all sixteen ambush zombies and a new approach after the last kill', async () => {
+test('an early jump onto the Dean memory tile makes him jump away and breaks the player landing', async () => {
+  const game = createGame(0, 1234, false, SPIKE_CORRIDOR_PUZZLE);
+  try {
+    await attachAmbush(game);
+    const { level, player, input } = game;
+    const first = level.tiles[level.pattern[0][0]][level.pattern[0][1]];
+    const actions = [];
+    level.dean._playAction = name => actions.push(name);
+    player.group.position.set(level.tilePosition(...level.pattern[0]).x, 0, level.startSurface.minZ + 0.65);
+    player.platformSupport = level.startSurface;
+    input.keys.KeyW = true; input.presses.add('Space');
+    game.step();
+    assert.equal(player.grounded, false, 'The attempt uses a real jump from the safe landing');
+    game.until(() => level.phase === 'failed', 1 / 60, 120);
+    assert.equal(first.falling, true);
+    assert.equal(first.mesh.visible, false);
+    assert.equal(first.fragments.length, 9);
+    assert.equal(level.getPlatforming().surfaces.includes(first.surface), false);
+    assert.ok(actions.includes('Jump'), 'The Dean leaves the tile with his jump animation');
+    assert.ok(level.earlyMemoryHop);
+    game.step(0.1);
+    assert.ok(level.bossMarker.position.y > 0, 'The Dean visibly jumps instead of teleporting');
+    game.until(() => !level.earlyMemoryHop);
+    assert.ok(level.bossMarker.position.distanceTo(level._deanStepPosition(1)) < 1e-8);
+    assert.equal(level.puzzleIndex, SPIKE_CORRIDOR_PUZZLE);
+    assert.match(level.failureReason, /zombie waves/);
+    game.until(() => !player.alive, 1 / 60, 120);
+    assert.equal(player.group.position.y, level.spikeTipY);
+    assert.equal(player.health, 0);
+    assert.equal(level.getRestartState().puzzleIndex, SPIKE_CORRIDOR_PUZZLE);
+  } finally { game.cleanup(); }
+});
+
+test('an early jump onto an empty memory tile breaks it immediately without moving the Dean', async () => {
+  const game = createGame(0, 1234, false, SPIKE_CORRIDOR_PUZZLE);
+  try {
+    await attachAmbush(game);
+    const { level, player, input } = game;
+    const tile = level.tiles[1 - level.pattern[0][0]][level.pattern[0][1]];
+    const deanPosition = level.bossMarker.position.clone();
+    player.group.position.set(level.tilePosition(tile.i, tile.j).x, 0, level.startSurface.minZ + 0.65);
+    player.platformSupport = level.startSurface;
+    input.keys.KeyW = true; input.presses.add('Space');
+    game.step();
+    game.until(() => level.phase === 'failed', 1 / 60, 120);
+    assert.equal(tile.falling, true, 'The tile breaks on the first landing');
+    assert.equal(tile.timer, null, 'There is no countdown or safe standing period');
+    assert.equal(tile.mesh.visible, false);
+    assert.equal(level.earlyMemoryHop, undefined);
+    assert.ok(level.bossMarker.position.distanceTo(deanPosition) < 1e-8);
+    game.until(() => !player.alive, 1 / 60, 120);
+    assert.equal(player.health, 0);
+    assert.equal(level.getRestartState().puzzleIndex, SPIKE_CORRIDOR_PUZZLE);
+  } finally { game.cleanup(); }
+});
+
+test('memory waits for all twelve ambush zombies and a new approach after the last kill', async () => {
   const game = createGame(0, 1234, false, SPIKE_CORRIDOR_PUZZLE);
   const combat = new WeaponCombat(game.scene);
   try {
@@ -162,15 +233,15 @@ test('memory waits for all sixteen ambush zombies and a new approach after the l
     game.level.update(0, game.player);
     assert.equal(game.level.phase, 'chase');
     assert.equal(game.level.puzzleIndex, SPIKE_CORRIDOR_PUZZLE);
-    for (const record of ambush.records.slice(0, 4)) combat.damageZombie(record.zombie, 30, game.player);
+    for (const record of ambush.records.slice(0, 3)) combat.damageZombie(record.zombie, 30, game.player);
     game.level.update(0, game.player);
     assert.equal(game.level.phase, 'chase', 'Future waves count toward the memory lock');
-    assert.equal(ambush.remaining, 12);
-    for (const record of ambush.records.slice(4)) combat.damageZombie(record.zombie, 30, game.player);
+    assert.equal(ambush.remaining, 9);
+    for (const record of ambush.records.slice(3)) combat.damageZombie(record.zombie, 30, game.player);
     game.level.update(0, game.player);
     assert.equal(game.level.phase, 'chase', 'The last kill does not start memory while the player is already in its trigger');
-    assert.equal(combat.kills, 16);
-    assert.equal(combat.pickups.length, 8, 'The normal combat ammo rewards support the finite wave');
+    assert.equal(combat.kills, 12);
+    assert.equal(combat.pickups.length, 6, 'The normal combat ammo rewards support the finite wave');
     assert.equal(game.level.getRestartState().ambushCleared, true, 'A cleared ambush stays cleared if this checkpoint is retried');
     game.player.group.position.z = layout.memoryTriggerZ + 0.5;
     game.level.update(0, game.player);

@@ -197,71 +197,121 @@ html, body {
 }
 
 #weapon-wheel {
+  --inventory-accent: #e9bd75;
+  --wheel-size: min(580px, calc(100vw - 32px), calc(100dvh - 170px));
   position: fixed;
   inset: 0;
   z-index: 85;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 22px;
   pointer-events: none;
-  background: rgba(4, 8, 12, 0.63);
-  backdrop-filter: blur(5px);
-  color: #f8edd7;
+  background: radial-gradient(ellipse at center, rgba(15, 21, 26, 0.8), rgba(2, 5, 8, 0.94));
+  backdrop-filter: blur(9px);
+  color: #f4f0e6;
   font-family: system-ui, sans-serif;
 }
 
 #weapon-wheel.hidden { display: none; }
 
+.weapon-inventory-header { text-align: center; }
+.weapon-inventory-header span { color: var(--inventory-accent); font-size: 10px; letter-spacing: 4px; }
+.weapon-inventory-header h2 { margin-top: 7px; font-size: clamp(20px, 3vw, 29px); font-weight: 600; letter-spacing: 1px; }
+
 .weapon-wheel-ring {
   position: relative;
-  width: min(480px, 94vw);
-  height: min(480px, 94vw);
-  border: 2px solid rgba(241, 201, 120, 0.6);
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  flex-shrink: 0;
+  border: 1px solid rgba(233, 189, 117, 0.25);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(26, 31, 35, 0.88) 0 27%, rgba(14, 18, 22, 0.8) 28% 66%, rgba(66, 49, 27, 0.86) 100%);
-  box-shadow: 0 0 0 10px rgba(5, 8, 12, 0.55), 0 24px 90px rgba(0, 0, 0, 0.7);
+  background: radial-gradient(circle, #141b21 0 23%, transparent 24% 29%, rgba(233, 189, 117, 0.09) 29.2% 29.5%, transparent 30%),
+    repeating-conic-gradient(from -1deg, rgba(233, 189, 117, 0.08) 0deg 1deg, transparent 1deg 15deg);
+  box-shadow: 0 0 0 8px rgba(233, 189, 117, 0.025), 0 24px 90px rgba(0, 0, 0, 0.45);
+}
+
+.weapon-wheel-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from calc(var(--selection-angle, 0deg) - 25deg), rgba(233, 189, 117, 0.32) 0deg, rgba(233, 189, 117, 0.32) 50deg, transparent 50deg);
+  mask: radial-gradient(circle, transparent 68%, #000 68.5%);
 }
 
 .weapon-wheel-item {
   position: absolute;
-  width: clamp(90px, 19vw, 118px);
-  min-height: 64px;
+  width: 27%;
+  height: 23%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   transform: translate(-50%, -50%);
-  padding: 8px;
-  border: 1px solid rgba(232, 207, 157, 0.42);
-  border-radius: 10px;
-  background: rgba(8, 12, 15, 0.78);
+  padding: 10px 8px 7px;
+  border: 1px solid #394047;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #263039, #10171c 75%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 12px 24px rgba(0, 0, 0, 0.35);
   text-align: center;
-  transition: background 0.14s, border-color 0.14s, transform 0.14s;
+  transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
 }
 
 .weapon-wheel-item.selected {
-  transform: translate(-50%, -50%) scale(1.13);
-  border-color: #ffe0a1;
-  background: rgba(151, 91, 31, 0.9);
-  box-shadow: 0 0 26px rgba(255, 183, 77, 0.52);
+  z-index: 1;
+  transform: translate(-50%, -50%) scale(1.06);
+  border-color: var(--inventory-accent);
+  background: linear-gradient(145deg, #443c2e, #1b2023 80%);
+  box-shadow: inset 0 1px rgba(255, 224, 170, 0.12), 0 0 25px rgba(233, 189, 117, 0.14), 0 14px 28px rgba(0, 0, 0, 0.5);
 }
 
-.weapon-wheel-item .weapon-glyph { display: block; font-size: 25px; line-height: 1.1; }
-.weapon-wheel-item strong { display: block; font-size: 12px; }
-.weapon-wheel-item small { color: #e7c996; font-size: 10px; }
+.weapon-card-image { width: 96%; height: 55%; object-fit: contain; filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.6)); }
+.weapon-wheel-item strong { font-size: clamp(10px, 1.5vw, 13px); font-weight: 600; white-space: nowrap; }
+.weapon-wheel-item small { position: absolute; top: 10px; right: 10px; color: #a3adb4; font-size: 8px; letter-spacing: 1px; }
+.weapon-wheel-item kbd { position: absolute; top: 8px; left: 8px; }
+#weapon-wheel kbd { padding: 2px 5px; border: 1px solid #59616a; border-radius: 3px; color: #d5dce1; font: 10px system-ui, sans-serif; }
+.weapon-equipped-label { margin-top: 4px; color: var(--inventory-accent); font-size: 7px; letter-spacing: 1.4px; visibility: hidden; }
+.weapon-wheel-item.equipped .weapon-equipped-label { visibility: visible; }
 
 .weapon-wheel-center {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 31%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
   text-align: center;
   pointer-events: none;
 }
 
-.weapon-wheel-center span { color: #e6c27d; font-size: 10px; letter-spacing: 2px; }
-.weapon-wheel-center strong { font-size: 22px; }
-.weapon-wheel-center small { max-width: 125px; font-size: 10px; line-height: 1.4; color: #baa98e; }
+.weapon-wheel-center > span { color: var(--inventory-accent); font-size: 9px; letter-spacing: 2px; }
+.weapon-wheel-preview { width: 100%; height: calc(var(--wheel-size) * 0.12); object-fit: contain; filter: drop-shadow(0 8px 8px #000); }
+.weapon-wheel-center strong { font-size: clamp(14px, 2.5vw, 22px); font-weight: 600; }
+.weapon-wheel-center small { font-size: 11px; line-height: 1.6; color: #aeb9c1; }
+.weapon-wheel-center .weapon-wheel-status { margin-top: 2px; padding: 5px 8px; border: 1px solid rgba(233, 189, 117, 0.3); border-radius: 4px; font-size: 8px; letter-spacing: 1px; }
+.weapon-inventory-footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 22px; max-width: 420px; font-size: 11px; color: #aeb9c1; }
+.weapon-inventory-footer small { flex-basis: 100%; text-align: center; color: #75818b; font-size: 10px; }
 
-@media (max-width: 520px) {
-  .weapon-wheel-item { min-height: 54px; }
-  .weapon-wheel-center strong { font-size: 17px; }
+@media (max-width: 520px), (max-height: 650px) {
+  #weapon-wheel { gap: 14px; }
+  .weapon-wheel-item { padding: 14px 4px 4px; border-radius: 8px; }
+  .weapon-wheel-item small { display: none; }
+  .weapon-wheel-item kbd { top: 4px; left: 4px; font-size: 8px !important; }
+  .weapon-wheel-center { gap: 4px; }
+  .weapon-wheel-center > span { font-size: 7px; }
+  .weapon-wheel-center small { font-size: 9px; }
+  .weapon-wheel-center .weapon-wheel-status { font-size: 6px; padding: 3px; }
+  .weapon-equipped-label { font-size: 6px; margin-top: 2px; }
+  .weapon-inventory-footer { gap: 8px 14px; font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weapon-wheel-item { transition: none; }
 }
 
 #boss-cinematic {

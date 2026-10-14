@@ -6,7 +6,7 @@ import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
-import { WEAPONS, weaponById } from '../player/WeaponInventory.js';
+import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
 /**
  * Game - Top-level orchestrator.
@@ -83,6 +83,10 @@ export class Game {
     this.defaultControlsHint = this.controlsHint.textContent;
     this.weaponWheelEl = document.getElementById('weapon-wheel');
     this.weaponWheelName = document.getElementById('weapon-wheel-name');
+    this.weaponWheelPreview = document.getElementById('weapon-wheel-preview');
+    this.weaponWheelType = document.getElementById('weapon-wheel-type');
+    this.weaponWheelDetails = document.getElementById('weapon-wheel-details');
+    this.weaponWheelStatus = document.getElementById('weapon-wheel-status');
     this.weaponWheelRing = document.getElementById('weapon-wheel-ring');
     this.weaponWheelOpen = false;
     this.weaponWheelIndex = 0;
@@ -90,14 +94,17 @@ export class Game {
       const angle = -Math.PI / 2 + index * Math.PI * 2 / WEAPONS.length;
       const item = document.createElement('div');
       item.className = 'weapon-wheel-item';
-      item.style.left = `${50 + Math.cos(angle) * 35}%`;
-      item.style.top = `${50 + Math.sin(angle) * 35}%`;
-      const glyph = document.createElement('span');
-      glyph.className = 'weapon-glyph';
-      glyph.textContent = ['▰', '⌁', '✕', '⚔', '†'][index];
+      item.style.left = `${50 + Math.cos(angle) * 38}%`;
+      item.style.top = `${50 + Math.sin(angle) * 38}%`;
+      item.setAttribute('role', 'option');
+      item.id = `inventory-${weapon.id}`;
+      const image = document.createElement('img');
+      image.className = 'weapon-card-image'; image.src = weaponImage(weapon.id); image.alt = weapon.name;
       const name = document.createElement('strong'); name.textContent = weapon.name;
-      const slot = document.createElement('small'); slot.textContent = weapon.slot;
-      item.append(glyph, name, slot);
+      const slot = document.createElement('kbd'); slot.textContent = weapon.slot;
+      const category = document.createElement('small'); category.textContent = weapon.type === 'gun' ? 'FIREARM' : 'MELEE';
+      const equipped = document.createElement('span'); equipped.className = 'weapon-equipped-label'; equipped.textContent = 'EQUIPPED';
+      item.append(slot, category, image, name, equipped);
       this.weaponWheelRing.appendChild(item);
       return item;
     });
@@ -200,9 +207,15 @@ export class Game {
     const directSophomore = launch.get('level') === '2';
     const level = await this.levelManager.loadLevel(directFinal ? 2 : directSophomore ? 1 : 0, (p) => {
       progressBar.style.width = `${p * 100}%`;
-    }, directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
+    }, directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
+      directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && launch.get('section') === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } : null);
     this.currentLevel = level;
+
+    level.audioContext = this.heartbeat.context;
+    level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
+    await level.prepareAudio?.();
+    await level.prepareCinematics?.(this.renderer, this.camera);
 
     // Create player
     if (this.player) this.player.dispose();
@@ -242,6 +255,10 @@ export class Game {
     this.currentLevel = level;
 
     if (this.player) {
+      level.audioContext = this.heartbeat.context;
+      level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
+      await level.prepareAudio?.();
+      await level.prepareCinematics?.(this.renderer, this.camera);
       this.player.reset(level.spawnPoint);
       level.preparePlayer?.(this.player);
     }
@@ -280,6 +297,10 @@ export class Game {
 
     this.currentLevel = level;
     this.player.reset(level.spawnPoint);
+    level.audioContext = this.heartbeat.context;
+    level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
+    await level.prepareAudio?.();
+    await level.prepareCinematics?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
 
     this.state = this.STATE.PLAYING;
@@ -294,6 +315,7 @@ export class Game {
   pause() {
     if (this.state !== this.STATE.PLAYING) return;
     this.state = this.STATE.PAUSED;
+    this.currentLevel?.pauseEffects?.();
     this._showOverlay('pause-overlay');
     this.hudEl.classList.add('hidden');
     if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
@@ -353,6 +375,8 @@ export class Game {
 
   _openWeaponWheel() {
     if (!this.player || this.player.scriptedMovement || this.currentLevel?.allowsShooting === false) return;
+    this.combat.cancelMelee();
+    this.input.consumeMousePresses?.(0);
     this.weaponWheelOpen = true;
     this.weaponWheelEl.classList.remove('hidden');
     this.weaponWheelEl.setAttribute('aria-hidden', 'false');
@@ -373,14 +397,28 @@ export class Game {
 
   _equipWeapon(id) {
     if (!this.player?.equipWeapon(id)) return;
-    this.combat.pendingBash = null;
-    this.combat.pendingMelee = null;
+    this.combat.cancelMelee();
+    this.input.consumeMousePresses?.(0);
     this._closeWeaponWheel();
   }
 
   _showWheelSelection() {
-    this.weaponWheelItems.forEach((item, index) => item.classList.toggle('selected', index === this.weaponWheelIndex));
-    this.weaponWheelName.textContent = WEAPONS[this.weaponWheelIndex].name;
+    const weapon = WEAPONS[this.weaponWheelIndex];
+    this.weaponWheelItems.forEach((item, index) => {
+      item.classList.toggle('selected', index === this.weaponWheelIndex);
+      item.classList.toggle('equipped', WEAPONS[index].id === this.player.weapon);
+      item.setAttribute('aria-selected', String(index === this.weaponWheelIndex));
+    });
+    this.weaponWheelRing.setAttribute('aria-activedescendant', `inventory-${weapon.id}`);
+    this.weaponWheelRing.style.setProperty('--selection-angle', `${this.weaponWheelIndex * 360 / WEAPONS.length}deg`);
+    this.weaponWheelName.textContent = weapon.name;
+    this.weaponWheelPreview.src = weaponImage(weapon.id);
+    this.weaponWheelPreview.alt = weapon.name;
+    this.weaponWheelType.textContent = weapon.type === 'gun' ? 'FIREARM' : 'MELEE';
+    this.weaponWheelDetails.textContent = weapon.type === 'gun'
+      ? `${weapon.damage} damage / hit · ${this.currentLevel?.hasUnlimitedAmmo?.(weapon.id) ? '∞' : this.player.ammo} bullets${weapon.ammo > 1 ? ' · 2 / shot' : ''}`
+      : `${weapon.damage} damage / hit · ${weapon.reach}m reach`;
+    this.weaponWheelStatus.textContent = weapon.id === this.player.weapon ? 'EQUIPPED' : 'CLICK TO EQUIP';
   }
 
   _updateWeaponWheel() {
@@ -395,8 +433,10 @@ export class Game {
         const dot = this.wheelX * Math.cos(angle) + this.wheelY * Math.sin(angle);
         if (dot > best) { nearest = index; best = dot; }
       }
-      this.weaponWheelIndex = nearest;
-      this._showWheelSelection();
+      if (nearest !== this.weaponWheelIndex) {
+        this.weaponWheelIndex = nearest;
+        this._showWheelSelection();
+      }
     }
     const clicked = this.input.isMouseButtonDown(0);
     if (clicked && !this.wheelClickHeld) this._equipWeapon(WEAPONS[this.weaponWheelIndex].id);
@@ -438,11 +478,13 @@ export class Game {
     this.controlsHint.textContent = `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
     this.ammoHud.classList.toggle('hidden', this.currentLevel.allowsShooting === false);
     const equipped = weaponById(this.player.weapon) || WEAPONS[0];
+    const unlimited = this.currentLevel.hasUnlimitedAmmo?.(equipped.id) === true;
     this.ammoLabel.textContent = equipped.type === 'gun' ? `${equipped.name.toUpperCase()} · BULLETS` : equipped.name.toUpperCase();
-    this.ammoCount.textContent = equipped.type === 'gun' ? String(this.player.ammo) : '∞';
-    this.ammoHud.dataset.empty = String(equipped.type === 'gun' && this.player.ammo === 0);
-    this.ammoHint.textContent = equipped.type === 'melee' ? `Click: ${equipped.id === 'sword' ? 'Slash' : 'Stab'}`
-      : this.combat.noticeTime > 0 ? this.combat.notice
+    this.ammoCount.textContent = equipped.type === 'gun' && !unlimited ? String(this.player.ammo) : '∞';
+    this.ammoHud.dataset.empty = String(equipped.type === 'gun' && !unlimited && this.player.ammo === 0);
+    this.ammoHint.textContent = equipped.type === 'melee' ? `Click: ${equipped.id === 'sword' ? 'Slash → Stab → 360° slash · Chain within 0.75s' : 'Stab'}`
+      : unlimited ? 'UNLIMITED AMMO · F: Gun bash'
+        : this.combat.noticeTime > 0 ? this.combat.notice
         : this.player.ammo === 0 ? 'EMPTY · Click or F to bash'
           : equipped.id === 'dual' ? 'Click: both · Right click: one · F: Bash' : 'F: Gun bash · Collect green ammo boxes';
     const challenge = this.currentLevel.getChallengeStatus?.();
@@ -612,7 +654,8 @@ export class Game {
   _updateCinematicPresentation() {
     const playing = this.state === this.STATE.PLAYING && this.input.pointerLocked;
     const bossIntro = !!this.currentLevel?.bossCutscene;
-    const cinematic = playing && (bossIntro || !!this.currentLevel?.portalCinematicActive);
+    const cinematic = playing && (bossIntro || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
+      || !!this.currentLevel?.transformationCinematicActive);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
     this.hudEl?.classList.toggle('cinematic', cinematic);

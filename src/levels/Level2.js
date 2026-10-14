@@ -422,6 +422,39 @@ export class Level2 {
     this._beginDemonstration();
   }
 
+  _onEarlyMemoryLanding(tile, player) {
+    const first = this.tiles[this.pattern[0][0]][this.pattern[0][1]];
+    const position = this.bossMarker.position;
+    const surface = first.surface;
+    if (tile === first && position.y < 0.2 && position.x >= surface.minX && position.x <= surface.maxX &&
+        position.z >= surface.minZ && position.z <= surface.maxZ) {
+      this.earlyMemoryHop = { from: position.clone(), to: this._deanStepPosition(1), time: 0,
+        duration: this.difficulty.jumpDuration };
+      const jump = this.dean.actions.Jump;
+      if (jump) {
+        jump.setLoop(THREE.LoopOnce, 1); jump.clampWhenFinished = true;
+        jump.setEffectiveTimeScale(jump.getClip().duration / this.earlyMemoryHop.duration);
+      }
+      this.dean._playAction('Jump', 0.08, true);
+    }
+    this._fail(player, this.ambush && !this.ambush.cleared
+      ? 'Clear all zombie waves before stepping onto the memory tiles.'
+      : 'Approach the memory entrance before jumping onto its tiles.', tile);
+  }
+
+  _updateEarlyMemoryHop(dt) {
+    const hop = this.earlyMemoryHop;
+    hop.time += dt;
+    const t = Math.min(1, hop.time / hop.duration);
+    this.bossMarker.position.lerpVectors(hop.from, hop.to, t);
+    this.bossMarker.position.y += Math.sin(t * Math.PI) * 1.4;
+    this._turnDean(hop.to, dt);
+    if (t < 1) return;
+    this.bossMarker.position.copy(hop.to);
+    this.earlyMemoryHop = null;
+    this.dean._playAction('Idle', 0.08);
+  }
+
   _updateExit(dt, player) {
     if (this.phase === 'dean_exit') {
       if (!this.deanPassage) {
@@ -597,6 +630,10 @@ export class Level2 {
 
   _updateChase(dt, player) {
     if (!player.alive) return;
+    if (this.puzzleIndex === SPIKE_CORRIDOR_PUZZLE && player.grounded && player.platformSupport?.tile) {
+      this._onEarlyMemoryLanding(player.platformSupport.tile, player);
+      return;
+    }
     const position = player.group.position;
     if (this.puzzleIndex === 0 && position.z < layout.bladeCompleteZ && player.grounded) {
       this.puzzleIndex = 1;
@@ -627,6 +664,7 @@ export class Level2 {
     this.exitPortal?.update(dt, this.phase === 'entering' || this.phase === 'dean_exit');
     this.entrancePortal?.update(dt, !!this.arrivalPlayer);
     if (this.blades) updateSophomoreGauntlet(this, dt, player);
+    if (this.earlyMemoryHop) this._updateEarlyMemoryHop(dt);
     if (this.arrivalPlayer) {
       this._updateArrival(dt, player);
     } else if (this.phase === 'dean_challenge') {
@@ -726,7 +764,7 @@ export class Level2 {
     }
     if ((this.phase === 'chase' || this.phase === 'dean_challenge') && this.puzzleIndex === SPIKE_CORRIDOR_PUZZLE && this.ambush?.started && !this.ambush.cleared) {
       return { title: `3 / 4 · Spike ambush · Wave ${this.ambush.currentWave + 1} / ${AMBUSH_WAVES}`,
-        detail: 'Zombies leap onto both corridor edges and cross the spikes. Clear every wave before approaching the memory entrance.',
+        detail: 'Clear every wave before approaching the memory entrance. Jumping onto the memory tiles early breaks them.',
         progress: this.spikeProgress, timer: `${this.ambush.remaining} zombies remaining`, tone: 'danger' };
     }
     if ((this.phase === 'chase' || this.phase === 'dean_challenge') && this.puzzleIndex === SPIKE_CORRIDOR_PUZZLE && this.ambush?.cleared) {
