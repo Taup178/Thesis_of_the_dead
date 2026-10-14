@@ -50,9 +50,9 @@ export class LevelManager {
     return level;
   }
 
-  /** Restart the current level. */
-  async restartLevel(onProgress) {
-    const restartState = this.currentLevel?.getRestartState?.();
+  /** Restart the current level, optionally retaining its checkpoint snapshot. */
+  async restartLevel(onProgress, { preserveCheckpoint = true } = {}) {
+    const restartState = preserveCheckpoint ? this.currentLevel?.getRestartState?.() ?? null : null;
     return this.loadLevel(this.currentLevelIndex, onProgress, restartState);
   }
 

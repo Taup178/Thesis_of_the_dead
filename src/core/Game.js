@@ -147,10 +147,19 @@ export class Game {
     // Options
     document.getElementById('sensitivity-slider').addEventListener('input', () => this._applyMouseSensitivity());
 
-    // Pause (click canvas to resume)
+    // Pause
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
+    document.getElementById('btn-pause-resume').addEventListener('click', event => {
+      event.stopPropagation(); this.resume();
+    });
+    document.getElementById('btn-pause-restart').addEventListener('click', event => {
+      event.stopPropagation(); this.restartLevel({ preserveCheckpoint: false });
+    });
     document.getElementById('btn-pause-options').addEventListener('click', event => {
       event.stopPropagation(); this._showOverlay('options-overlay');
+    });
+    document.getElementById('btn-pause-menu').addEventListener('click', event => {
+      event.stopPropagation(); this.returnToMenu();
     });
 
     // Game over
@@ -239,7 +248,7 @@ export class Game {
     this._captureMouse();
   }
 
-  async restartLevel() {
+  async restartLevel({ preserveCheckpoint = true } = {}) {
     this.combat.reset();
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
@@ -251,7 +260,7 @@ export class Game {
 
     const level = await this.levelManager.restartLevel((p) => {
       progressBar.style.width = `${p * 100}%`;
-    });
+    }, { preserveCheckpoint });
     this.currentLevel = level;
 
     if (this.player) {
@@ -350,7 +359,11 @@ export class Game {
     this.state = this.STATE.GAMEOVER;
     this._showOverlay('gameover-overlay');
     document.getElementById('gameover-text').textContent = this.currentLevel?.failureReason || 'Your stamina ran out. The zombies got your degree.';
-    document.getElementById('btn-retry').textContent = this.currentLevel?.getRestartState ? 'Retry Checkpoint' : 'Try Again';
+    const restartState = this.currentLevel?.getRestartState?.();
+    const hasCheckpoint = restartState?.arenaCleared === true ||
+      (Number.isInteger(restartState?.puzzleIndex) &&
+        (restartState.puzzleIndex > 0 || (Number.isInteger(restartState.stageIndex) && restartState.stageIndex > 0)));
+    document.getElementById('btn-retry').textContent = hasCheckpoint ? 'Retry Checkpoint' : 'Try Again';
     this.hudEl.classList.add('hidden');
     document.exitPointerLock();
   }
