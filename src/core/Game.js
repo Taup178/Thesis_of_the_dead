@@ -6,7 +6,11 @@ import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { applyQuality, loadQuality, saveQuality } from './Quality.js';
+<<<<<<< HEAD
 import { compileHiddenObjects } from './ShaderWarmup.js';
+=======
+import { PAD, stepFocusIndex } from './Gamepad.js';
+>>>>>>> e550e0eb4334bb32395662b925673d21d248c1dd
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
@@ -42,6 +46,10 @@ export class Game {
 
     // ---- Input ----
     this.input = new InputManager();
+    this.gamepadNoticeTime = 0;
+    this.input.onGamepadConnected = () => { this.gamepadNoticeTime = 6; };
+    this._ignoreLockErrorsUntil = 0;
+    this._menuNav = { overlayId: null, index: 0, stickDir: 0, repeat: 0, highlighted: null };
 
     // ---- Player (created on game start) ----
     this.player = null;
@@ -134,6 +142,9 @@ export class Game {
       if (!this.input.pointerLocked) this.pause();
     });
     document.addEventListener('pointerlockerror', () => {
+      // A failed automatic re-capture after loading must not bounce to the pause menu;
+      // the HUD's "click to capture" prompt covers that case instead.
+      if (performance.now() < this._ignoreLockErrorsUntil) return;
       if (!this.input.pointerLockPending && document.pointerLockElement !== this.renderer.domElement) this.pause();
     });
     this.renderer.domElement.addEventListener('click', () => {
@@ -153,6 +164,9 @@ export class Game {
     const qualitySelect = document.getElementById('quality-select');
     qualitySelect.value = this.quality;
     qualitySelect.addEventListener('change', () => this._setQuality(qualitySelect.value));
+    const gamepadToggle = document.getElementById('gamepad-toggle');
+    gamepadToggle.checked = this.input.gamepadEnabled;
+    gamepadToggle.addEventListener('change', () => this.input.setGamepadEnabled(gamepadToggle.checked));
 
     // Pause
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
@@ -190,12 +204,21 @@ export class Game {
     this.container.classList.toggle('playing', !id && this.state === this.STATE.PLAYING);
   }
 
-  async _captureMouse() {
+  async _captureMouse({ pauseOnFailure = true } = {}) {
     this.heartbeat.unlock();
     this.input.flushMouseDelta();
     if (this.input.pointerLocked) return;
+    // Automatic captures (after loading) fail without a user gesture; their
+    // pointerlockerror must not trigger the pause-on-lock-error path.
+    if (!pauseOnFailure) this._ignoreLockErrorsUntil = performance.now() + 2000;
     const captured = await this.input.requestPointerLock(this.renderer.domElement);
-    if (!captured) this.pause();
+    if (!captured && pauseOnFailure && !this.input.gamepadInUse) this.pause();
+  }
+
+  /** Free the OS cursor while the loading overlay is up; look input must not accumulate either. */
+  _releaseMouse() {
+    if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
+    this.input.flushMouseDelta();
   }
 
   _applyMouseSensitivity() {
@@ -219,8 +242,8 @@ export class Game {
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
 
-    // Capture during the Start click, before loading can expire the browser's user gesture.
-    this._captureMouse();
+    // Keep the cursor free during loading; it is re-captured when the level starts.
+    this._releaseMouse();
 
     const progressBar = document.getElementById('progress-bar');
     progressBar.style.width = '0%';
@@ -262,8 +285,9 @@ export class Game {
     this.levelTitleDisplay.classList.add('visible');
     setTimeout(() => this.levelTitleDisplay.classList.remove('visible'), 3000);
 
-    // Request pointer lock
-    this._captureMouse();
+    // Request pointer lock. After a long load the user gesture may have expired;
+    // on failure the HUD asks for a click instead of bouncing to the pause menu.
+    this._captureMouse({ pauseOnFailure: false });
   }
 
   async restartLevel({ preserveCheckpoint = true } = {}) {
@@ -271,7 +295,7 @@ export class Game {
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
-    this._captureMouse();
+    this._releaseMouse();
 
     const progressBar = document.getElementById('progress-bar');
     progressBar.style.width = '0%';
@@ -299,7 +323,7 @@ export class Game {
     this.levelTitleDisplay.textContent = level.title;
     this.levelTitleDisplay.classList.add('visible');
     setTimeout(() => this.levelTitleDisplay.classList.remove('visible'), 3000);
-    this._captureMouse();
+    this._captureMouse({ pauseOnFailure: false });
   }
 
   async loadNextLevel() {
@@ -307,7 +331,7 @@ export class Game {
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
-    this._captureMouse();
+    this._releaseMouse();
 
     const progressBar = document.getElementById('progress-bar');
     progressBar.style.width = '0%';
@@ -342,7 +366,7 @@ export class Game {
     this.levelTitleDisplay.textContent = level.title;
     this.levelTitleDisplay.classList.add('visible');
     setTimeout(() => this.levelTitleDisplay.classList.remove('visible'), 3000);
-    this._captureMouse();
+    this._captureMouse({ pauseOnFailure: false });
   }
 
   pause() {
@@ -439,6 +463,95 @@ export class Game {
     this._closeWeaponWheel();
   }
 
+  _cycleWeapon(direction) {
+    if (!this.player) return;
+    const current = Math.max(0, WEAPONS.findIndex(weapon => weapon.id === this.player.weapon));
+    const next = WEAPONS[(current + direction + WEAPONS.length) % WEAPONS.length];
+    this._equipWeapon(next.id);
+  }
+
+  // =====================================================================
+  // Gamepad menu navigation (any overlay: stick/d-pad move, A confirms)
+  // =====================================================================
+  _activeOverlayId() {
+    for (const id of ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay',
+      'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay']) {
+      if (!document.getElementById(id).classList.contains('hidden')) return id;
+    }
+    return null;
+  }
+
+  _updateMenuFocus(dt) {
+    const nav = this._menuNav;
+    const overlayId = this._activeOverlayId();
+    if (!overlayId || !this.input.gamepadInUse) {
+      this._clearMenuFocus();
+      return;
+    }
+    // Swallow gameplay-only presses so they can't leak into the next playing frame.
+    for (const button of [PAD.WHEEL, PAD.BASH, PAD.CAMERA, PAD.FIRE, PAD.ALT_FIRE, PAD.PREV_WEAPON, PAD.NEXT_WEAPON]) {
+      this.input.consumeGamepadPress(button);
+    }
+    if (overlayId === 'loading-overlay') return;
+
+    const buttons = [...document.getElementById(overlayId).querySelectorAll('.menu-btn')]
+      .filter(button => button.offsetParent !== null);
+    if (buttons.length === 0) {
+      this._clearMenuFocus();
+      return;
+    }
+
+    if (nav.overlayId !== overlayId) {
+      nav.overlayId = overlayId;
+      nav.index = 0;
+      nav.stickDir = 0;
+      nav.repeat = 0;
+      this._highlightMenuButton(buttons, 0);
+    }
+
+    let dir = 0;
+    if (this.input.consumeGamepadPress(PAD.UP)) dir = -1;
+    if (this.input.consumeGamepadPress(PAD.DOWN)) dir = 1;
+    const stickDir = this.input.moveAxisY < -0.5 ? -1 : this.input.moveAxisY > 0.5 ? 1 : 0;
+    if (stickDir !== 0) {
+      if (stickDir !== nav.stickDir) {
+        dir = stickDir;
+        nav.repeat = 0.4;
+      } else {
+        nav.repeat -= dt;
+        if (nav.repeat <= 0) {
+          dir = stickDir;
+          nav.repeat = 0.16;
+        }
+      }
+    }
+    nav.stickDir = stickDir;
+    if (dir !== 0) {
+      nav.index = stepFocusIndex(nav.index, dir, buttons.length);
+      this._highlightMenuButton(buttons, nav.index);
+    }
+    if (this.input.consumeGamepadPress(PAD.JUMP)) {
+      this.input.releasePadButton(PAD.JUMP);
+      buttons[nav.index]?.click();
+    }
+  }
+
+  _highlightMenuButton(buttons, index) {
+    this._menuNav.highlighted?.classList.remove('gamepad-focus');
+    const button = buttons[index];
+    this._menuNav.highlighted = button || null;
+    if (button) {
+      button.classList.add('gamepad-focus');
+      button.focus({ preventScroll: true });
+    }
+  }
+
+  _clearMenuFocus() {
+    this._menuNav.overlayId = null;
+    this._menuNav.highlighted?.classList.remove('gamepad-focus');
+    this._menuNav.highlighted = null;
+  }
+
   _showWheelSelection() {
     const weapon = WEAPONS[this.weaponWheelIndex];
     this.weaponWheelItems.forEach((item, index) => {
@@ -498,9 +611,13 @@ export class Game {
   // =====================================================================
   _updateHUD() {
     if (!this.player) return;
+    const captureMessage = this.state === this.STATE.PLAYING && !this.input.pointerLocked && !this.input.gamepadInUse
+      ? 'Click the screen to capture the mouse' : '';
+    const gamepadMessage = this.gamepadNoticeTime > 0 ? 'Gamepad connected' : '';
     const boundaryMessage = this.player.boundaryNoticeTime > 0 ? 'World boundary reached. You have been returned inside, facing back into the world.' : '';
-    this.worldMessage.classList.toggle('hidden', !boundaryMessage);
-    if (this.worldMessage.textContent !== boundaryMessage) this.worldMessage.textContent = boundaryMessage;
+    const message = boundaryMessage || captureMessage || gamepadMessage;
+    this.worldMessage.classList.toggle('hidden', !message);
+    if (this.worldMessage.textContent !== message) this.worldMessage.textContent = message;
 
     // Health bar
     const healthPct = (this.player.health / this.player.maxHealth) * 100;
@@ -512,7 +629,9 @@ export class Game {
 
     // Score
     this.scoreDisplay.textContent = `Credits: ${this.player.score}`;
-    this.controlsHint.textContent = `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
+    this.controlsHint.textContent = this.input.gamepadInUse
+      ? 'Left stick: Move | Right stick: Look | RT: Shoot | A: Jump | X: Weapons | B: Roll | LB: Sprint | RB: Bash | Y: Camera | Start: Pause'
+      : `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
     this.ammoHud.classList.toggle('hidden', this.currentLevel.allowsShooting === false);
     const equipped = weaponById(this.player.weapon) || WEAPONS[0];
     const unlimited = this.currentLevel.hasUnlimitedAmmo?.(equipped.id) === true;
@@ -631,6 +750,14 @@ export class Game {
     const frameDt = this.clock.getDelta();
     const dt = Math.min(frameDt, 0.05); // cap gameplay physics to avoid spiral of death
     this.elapsedTime += dt;
+    this.input.updateGamepad(dt);
+    // Look deltas only get consumed during active gameplay (player look / weapon wheel).
+    // Drop them everywhere else so mouse or right-stick movement during loading, menus,
+    // or paused can't pile up and lurch the camera when gameplay resumes.
+    if (!(this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse))) {
+      this.input.flushMouseDelta();
+    }
+    this.gamepadNoticeTime = Math.max(0, this.gamepadNoticeTime - dt);
 
     // ---- Handle one-shot key presses ----
     let inventoryFrame = this.weaponWheelOpen;
@@ -644,6 +771,8 @@ export class Game {
       for (const weapon of WEAPONS) {
         if (this.input.consumeKeyPress(`Digit${weapon.slot}`)) this._equipWeapon(weapon.id);
       }
+      if (this.input.consumeGamepadPress(PAD.PREV_WEAPON)) this._cycleWeapon(-1);
+      if (this.input.consumeGamepadPress(PAD.NEXT_WEAPON)) this._cycleWeapon(1);
       if (this.weaponWheelOpen) { this._updateWeaponWheel(); inventoryFrame = true; }
     }
     if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && this.input.consumeKeyPress('KeyC')) {
@@ -651,13 +780,21 @@ export class Game {
       this.motionBlur.reset();
     }
 
+    // Gamepad Start pauses and resumes; pointer-lock loss handles the keyboard path.
+    if (this.input.consumeGamepadPress(PAD.START)) {
+      if (this.state === this.STATE.PLAYING) this.pause();
+      else if (this.state === this.STATE.PAUSED) this.resume();
+    }
+
+    this._updateMenuFocus(dt);
+
     if (this.input.isDown('KeyR') && this.state === this.STATE.PLAYING) {
       this.input.keys['KeyR'] = false;
       this.restartLevel();
     }
 
     // ---- Update logic ----
-    if (this.state === this.STATE.PLAYING && this.input.pointerLocked && this.player && this.currentLevel && !inventoryFrame) {
+    if (this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse) && this.player && this.currentLevel && !inventoryFrame) {
       this.player.update(
         dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
         this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
@@ -686,6 +823,7 @@ export class Game {
 
     // ---- Render ----
     this._updateCinematicPresentation();
+<<<<<<< HEAD
     const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
     const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
     if (freezeCinematicShadows !== this.cinematicShadowsFrozen) {
@@ -693,6 +831,9 @@ export class Game {
       if (!freezeCinematicShadows) this.renderer.shadowMap.needsUpdate = true;
       this.cinematicShadowsFrozen = freezeCinematicShadows;
     }
+=======
+    const active = this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
+>>>>>>> e550e0eb4334bb32395662b925673d21d248c1dd
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);

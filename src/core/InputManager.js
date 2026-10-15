@@ -1,7 +1,17 @@
 /**
  * InputManager - Centralised keyboard & mouse state.
  * Poll keys via .isDown('KeyW'), mouse via .mouseX/Y, .mouseButtons.
+ * Gamepads are polled each frame via updateGamepad() and folded into the
+ * same key/mouse vocabulary (see Gamepad.js for the button mapping).
  */
+import { findConnectedPad, GAMEPAD_LOOK_SPEED, KEY_TO_PAD, KEY_TO_PADS, PAD, readGamepadState } from './Gamepad.js';
+
+const GAMEPAD_STORAGE_KEY = 'thesis-of-the-dead:gamepad';
+
+function loadGamepadEnabled() {
+  try { return globalThis.localStorage?.getItem(GAMEPAD_STORAGE_KEY) !== 'off'; } catch { return true; }
+}
+
 export class InputManager {
   constructor() {
     this.keys = {};
@@ -17,6 +27,17 @@ export class InputManager {
     this._pointerLockRequest = null;
     this._pointerLockPending = false;
     this.sensitivity = 0.002;
+
+    // ---- Gamepad state ----
+    this.gamepadEnabled = loadGamepadEnabled();
+    this.gamepadInUse = false;   // enabled + a pad is connected
+    this.moveAxisX = 0;          // left stick, deadzoned
+    this.moveAxisY = 0;
+    this._padId = null;
+    this._padButtons = [];       // previous frame button states (mutated by readGamepadState)
+    this._padHeld = {};
+    this._padPresses = new Set();
+    this.onGamepadConnected = null;
 
     // Key listeners
     window.addEventListener('keydown', (e) => {
@@ -73,23 +94,84 @@ export class InputManager {
   }
 
   isDown(code) {
-    return !!this.keys[code];
+    if (this.keys[code]) return true;
+    const buttons = KEY_TO_PADS[code];
+    return buttons !== undefined && buttons.some(button => !!this._padHeld[button]);
   }
 
   /** Preserve quick taps between frames and consume each press once. */
   consumeKeyPress(code) {
-    return this.pressedKeys.delete(code);
+    if (this.pressedKeys.delete(code)) return true;
+    const button = KEY_TO_PAD[code];
+    return button !== undefined && this._padPresses.delete(button);
   }
 
   isMouseButtonDown(button = 0) {
-    return !!this.mouseButtons[button];
+    if (this.mouseButtons[button]) return true;
+    const padButton = button === 0 ? PAD.FIRE : button === 2 ? PAD.ALT_FIRE : null;
+    return padButton !== null && !!this._padHeld[padButton];
   }
 
   /** Count individual clicks, including clicks pressed and released between frames. */
   consumeMousePresses(button = 0) {
-    const count = this.mousePresses[button] || 0;
+    let count = this.mousePresses[button] || 0;
     delete this.mousePresses[button];
+    const padButton = button === 0 ? PAD.FIRE : button === 2 ? PAD.ALT_FIRE : null;
+    if (padButton !== null && this._padPresses.delete(padButton)) count++;
     return count;
+  }
+
+  /** Edge-triggered gamepad button read (Start pause, d-pad weapon cycling). */
+  consumeGamepadPress(button) {
+    return this._padPresses.delete(button);
+  }
+
+  /** Drop a pad button's held/pressed state (e.g. after it activated a menu item). */
+  releasePadButton(button) {
+    delete this._padHeld[button];
+    this._padPresses.delete(button);
+  }
+
+  setGamepadEnabled(enabled) {
+    this.gamepadEnabled = enabled;
+    try { globalThis.localStorage?.setItem(GAMEPAD_STORAGE_KEY, enabled ? 'on' : 'off'); } catch { /* storage unavailable */ }
+    if (!enabled) this._clearGamepad();
+  }
+
+  /** Poll once per frame, before player/weapon input is read. */
+  updateGamepad(dt) {
+    if (!this.gamepadEnabled || typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
+      if (this.gamepadInUse) this._clearGamepad();
+      return;
+    }
+    const pad = findConnectedPad(navigator.getGamepads());
+    if (!pad) {
+      if (this.gamepadInUse) this._clearGamepad();
+      return;
+    }
+    if (pad.id !== this._padId) {
+      this._padId = pad.id;
+      this.onGamepadConnected?.(pad);
+    }
+    const state = readGamepadState(pad, this._padButtons);
+    this.gamepadInUse = true;
+    this.moveAxisX = state.moveX;
+    this.moveAxisY = state.moveY;
+    // Right stick look is folded into the mouse delta so existing look code works unchanged.
+    this.mouseDeltaX += state.lookX * GAMEPAD_LOOK_SPEED * dt;
+    this.mouseDeltaY += state.lookY * GAMEPAD_LOOK_SPEED * dt;
+    this._padHeld = state.held;
+    for (const index of state.pressed) this._padPresses.add(index);
+  }
+
+  _clearGamepad() {
+    this.gamepadInUse = false;
+    this.moveAxisX = 0;
+    this.moveAxisY = 0;
+    this._padId = null;
+    this._padButtons = [];
+    this._padHeld = {};
+    this._padPresses.clear();
   }
 
   /** Call once per frame AFTER reading mouseDelta to reset it. */

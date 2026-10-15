@@ -48,7 +48,7 @@ export class WeaponCombat {
     const clicks = input.consumeMousePresses?.(0) ?? (held && !this.attackClickHeld ? 1 : 0);
     this.attackClickHeld = held;
     if (this.weaponId !== player.weapon) { this.cancelMelee(); this.weaponId = player.weapon; }
-    if (level.allowsShooting === false || player.scriptedMovement || !player.alive || !input.pointerLocked) {
+    if (level.allowsShooting === false || player.scriptedMovement || !player.alive || (!input.pointerLocked && !input.gamepadInUse)) {
       this.cancelMelee();
       for (const projectile of this.projectiles) projectile.mesh.removeFromParent();
       this.projectiles = []; return;
@@ -70,7 +70,7 @@ export class WeaponCombat {
     }
     const weapon = weaponById(player.weapon) || weaponById('smg');
     const bashPressed = input.consumeKeyPress?.('KeyF');
-    if (input.pointerLocked && player.alive) {
+    if ((input.pointerLocked || input.gamepadInUse) && player.alive) {
       if (weapon.id === 'sword') {
         if (clicks || bashPressed) {
           if (this.swordComboTime === 0 || (this.swordComboStep === SWORD_ATTACKS.length

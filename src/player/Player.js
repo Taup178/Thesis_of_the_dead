@@ -363,8 +363,8 @@ export class Player {
 
     const inp = this.input;
 
-    // ---- Mouse Look ----
-    if (inp.pointerLocked) {
+    // ---- Mouse / Gamepad Look ----
+    if (inp.pointerLocked || inp.gamepadInUse) {
       this.yaw -= inp.mouseDeltaX * this.mouseSensitivity;
       this.pitch -= inp.mouseDeltaY * this.mouseSensitivity;
       this.pitch = THREE.MathUtils.clamp(this.pitch, -this.maxLookPitch, this.maxLookPitch);
@@ -384,6 +384,7 @@ export class Player {
     if (inp.isDown('KeyS')) moveDir.sub(forward);
     if (inp.isDown('KeyA')) moveDir.sub(right);
     if (inp.isDown('KeyD')) moveDir.add(right);
+    if (inp.moveAxisX || inp.moveAxisY) moveDir.addScaledVector(right, inp.moveAxisX).addScaledVector(forward, -inp.moveAxisY);
 
     let speed = platforming?.moveSpeed ?? this.moveSpeed;
     if ((!platforming || platforming.allowSprint) && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'))) {
