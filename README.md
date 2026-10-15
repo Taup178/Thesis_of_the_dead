@@ -33,6 +33,7 @@ There are four routes with 4, 6, 8 and 10 jumps. The larger tiles leave room to 
 - C: switch between third person and first person.
 - R: retry the current checkpoint in the room.
 - Esc: pause; click to resume.
+- Gamepad (optional, enable in Options): left stick move, right stick look, RT shoot (LT single pistol), A jump, LB or L3 sprint, B roll, RB gun bash, X weapon wheel, Y camera, d-pad cycles weapons, Start pauses and resumes. Menus: left stick or d-pad up/down to highlight, A to choose. The choice is saved.
 
 The same black bars used for the Chapter 3 boss encounter frame player portal entrances and exits in all chapters. Both bars use one shared height and appear at their full size immediately. Portal entrances and exits travel steadily at the same 12-unit-per-second pace as the Dean's blade run; their duration follows the actual travel distance, with only a short settling interval on exit. In Level 2, the bars and input lock remain through the Dean's blade run, ending as soon as he passes the final blade. You can then move, sprint, jump, roll, shoot and change weapons while he continues across the bridge and spikes. Checkpoint retries skip the entrance cinematic. Movement pauses for the memory demonstrations, and your checkpoint remains safe until your turn starts. Tile timers also pause when the game is paused.
 

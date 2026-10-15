@@ -106,6 +106,7 @@ test('Game restart forwards full-restart intent and restores player and controls
     _showOverlay() {},
     hudEl: { classList: { add() {}, remove() {} } },
     _captureMouse: () => calls.push('capture'),
+    _releaseMouse: () => calls.push('release'),
     levelManager: {
       restartLevel: async (...args) => {
         calls.push(['restart', args[1]]);
@@ -127,7 +128,8 @@ test('Game restart forwards full-restart intent and restores player and controls
     assert.deepEqual(calls.find(call => Array.isArray(call) && call[0] === 'reset'), ['reset', spawnPoint]);
     assert.deepEqual(prepared, [player]);
     assert.equal(game.state, 'playing');
-    assert.equal(calls.filter(call => call === 'capture').length, 2);
+    assert.equal(calls.filter(call => call === 'capture').length, 1);
+    assert.equal(calls.filter(call => call === 'release').length, 1);
   } finally {
     globalThis.document = originalDocument;
     globalThis.setTimeout = originalSetTimeout;

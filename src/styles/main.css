@@ -99,7 +99,8 @@ html, body {
   letter-spacing: 1px;
 }
 
-.menu-btn:hover {
+.menu-btn:hover,
+.menu-btn.gamepad-focus {
   background: #c62828;
   color: #fff;
   box-shadow: 0 0 20px rgba(198, 40, 40, 0.5);
