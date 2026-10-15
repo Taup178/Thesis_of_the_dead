@@ -7,6 +7,7 @@ import { CreditEnergyEffects } from '../props/CreditEnergyEffects.js';
 import { NightSky } from '../environment/NightSky.js';
 import { WakeUpIntro } from '../player/WakeUpIntro.js';
 import { StylizedWoods } from '../environment/StylizedWoods.js';
+import { ForestAtmosphere } from '../environment/ForestAtmosphere.js';
 import { getPortalTravelDuration } from '../props/RoomExitPortal.js';
 
 /**
@@ -31,6 +32,7 @@ export class Level1 {
     this.allowsShooting = true;
     this.credits = [];       // collectible orbs
     this.creditEffects = null; // Academic Credit Energy System visuals
+    this.atmosphere = null;  // Dynamic Forest Atmosphere visuals
     this.disposables = [];   // track for cleanup
     this.creditsCollected = 0;
     this.bossSpawned = false;
@@ -70,6 +72,7 @@ export class Level1 {
     await this.woods.load(progress => onProgress?.(0.2 + progress * 0.5));
     this.obstacles = this.woods.obstacles;
     this.treeMeshes = this.woods.bulletMeshes;
+    this._createAtmosphere();
     onProgress && onProgress(0.75);
 
     await this._createBossMarker();
@@ -156,6 +159,11 @@ export class Level1 {
       this.credits.push({ mesh: orb, collected: false });
     }
     this.creditEffects.attach(this.credits);
+  }
+
+  /** Fireflies, ground mist and wind sway; owns its resources end to end. */
+  _createAtmosphere() {
+    this.atmosphere = new ForestAtmosphere(this.scene, this.woods?.root ?? null, this.credits);
   }
 
   async _createBossMarker() {
@@ -612,6 +620,7 @@ export class Level1 {
   update(dt, player, time) {
     const events = { creditCollected: false, bossReached: false, levelComplete: false };
     if (this.nightSky) this.nightSky.update(player.group.position);
+    if (this.atmosphere) this.atmosphere.update(dt);
     if (this.wakeUpIntro && !this.wakeUpIntro.done) {
       this.wakeUpIntro.update(dt);
       return events;
@@ -752,6 +761,9 @@ export class Level1 {
 
   /** Clean up EVERYTHING this level created. Critical for LAMP memory. */
   dispose() {
+    // Restore cloned vegetation materials before the woods release their originals.
+    this.atmosphere?.dispose();
+    this.atmosphere = null;
     this.woods?.dispose();
     this.woods = null;
     this.wakeUpIntro?.restore();
