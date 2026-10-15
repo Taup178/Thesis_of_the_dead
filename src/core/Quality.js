@@ -2,7 +2,8 @@ import * as THREE from 'three';
 
 export const QUALITY_LEVELS = ['low', 'medium', 'high'];
 const STORAGE_KEY = 'thesis-of-the-dead:quality';
-const DEFAULT_QUALITY = 'high';
+// Medium keeps the initial frame budget suitable for integrated lab GPUs.
+const DEFAULT_QUALITY = 'medium';
 
 export function qualityConfig(level) {
   switch (level) {
@@ -39,7 +40,10 @@ export function applyQuality(renderer, scene, level) {
   renderer.shadowMap.needsUpdate = true;
   scene.traverse(object => {
     if (object.isLight && object.shadow) {
-      const size = Math.min(object.shadow.mapSize.x, config.shadowMapCap);
+      // Retain the authored size so switching from Medium back to High can
+      // restore the larger map rather than staying permanently capped.
+      object.shadow._qualityBaseMapSize ??= object.shadow.mapSize.x;
+      const size = Math.min(object.shadow._qualityBaseMapSize, config.shadowMapCap);
       if (size !== object.shadow.mapSize.x) {
         object.shadow.mapSize.set(size, size);
         object.shadow.map?.dispose();

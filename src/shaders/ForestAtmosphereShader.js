@@ -152,7 +152,6 @@ export function createMistMaterial({ forestTime, fogColor, fogDensity, creditPos
     vertexShader: /* glsl */ `
       attribute float mistSeed;
       uniform float forestTime;
-      uniform float uFogDensity;
       varying vec2 vUv;
       varying float vSeed;
       varying float vNearFade;

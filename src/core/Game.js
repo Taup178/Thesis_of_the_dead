@@ -6,8 +6,11 @@ import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { applyQuality, loadQuality, saveQuality } from './Quality.js';
+import { compileHiddenObjects } from './ShaderWarmup.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
+
+const NO_OBSTACLES = [];
 
 /**
  * Game - Top-level orchestrator.
@@ -26,6 +29,7 @@ export class Game {
     this.quality = loadQuality();
     this.renderer = new THREE.WebGLRenderer({ antialias: this.quality !== 'low', powerPreference: 'high-performance' });
     this.renderer.shadowMap.enabled = true;
+    this.cinematicShadowsFrozen = false;
     this.qualityConfig = applyQuality(this.renderer, this.scene, this.quality);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -224,11 +228,13 @@ export class Game {
     const launch = new URLSearchParams(window.location.search);
     const directFinal = launch.get('level') === '3';
     const directSophomore = launch.get('level') === '2';
+    const directSophomoreSection = launch.get('section');
     const level = await this.levelManager.loadLevel(directFinal ? 2 : directSophomore ? 1 : 0, (p) => {
       progressBar.style.width = `${p * 100}%`;
     }, directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
-      directSophomore && launch.get('section') === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } : null);
+      directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
+      directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
     this.currentLevel = level;
     applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
 
@@ -236,15 +242,15 @@ export class Game {
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
-    await level.prepareShaders?.(this.renderer, this.camera);
-
     // Create player
     if (this.player) this.player.dispose();
     this.player = new Player(this.scene, this.input, this.camera);
     this._applyMouseSensitivity();
     await this.player.loadCharacter();
     this.player.group.position.copy(level.spawnPoint);
+    await level.prepareShaders?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
+    await this._warmLoadedView();
 
     // Enter playing state
     this.state = this.STATE.PLAYING;
@@ -284,6 +290,7 @@ export class Game {
     await level.prepareShaders?.(this.renderer, this.camera);
       this.player.reset(level.spawnPoint);
       level.preparePlayer?.(this.player);
+      await this._warmLoadedView();
     }
 
     this.state = this.STATE.PLAYING;
@@ -327,6 +334,7 @@ export class Game {
     await level.prepareCinematics?.(this.renderer, this.camera);
     await level.prepareShaders?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
+    await this._warmLoadedView();
 
     this.state = this.STATE.PLAYING;
     this._showOverlay(null);
@@ -620,7 +628,8 @@ export class Game {
   _animate() {
     requestAnimationFrame(() => this._animate());
 
-    const dt = Math.min(this.clock.getDelta(), 0.05); // cap dt to avoid spiral of death
+    const frameDt = this.clock.getDelta();
+    const dt = Math.min(frameDt, 0.05); // cap gameplay physics to avoid spiral of death
     this.elapsedTime += dt;
 
     // ---- Handle one-shot key presses ----
@@ -650,11 +659,14 @@ export class Game {
     // ---- Update logic ----
     if (this.state === this.STATE.PLAYING && this.input.pointerLocked && this.player && this.currentLevel && !inventoryFrame) {
       this.player.update(
-        dt, this.currentLevel.getObstacles?.() || [], this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
+        dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
+        this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
       );
       this._handleShooting(dt);
 
-      const events = this.currentLevel.update(dt, this.player, this.elapsedTime);
+      // The escape follows elapsed time, so a slow frame cannot stretch the film.
+      const levelDt = this.currentLevel.bossCutscene?.usesElapsedTime ? Math.min(frameDt, 0.25) : dt;
+      const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
 
       if (events.creditCollected) {
         // Brief flash or sound could go here
@@ -669,15 +681,22 @@ export class Game {
         this.gameOver();
       }
 
-      this._updateHUD();
+      if (!this.currentLevel.bossCutscene) this._updateHUD();
     }
 
     // ---- Render ----
     this._updateCinematicPresentation();
     const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
+    const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
+    if (freezeCinematicShadows !== this.cinematicShadowsFrozen) {
+      this.renderer.shadowMap.autoUpdate = !freezeCinematicShadows;
+      if (!freezeCinematicShadows) this.renderer.shadowMap.needsUpdate = true;
+      this.cinematicShadowsFrozen = freezeCinematicShadows;
+    }
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
-    this.motionBlur.render(dt, this.qualityConfig.blur ? effects.blur : 0);
+    const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
+    this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0);
   }
 
   _updateCinematicPresentation() {
@@ -687,6 +706,7 @@ export class Game {
       || !!this.currentLevel?.transformationCinematicActive);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
+    this.bossCinematic?.style?.setProperty('--cutscene-fade', String(bossIntro ? this.currentLevel.bossCutscene.fade || 0 : 0));
     this.hudEl?.classList.toggle('cinematic', cinematic);
   }
 
@@ -695,5 +715,18 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.motionBlur.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  async _warmLoadedView() {
+    await compileHiddenObjects(this.renderer, this.scene, this.camera, [this.player?.group]);
+    await this.renderer.compileAsync(this.scene, this.camera);
+    if (!this.player) return;
+    // Force the actual lighting, shadows and skinned-player variants to link
+    // while the DOM loading overlay still covers the canvas. compileAsync alone
+    // cannot warm shaders for objects hidden during an entrance cutscene.
+    const wasVisible = this.player.group.visible;
+    this.player.group.visible = true;
+    try { this.renderer.render(this.scene, this.camera); }
+    finally { this.player.group.visible = wasVisible; }
   }
 }

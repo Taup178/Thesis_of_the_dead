@@ -1,0 +1,417 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 4296,
+      "max": [
+        9.849996566772461,
+        9.850000381469727,
+        0.10999999940395355
+      ],
+      "min": [
+        -9.850004196166992,
+        -9.850000381469727,
+        -0.10999999940395355
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 51552,
+      "componentType": 5126,
+      "count": 4296,
+      "max": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "min": [
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 4296,
+      "max": [
+        0.9258600473403931,
+        1.0
+      ],
+      "min": [
+        0.0,
+        0.0
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 8856,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 103104,
+      "componentType": 5126,
+      "count": 1430,
+      "max": [
+        9.999996185302734,
+        10.0,
+        0.1599999964237213
+      ],
+      "min": [
+        -10.000003814697266,
+        -10.0,
+        -0.1599999964237213
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 120264,
+      "componentType": 5126,
+      "count": 1430,
+      "max": [
+        0.9997427463531494,
+        0.9997426867485046,
+        0.9993909001350403
+      ],
+      "min": [
+        -0.9997427463531494,
+        -0.9997426867485046,
+        -0.9993909001350403
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 34368,
+      "componentType": 5126,
+      "count": 1430,
+      "max": [
+        0.9268217086791992,
+        0.9264346361160278
+      ],
+      "min": [
+        0.5,
+        0.07975311577320099
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 35424,
+      "componentType": 5125,
+      "count": 2550,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 137424,
+      "componentType": 5126,
+      "count": 1424,
+      "max": [
+        8.249996185302734,
+        8.25,
+        0.10999999940395355
+      ],
+      "min": [
+        -8.250003814697266,
+        -8.25,
+        -0.10999999940395355
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 154512,
+      "componentType": 5126,
+      "count": 1424,
+      "max": [
+        0.9997116327285767,
+        0.9996989369392395,
+        1.0
+      ],
+      "min": [
+        -0.9996989369392395,
+        -0.9996989369392395,
+        -1.0
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 45808,
+      "componentType": 5126,
+      "count": 1424,
+      "max": [
+        0.992340087890625,
+        0.9928925037384033
+      ],
+      "min": [
+        0.00791814923286438,
+        0.008643925189971924
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "byteOffset": 45624,
+      "componentType": 5125,
+      "count": 2706,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "YouniqueĪdeaStudio (https://sketchfab.com/sinnervoncrawsz)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/circular-saw-blade-219c51b8284345568e4a5a80156125ef",
+      "title": "Circular saw blade"
+    },
+    "generator": "Sketchfab-13.71.0",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 56448,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 57200,
+      "byteOffset": 56448,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 171600,
+      "byteOffset": 113648,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 285248,
+      "uri": "scene.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/Material.004_baseColor.png"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": true,
+      "name": "Material.001",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.006623537450181826,
+          0.006709063375734046,
+          0.007611902485434938,
+          1.0
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.9718473684227891
+      }
+    },
+    {
+      "doubleSided": true,
+      "name": "Material.003",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.3397441034327528,
+          0.2766430810664892,
+          0.1647567704262595,
+          1.0
+        ],
+        "roughnessFactor": 0.0
+      }
+    },
+    {
+      "doubleSided": true,
+      "name": "Material.004",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "roughnessFactor": 0.27278954961801877
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Circular saw blade_Material.001_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TEXCOORD_0": 2
+          },
+          "indices": 3,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Circular saw blade_Material.003_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 5,
+            "POSITION": 4,
+            "TEXCOORD_0": 6
+          },
+          "indices": 7,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    },
+    {
+      "name": "Circular saw blade_Material.004_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 9,
+            "POSITION": 8,
+            "TEXCOORD_0": 10
+          },
+          "indices": 11,
+          "material": 2,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "matrix": [
+        0.5244066715240479,
+        -2.961967463295949e-17,
+        -1.4556945529045998e-16,
+        0.0,
+        3.878286765022483e-32,
+        0.513876819902876,
+        -0.10456084146582245,
+        0.0,
+        1.4855231424597282e-16,
+        0.10456084146582245,
+        0.513876819902876,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Sketchfab_model"
+    },
+    {
+      "children": [
+        2
+      ],
+      "matrix": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.009999999776482582,
+        0.0,
+        0.0,
+        -0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "BLADE1.fbx"
+    },
+    {
+      "children": [
+        3
+      ],
+      "name": "RootNode"
+    },
+    {
+      "children": [
+        4,
+        5,
+        6
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.0,
+        -1.6292067939183141e-07,
+        -0.9999999999999868,
+        0.0,
+        0.0,
+        0.9999999999999868,
+        -1.6292067939183141e-07,
+        0.0,
+        -29.603878021240234,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Circular saw blade"
+    },
+    {
+      "mesh": 0,
+      "name": "Circular saw blade_Material.001_0"
+    },
+    {
+      "mesh": 1,
+      "name": "Circular saw blade_Material.003_0"
+    },
+    {
+      "mesh": 2,
+      "name": "Circular saw blade_Material.004_0"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Sketchfab_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    }
+  ]
+}

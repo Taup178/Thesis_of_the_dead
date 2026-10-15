@@ -35,7 +35,7 @@ export function createWoodsLayout(credits = []) {
     placements.push({ kind, x, z, height, yaw: random() * Math.PI * 2, variant: Math.floor(random() * 3) });
     if (radius) obstacles.push({ x, z, radius });
   };
-  for (let attempt = 0, count = 0; attempt < 1800 && count < 90; attempt++) {
+  for (let attempt = 0, count = 0; attempt < 1800 && count < 58; attempt++) {
     const x = (random() - 0.5) * 112, z = (random() - 0.5) * 112;
     if (woodsClearance(x, z, credits) < 2 || obstacles.some(o => Math.hypot(x - o.x, z - o.z) < 6)) continue;
     const kind = x < -14 ? 'birch-trees' : x > 17 ? 'pine-trees'
@@ -44,18 +44,18 @@ export function createWoodsLayout(credits = []) {
     add(kind, x, z, height, Math.max(0.55, height * 0.055)); count++;
   }
   // Two broken rings create depth beyond the square arena without blocking its edges.
-  for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 64; i++) {
+  for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 40; i++) {
     const angle = (i + random() * 0.5) / 64 * Math.PI * 2;
     const radius = 88 + ring * 35 + random() * 12;
     add(i % 3 ? 'pine-trees' : 'trees', Math.cos(angle) * radius, Math.sin(angle) * radius, 15 + random() * 10);
   }
-  for (let i = 0; i < 55; i++) {
+  for (let i = 0; i < 42; i++) {
     const x = (random() - 0.5) * 108, z = (random() - 0.5) * 108;
     const height = 0.7 + random() * 1.4, radius = height * 1.2;
     if (woodsClearance(x, z, credits) < radius + 1 || obstacles.some(o => Math.hypot(x - o.x, z - o.z) < o.radius + radius + 1)) continue;
     add('rocks', x, z, height, radius);
   }
-  for (let i = 0; i < 1500; i++) {
+  for (let i = 0; i < 850; i++) {
     const x = (random() - 0.5) * 118, z = (random() - 0.5) * 118;
     const clearance = woodsClearance(x, z, credits);
     if (clearance < 0.7 || obstacles.some(o => Math.hypot(x - o.x, z - o.z) < o.radius + 0.3)) continue;
@@ -111,12 +111,17 @@ export class StylizedWoods {
       for (let index = 0; index < variants.length; index++) {
         const placements = this.layout.placements.filter(p => p.kind === kind && p.variant % variants.length === index);
         if (!placements.length) continue;
+        // Keep playable woods first so the short portal shot can omit the distant
+        // scenery rings by changing instance counts, without uploading buffers.
+        const near = placements.filter(p => Math.hypot(p.x, p.z) < 75);
+        const ordered = near.concat(placements.filter(p => Math.hypot(p.x, p.z) >= 75));
         for (const part of variants[index].parts) {
           const mesh = new THREE.InstancedMesh(part.geometry, part.material, placements.length);
           mesh.name = `${kind}_${variants[index].name}`;
+          mesh.userData.cinematicCount = near.length;
           mesh.castShadow = kind !== 'grass' && kind !== 'flowers'; mesh.receiveShadow = true;
           const dummy = new THREE.Object3D();
-          placements.forEach((p, i) => {
+          ordered.forEach((p, i) => {
             dummy.position.set(p.x, 0, p.z); dummy.rotation.set(0, p.yaw, 0); dummy.scale.setScalar(p.height);
             dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
           });
@@ -127,6 +132,24 @@ export class StylizedWoods {
       }
     }
     this._createGround();
+  }
+
+  setCinematicDetail(enabled) {
+    if (enabled) {
+      if (this.cinematicState) return;
+      this.cinematicState = [];
+      this.root.traverse(mesh => {
+        if (!mesh.isInstancedMesh) return;
+        this.cinematicState.push({ mesh, count: mesh.count, visible: mesh.visible });
+        mesh.count = Math.min(mesh.count, mesh.userData.cinematicCount ?? mesh.count);
+        if (mesh.name.startsWith('grass_') || mesh.name.startsWith('flowers_')) mesh.visible = false;
+      });
+    } else {
+      for (const entry of this.cinematicState || []) {
+        entry.mesh.count = entry.count; entry.mesh.visible = entry.visible;
+      }
+      this.cinematicState = null;
+    }
   }
 
   _track(source) {
@@ -168,6 +191,7 @@ export class StylizedWoods {
   }
 
   dispose() {
+    this.cinematicState = null;
     this.root.traverse(node => { if (node.isInstancedMesh) node.dispose(); });
     this.root.removeFromParent();
     for (const resource of this.resources) resource.dispose();

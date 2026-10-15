@@ -88,6 +88,7 @@ export class PortalPassage {
     const bounds = new THREE.Box3().setFromObject(body, true);
     const start = bounds.isEmpty() ? group.position.clone().add(new THREE.Vector3(0, 1, 0)) : bounds.getCenter(new THREE.Vector3());
     this.group = group; this.time = 0; this.scale = group.scale.clone(); this.visible = group.visible;
+    this.pathPoint = new THREE.Vector3(); this.scaleOffset = new THREE.Vector3();
     this.localCenter = group.worldToLocal(start.clone());
     const end = center.clone().addScaledVector(outward, -0.25);
     const control = start.clone().lerp(end, 0.4); control.y = end.y + 0.35;
@@ -104,9 +105,10 @@ export class PortalPassage {
   get complete() { return this.time >= this.duration + 0.12; }
   _pose(t) {
     const ease = THREE.MathUtils.smoothstep(t, 0, 1);
-    const center = this.path.getPointAt(t);
+    const center = this.path.getPoint(this.path.getUtoTmapping(t), this.pathPoint);
     this.group.scale.copy(this.scale).multiplyScalar(Math.max(0.001, (1 - ease) ** 1.25));
-    this.group.position.copy(center).sub(this.localCenter.clone().multiply(this.group.scale).applyQuaternion(this.group.quaternion));
+    this.scaleOffset.copy(this.localCenter).multiply(this.group.scale).applyQuaternion(this.group.quaternion);
+    this.group.position.copy(center).sub(this.scaleOffset);
     const alpha = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
     for (const entry of this.materials) { entry.material.opacity = entry.opacity * alpha; entry.material.depthWrite = alpha > 0.95; }
     this.group.visible = t < 1 && this.visible;
@@ -127,7 +129,8 @@ export class PortalEmergence extends PortalPassage {
   }
   update(dt) {
     this.time += dt;
-    const center = this._pose(1 - Math.min(1, this.time / this.duration));
+    const progress = THREE.MathUtils.smoothstep(this.time / this.duration, 0, 1);
+    const center = this._pose(1 - progress);
     if (this.time >= this.duration) {
       this.restore();
       this.group.position.copy(this.destination);

@@ -21,7 +21,7 @@ export class SophomoreAmbush {
       const side = index % 2 === 0 ? -1 : 1;
       const zombie = this.createZombie(new THREE.Vector3(side * 8.4, -12, layout.spikeCorridorMaxZ - 4),
         `./assets/models/zombies/Zombie_${variants[index % variants.length]}.gltf`);
-      zombie.speed = 3.2; zombie.group.visible = false;
+      zombie.speed = 5.8; zombie.alwaysRun = true; zombie.group.visible = false;
       zombie.group.name = `SpikeAmbushZombie_${index + 1}`;
       this.level.root.add(zombie.group); this.level.zombies.push(zombie);
       return { zombie, index, side, wave: Math.floor(index / ZOMBIES_PER_WAVE), phase: 'waiting', jumpTime: 0 };
@@ -70,7 +70,7 @@ export class SophomoreAmbush {
     if (t < JUMP_DURATION) return;
     zombie.group.position.copy(record.to);
     record.phase = zombie.alive ? 'active' : 'dead';
-    if (zombie.alive) zombie._playAction('Walk', 0.08);
+    if (zombie.alive) zombie._playAction(zombie.actions.Run ? 'Run' : 'Walk', 0.08);
   }
 
   update(dt, player) {
@@ -117,7 +117,7 @@ export class SophomoreAmbush {
           if (zombie.attackTimer === 0) {
             if (distance > 0.1) {
               zombie.group.position.addScaledVector(direction.normalize(), Math.min(distance, zombie.speed * dt));
-              zombie._playAction('Walk');
+              zombie._playAction(zombie.actions.Run ? 'Run' : 'Walk');
             } else zombie._playAction('Idle');
           }
         } else result = zombie.update(dt, player.group.position);

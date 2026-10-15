@@ -11,15 +11,17 @@ import { RoomExitPortal, PortalPassage, PortalEmergence, PORTAL_TRAVEL_SPEED } f
 import { compileHiddenObjects } from '../core/ShaderWarmup.js';
 
 const DIFFICULTY = [
-  { jumpDuration: 0.72, pause: 0.24, tileTime: 3.2 },
-  { jumpDuration: 0.62, pause: 0.20, tileTime: 2.9 },
-  { jumpDuration: 0.54, pause: 0.16, tileTime: 2.6 },
-  { jumpDuration: 0.47, pause: 0.13, tileTime: 2.3 },
+  { jumpDuration: 0.72, pause: 0.24, tileTime: 1.3 },
+  { jumpDuration: 0.62, pause: 0.20, tileTime: 1.2 },
+  { jumpDuration: 0.54, pause: 0.16, tileTime: 1.1 },
+  { jumpDuration: 0.47, pause: 0.13, tileTime: 1.0 },
 ];
 const GREY = 0xffffff, AMBER = 0xf6bb55, GREEN = 0x46dd9b, RED = 0xe55463;
 const UP = new THREE.Vector3(0, 1, 0);
 const CHASE_SPEED = 5.8, JUMP_VELOCITY = 7.2;
-const DEAN_CHASE_SPEED = PORTAL_TRAVEL_SPEED;
+// Keep the guide at a pace that matches the authored run cycle, including the saw intro.
+const DEAN_CHASE_SPEED = Math.min(PORTAL_TRAVEL_SPEED, 5.2);
+const DEAN_BLADE_SPEED = 7.4;
 const SPIKE_DAMAGE = 20, SPIKE_HIT_INTERVAL = 0.8;
 
 /** The Sophomore Room: chase the Dean through three hazards, then remember his route. */
@@ -100,7 +102,7 @@ export class Level2 {
     this.bossMarker.name = 'Dean';
     this.bossMarker.scale.setScalar(1.25);
     this.root.add(this.bossMarker);
-    await Promise.all([this.dean.ready, this.ambush?.ready, this.exitPortal.load(), this.entrancePortal?.load(), this.walls.load(), this.torches.load(), this.floors.load(), this.spikePit.load()]);
+    await Promise.all([this.dean.ready, this.ambush?.ready, this.sawBladeReady, this.exitPortal.load(), this.entrancePortal?.load(), this.walls.load(), this.torches.load(), this.floors.load(), this.spikePit.load()]);
     this.spikeTipY = this.spikePit.tipY;
     this._attachDegree();
     this.torches.decorateMaterial(this.tileMaterial);
@@ -115,6 +117,10 @@ export class Level2 {
       ? this.ambush.records.filter(record => record.zombie.alive).map(record => record.zombie.group)
       : [];
     await compileHiddenObjects(renderer, this.scene, camera, groups);
+    // The first few moving hazards alter torch lighting and reveal groups after
+    // the menu overlay is gone. Compile the assembled room against the live
+    // scene now so driver program queries don't block an active game frame.
+    await renderer?.compileAsync?.(this.scene, camera);
   }
 
   preparePlayer(player) {
@@ -161,6 +167,7 @@ export class Level2 {
     this.dean._playAction('Walk');
     this.dean.mixer?.update(0);
     this.deanArrival = new PortalEmergence(this.bossMarker, this.entrancePortal.center);
+    this.deanArrival.duration = Math.max(this.deanArrival.duration, 0.9);
     player.camera.position.set(7.5, 4.5, this.spawnPoint.z - 6.5);
     player.camera.lookAt(0, 1.5, this.spawnPoint.z - 0.8);
     player.camera.updateMatrixWorld(true);
@@ -189,8 +196,8 @@ export class Level2 {
       this.dean._playAction('Walk');
     } else if (this.phase === 'dean_to_start') {
       this.introTimer += dt;
-      const t = Math.min(1, this.introTimer / (3 / DEAN_CHASE_SPEED));
-      this.bossMarker.position.lerpVectors(this.spawnPoint, new THREE.Vector3(0, 0, layout.deanStartZ), t);
+      const t = THREE.MathUtils.smoothstep(this.introTimer, 0, 3 / DEAN_CHASE_SPEED);
+      this.bossMarker.position.set(0, 0, THREE.MathUtils.lerp(this.spawnPoint.z, layout.deanStartZ, t));
       if (t < 1) return;
       this.dean._playAction('Idle', 0.08);
       this.bossMarker.lookAt(this.spawnPoint);
@@ -198,6 +205,7 @@ export class Level2 {
       player.group.visible = true;
       player.mixer?.update(0);
       this.playerArrival = new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+      this.playerArrival.duration = Math.max(this.playerArrival.duration, 0.9);
     } else if (this.phase === 'player_arrival') {
       this.playerArrival.update(dt);
       player.mixer?.update(dt);
@@ -205,12 +213,16 @@ export class Level2 {
       player.lastSafePosition.copy(player.group.position);
       this.phase = 'arrival_camera';
       this.introTimer = 0;
+      this.arrivalCameraTargetPosition = new THREE.Vector3();
+      this.arrivalCameraTargetRotation = new THREE.Quaternion();
     } else if (this.phase === 'arrival_camera') {
       this.introTimer += dt;
-      const t = THREE.MathUtils.smoothstep(this.introTimer, 0, 0.8);
+      const t = THREE.MathUtils.smoothstep(this.introTimer, 0, 1.0);
       player._updateCamera();
-      player.camera.position.lerpVectors(this.arrivalCameraPosition, player.camera.position, t);
-      player.camera.quaternion.slerpQuaternions(this.arrivalCameraRotation, player.camera.quaternion, t);
+      this.arrivalCameraTargetPosition.copy(player.camera.position);
+      this.arrivalCameraTargetRotation.copy(player.camera.quaternion);
+      player.camera.position.lerpVectors(this.arrivalCameraPosition, this.arrivalCameraTargetPosition, t);
+      player.camera.quaternion.slerpQuaternions(this.arrivalCameraRotation, this.arrivalCameraTargetRotation, t);
       player.camera.updateMatrixWorld(true);
       if (t < 1) return;
       this._restoreArrivalPlayer();
@@ -508,8 +520,8 @@ export class Level2 {
       player.velocity.set(0, 0, 0);
       player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0;
     }
-    const step = (x, z, duration, jump = false, dodge = 0) =>
-      ({ position: new THREE.Vector3(x, 0, z), duration, jump, dodge });
+    const step = (x, z, duration, jump = false, dodge = 0, speed = DEAN_CHASE_SPEED) =>
+      ({ position: new THREE.Vector3(x, 0, z), duration, jump, dodge, speed });
     const start = { position: this.bossMarker.position.clone(), duration: 0, jump: false };
     this.deanPath = [start];
     if (this.puzzleIndex === 0) {
@@ -518,14 +530,15 @@ export class Level2 {
         // Recenter in the safe space between blades, then dodge away from the
         // blade's predicted sweep during the crossing, leaving body clearance.
         const approach = step(0, blade.z + 2, 0);
-        approach.duration = this.deanPath.at(-1).position.distanceTo(approach.position) / DEAN_CHASE_SPEED;
+        approach.speed = DEAN_BLADE_SPEED;
+        approach.duration = this.deanPath.at(-1).position.distanceTo(approach.position) / DEAN_BLADE_SPEED;
         this.deanPath.push(approach);
         elapsed += approach.duration;
-        const sideDuration = 3.8 / DEAN_CHASE_SPEED, crossDuration = 4 / DEAN_CHASE_SPEED;
+        const sideDuration = 3.8 / DEAN_BLADE_SPEED, crossDuration = 4 / DEAN_BLADE_SPEED;
         const crossingTime = (this.gauntletTime || 0) + elapsed + sideDuration + crossDuration / 2;
         const side = getSophomoreBladeX(blade, crossingTime) >= 0 ? -1 : 1;
-        this.deanPath.push(step(side * 3.8, blade.z + 2, sideDuration, false, side),
-          step(side * 3.8, blade.z - 2, crossDuration, false, side));
+        this.deanPath.push(step(side * 3.8, blade.z + 2, sideDuration, false, side, DEAN_BLADE_SPEED),
+          step(side * 3.8, blade.z - 2, crossDuration, false, side, DEAN_BLADE_SPEED));
         elapsed += sideDuration + crossDuration;
       }
     }
@@ -583,8 +596,8 @@ export class Level2 {
       }
     }
     const action = next.jump ? 'Jump' : this.dean.actions.Run ? 'Run' : 'Walk';
-    if (!next.jump) this.dean.actions[action]?.setEffectiveTimeScale?.(DEAN_CHASE_SPEED / CHASE_SPEED);
-    this.dean._playAction(action, 0.08, next.jump);
+    if (!next.jump) this.dean.actions[action]?.setEffectiveTimeScale?.(next.speed / CHASE_SPEED);
+    this.dean._playAction(action, 0.18, next.jump);
   }
 
   _updateDeanChallenge(dt) {
@@ -798,7 +811,11 @@ export class Level2 {
   }
 
   getRestartState() {
-    const state = { puzzleIndex: this.puzzleIndex, stageIndex: this.stageIndex, seed: this.seed };
+    let seed = this.seed;
+    if (this.phase === 'failed') {
+      do { seed = Math.floor(Math.random() * 4294967296); } while (seed === this.seed);
+    }
+    const state = { puzzleIndex: this.puzzleIndex, stageIndex: this.stageIndex, seed };
     if (this.puzzleIndex === SPIKE_CORRIDOR_PUZZLE && (this.ambushWasCleared || this.ambush?.cleared)) state.ambushCleared = true;
     return state;
   }
@@ -827,8 +844,7 @@ export class Level2 {
     const collect = node => {
       if (node.isLight) node.shadow?.dispose();
       if (node.isInstancedMesh) node.dispose();
-      if (node.isSkinnedMesh) node.skeleton.dispose();
-      if (!node.isMesh && !node.isLine) return;
+      if (!node.isMesh && !node.isLine && !node.isPoints) return;
       resources.add(node.geometry);
       for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
         resources.add(material);

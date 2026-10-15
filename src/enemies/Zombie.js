@@ -86,6 +86,10 @@ export class Zombie {
     this._loaded = false;
     this._disposed = false;
     this._ownsGeometry = false;
+    this._scratchPlayerPosition = new THREE.Vector3();
+    this._scratchZombiePosition = new THREE.Vector3();
+    this._scratchDirection = new THREE.Vector3();
+    this._hitResult = { hit: false };
     this._modelPath = modelPath || ZOMBIE_MODELS[Math.floor(Math.random() * ZOMBIE_MODELS.length)];
     this.ready = this._loadModel();
   }
@@ -256,10 +260,11 @@ export class Zombie {
   }
 
   update(dt, playerPosition) {
+    this._hitResult.hit = false;
     // Don't move or damage until the model is fully loaded
     if (!this._loaded) {
       if (this.mixer) this.mixer.update(dt);
-      return { hit: false };
+      return this._hitResult;
     }
 
     // Update animation mixer
@@ -267,21 +272,21 @@ export class Zombie {
       this.mixer.update(dt);
     }
 
-    if (!this.alive) return { hit: false };
+    if (!this.alive) return this._hitResult;
 
     this.damageCooldown = Math.max(0, this.damageCooldown - dt);
     this.attackTimer = Math.max(0, this.attackTimer - dt);
 
     // Direction toward player (XZ plane only)
-    const playerPos = new THREE.Vector3(playerPosition.x, 0, playerPosition.z);
-    const zombiePos = new THREE.Vector3(this.group.position.x, 0, this.group.position.z);
-    const dir = new THREE.Vector3().subVectors(playerPos, zombiePos);
+    const playerPos = this._scratchPlayerPosition.set(playerPosition.x, 0, playerPosition.z);
+    const zombiePos = this._scratchZombiePosition.set(this.group.position.x, 0, this.group.position.z);
+    const dir = this._scratchDirection.subVectors(playerPos, zombiePos);
     const dist = dir.length();
 
     this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
 
     // Hold the attack pose long enough to see it, even if the player backs away.
-    if (this.attackTimer > 0) return { hit: false };
+    if (this.attackTimer > 0) return this._hitResult;
 
     if (dist >= 1.5) {
       dir.normalize();
@@ -289,7 +294,7 @@ export class Zombie {
       this.group.position.z += dir.z * this.speed * dt;
 
       // Choose animation based on distance
-      if (dist > 15 && this.actions['Run']) {
+      if ((this.alwaysRun || dist > 15) && this.actions['Run']) {
         this._playAction('Run');
       } else if (this.actions['Walk']) {
         this._playAction('Walk');
@@ -305,17 +310,21 @@ export class Zombie {
     if (dist < 1.5 && this.damageCooldown <= 0) {
       this.damageCooldown = this.damageRate;
       this._playAttack();
-      return { hit: true, damage: this.damage };
+      this._hitResult.hit = true;
+      this._hitResult.damage = this.damage;
+      return this._hitResult;
     }
 
-    return { hit: false };
+    return this._hitResult;
   }
 
   dispose() {
     this._disposed = true;
     // glTF geometry and textures belong to the shared cache; materials are per enemy.
+    const skeletons = new Set();
     this.group.traverse((child) => {
       if (child.isMesh) {
+        if (child.isSkinnedMesh && child.skeleton) skeletons.add(child.skeleton);
         if (this._ownsGeometry && child.geometry) child.geometry.dispose();
         if (child.material) {
           if (Array.isArray(child.material)) {
@@ -328,8 +337,10 @@ export class Zombie {
     });
     if (this.mixer) {
       this.mixer.stopAllAction();
+      this.mixer.uncacheRoot(this.mixer.getRoot());
       this.mixer = null;
     }
+    for (const skeleton of skeletons) skeleton.dispose();
     this.scene.remove(this.group);
   }
 }

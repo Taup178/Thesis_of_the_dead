@@ -342,6 +342,14 @@ html, body {
 
 #boss-cinematic.active { visibility: visible; }
 
+#boss-cinematic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: var(--cutscene-fade, 0);
+}
+
 .boss-bar {
   position: absolute;
   left: 0;

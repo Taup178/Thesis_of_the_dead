@@ -7,10 +7,10 @@ import {
   createCreditColumnMaterial
 } from '../shaders/CreditCoreShader.js';
 
-const BURST_PARTICLES = 36;  // per pickup
+const BURST_PARTICLES = 18;  // per pickup
 const BURST_POOL = BURST_PARTICLES * 8;
 const BURST_LIFE = 0.9;
-const TRAIL_MOTES = 12;      // per pickup
+const TRAIL_MOTES = 6;       // per pickup
 const TRAIL_POOL = TRAIL_MOTES * 8;
 const TRAIL_LIFE = 0.7;
 const RUNES_PER_CREDIT = 3;
@@ -40,15 +40,18 @@ export class CreditEnergyEffects {
     this.root.name = 'CreditEnergyEffects';
     scene.add(this.root);
 
-    this.coreGeometry = new THREE.SphereGeometry(0.3, 24, 16);
+    this.coreGeometry = new THREE.SphereGeometry(0.3, 16, 10);
     this.coreMaterial = createCreditCoreMaterial();
     this.haloMaterial = createCreditHaloMaterial();
     this.sparkMaterial = createCreditSparkMaterial();
     this.haloRings = [];
-    this.glowLights = [];
+    // Keep the scene's light count constant across pickups. Removing a light with
+    // each orb forces Three.js to compile new lighting shaders for the whole woods.
+    this.glowLight = new THREE.PointLight(0xffd700, 0, 5);
+    this.root.add(this.glowLight);
 
-    this.ringGeometry = new THREE.TorusGeometry(0.62, 0.02, 6, 48);
-    this.outerRingGeometry = new THREE.TorusGeometry(0.78, 0.014, 6, 48);
+    this.ringGeometry = new THREE.TorusGeometry(0.62, 0.02, 6, 32);
+    this.outerRingGeometry = new THREE.TorusGeometry(0.78, 0.014, 6, 32);
     this.runeGeometry = new THREE.OctahedronGeometry(0.055, 0);
     this.runeMaterial = new THREE.MeshBasicMaterial({ color: 0xffd700 });
     this.runeCount = 0;
@@ -119,9 +122,6 @@ export class CreditEnergyEffects {
       outer.rotation.set(-0.85 - i * 0.09, -i * 0.5, 0.4);
       host.add(inner, outer);
       this.haloRings.push({ ring: inner, rate: 0.55 + (i % 3) * 0.14 }, { ring: outer, rate: -0.4 - (i % 4) * 0.11 });
-      for (const child of host.children) {
-        if (child.isPointLight) this.glowLights.push(child);
-      }
     }
     this.runeCount = credits.length * RUNES_PER_CREDIT;
     this.runes = new THREE.InstancedMesh(this.runeGeometry, this.runeMaterial, this.runeCount);
@@ -129,6 +129,10 @@ export class CreditEnergyEffects {
     this.runes.frustumCulled = false;
     this.runes.renderOrder = 11;
     this.root.add(this.runes);
+  }
+
+  getWarmupObjects() {
+    return [this.burst.points, this.trail.points, this.shockwave, this.column];
   }
 
   /** Spawns the pickup burst, trail toward Shaun, and the finale on the last credit. */
@@ -177,9 +181,15 @@ export class CreditEnergyEffects {
     if (boost.value > 0) boost.value = Math.max(0, boost.value - dt * 1.8);
     this.haloMaterial.uniforms.uTime.value = time;
 
-    for (let i = 0; i < this.glowLights.length; i++) {
-      this.glowLights[i].intensity = 0.75 + 0.35 * Math.sin(time * 3.1 + i * 1.7) + boost.value * 1.6;
+    let nearest = null, nearestDistance = Infinity;
+    for (const credit of this.credits || []) {
+      if (credit.collected) continue;
+      const distance = player ? player.group.position.distanceToSquared(credit.mesh.position) : 0;
+      if (distance < nearestDistance) { nearest = credit; nearestDistance = distance; }
     }
+    if (nearest) this.glowLight.position.copy(nearest.mesh.position);
+    // Zero intensity keeps the light in the renderer's layout even after the last orb.
+    this.glowLight.intensity = nearest ? 0.75 + 0.35 * Math.sin(time * 3.1) + boost.value * 1.6 : 0;
 
     if (this.credits) {
       for (const entry of this.haloRings) {
@@ -199,7 +209,7 @@ export class CreditEnergyEffects {
     const object = this.scratch;
     let instance = 0;
     for (const credit of this.credits) {
-      const alive = !credit.collected;
+      if (credit.collected) continue;
       const center = credit.mesh.position;
       for (let j = 0; j < RUNES_PER_CREDIT; j++, instance++) {
         const phase = instance * 2.39996;
@@ -211,12 +221,14 @@ export class CreditEnergyEffects {
           center.z + Math.sin(angle) * 0.98
         );
         object.rotation.set(time * 1.9 + phase, time * 1.4, phase);
-        object.scale.setScalar(alive ? 0.85 + 0.25 * Math.sin(time * 4 + phase * 3) : 0.0001);
+        object.scale.setScalar(0.85 + 0.25 * Math.sin(time * 4 + phase * 3));
         object.updateMatrix();
         runes.setMatrixAt(instance, object.matrix);
       }
     }
-    runes.instanceMatrix.needsUpdate = true;
+    runes.count = instance;
+    runes.visible = instance > 0;
+    if (instance > 0) runes.instanceMatrix.needsUpdate = true;
   }
 
   _updateSparkPool(pool, dt, player, active) {
@@ -294,7 +306,7 @@ export class CreditEnergyEffects {
     this.disposed = true;
     for (const { ring } of this.haloRings) ring.removeFromParent();
     this.haloRings = [];
-    this.glowLights = [];
+    this.glowLight.intensity = 0;
     this.root.removeFromParent();
     this.runes?.dispose();
     for (const pool of [this.burst, this.trail]) pool.geometry.dispose();

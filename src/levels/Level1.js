@@ -10,6 +10,7 @@ import { WakeUpIntro } from '../player/WakeUpIntro.js';
 import { StylizedWoods } from '../environment/StylizedWoods.js';
 import { ForestAtmosphere } from '../environment/ForestAtmosphere.js';
 import { getPortalTravelDuration } from '../props/RoomExitPortal.js';
+import { WoodsBossCutscene } from './WoodsBossCutscene.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -46,7 +47,6 @@ export class Level1 {
     this.degreeScroll = null;
     this.degreeGrip = null;
     this.bossMarker = null;
-    this.bossRing = null;
     this.portalRoot = null;
     this.portalModel = null;
     this.portalMixer = null;
@@ -55,8 +55,9 @@ export class Level1 {
     this.obstacles = [];
     this.treeMeshes = [];
 
-    // Boss sequence: waiting -> running -> absorbing -> done
+    // Boss sequence: waiting -> emerging -> running -> absorbing -> done
     this.bossState = 'waiting';
+    this.bossCutscene = null;
     this.portalTimer = 0;
     this.bossAbsorption = null;
     this.portalApproachPoint = new THREE.Vector3(0, 0, -43.2);
@@ -92,6 +93,16 @@ export class Level1 {
   }
 
   get portalCinematicActive() { return !!this.playerAbsorption; }
+
+  get remainingZombies() {
+    // Count delayed portal exits and the reserve too, even while their models are hidden.
+    return this.zombies.reduce((count, zombie) => count + Number(zombie.alive), 0)
+      + this.zombieReserve.reduce((count, zombie) => count + Number(zombie.alive), 0);
+  }
+
+  get bluePortalUnlocked() {
+    return this.bossState === 'done' && !this.bossCutscene && this.remainingZombies === 0;
+  }
 
   preparePlayer(player) {
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
@@ -152,10 +163,6 @@ export class Level1 {
       orb.position.set(x, 1.5, z);
       orb.name = 'Credit';
 
-      // Glow point light
-      const glow = new THREE.PointLight(0xffd700, 1, 5);
-      orb.add(glow);
-
       this.scene.add(orb);
       this.credits.push({ mesh: orb, collected: false });
     }
@@ -177,20 +184,10 @@ export class Level1 {
     this.bossMarker.name = 'Dean';
     this.bossMarker.visible = false;
 
-    // Indicator ring around The Dean's feet
-    const ringGeo = new THREE.TorusGeometry(1.5, 0.05, 8, 24);
-    const ringMat = new THREE.MeshStandardMaterial({
-      color: 0xff0000,
-      emissive: 0xff0000,
-      emissiveIntensity: 1.0
-    });
-    this.bossRing = new THREE.Mesh(ringGeo, ringMat);
-    this.bossRing.position.set(0, 0.1, 5);
-    this.bossRing.rotation.x = -Math.PI / 2;
-    this.bossRing.visible = false;
-    this.scene.add(this.bossRing);
-    this.disposables.push(ringGeo, ringMat);
     await this.boss.ready;
+    // Portal scaling and changing poses invalidate the skinned mesh's cached
+    // culling bounds. The hero of the shot must remain visible throughout it.
+    this.bossMarker.traverse(node => { if (node.isSkinnedMesh) node.frustumCulled = false; });
     this._attachDegreeScroll();
   }
 
@@ -226,23 +223,25 @@ export class Level1 {
     if (this.degreeGrip) this.degreeGrip();
   }
 
-  _spawnBoss() {
+  _spawnBoss(player) {
     this.bossSpawned = true;
-    this.bossState = 'running';
+    this.bossState = 'emerging';
     this.bossMarker.visible = true;
-    this.bossRing.visible = true;
-    // Boss appears near the player spawn and runs toward the portal
-    this.bossMarker.position.set(0, 0, 5);
+    // Emerge beyond the red portal's steps, then run down the clear central path.
+    this.redPortalRoot.updateMatrixWorld(true);
+    const redBounds = new THREE.Box3().setFromObject(this.redPortalRoot, true);
+    this.bossMarker.position.set(this.redPortalRoot.position.x, 0,
+      Math.min(this.redPortalRoot.position.z - 6, redBounds.min.z - 1));
     this.bossMarker.scale.setScalar(this.bossScale);
-    this.bossRing.position.set(0, 0.1, 5);
-    this.bossMarker.lookAt(0, 0, -45);
-    this.boss._playAction('Run');
-    this._updateBossAnimation(0);
     if (this.portalRoot) {
       this.portalRoot.updateMatrixWorld(true);
       const portalBounds = new THREE.Box3().setFromObject(this.portalRoot, true);
       this.portalApproachPoint.set(this.portalRoot.position.x, 0, portalBounds.max.z + 0.7);
     }
+    this.bossMarker.lookAt(this.portalApproachPoint);
+    this.boss._playAction('Idle');
+    this._updateBossAnimation(0);
+    this.bossCutscene = new WoodsBossCutscene(this, player);
   }
 
   _beginBossAbsorption() {
@@ -296,8 +295,7 @@ export class Level1 {
       material.transparent = true;
       material.needsUpdate = true;
     }
-    this.boss._playAction('Idle', 0.35);
-    if (this.bossRing) this.bossRing.material.transparent = true;
+    this.boss._playAction('Idle', 0.12);
   }
 
   _updateBossAbsorption(dt, time) {
@@ -318,7 +316,7 @@ export class Level1 {
     this._updateBossAnimation(dt);
 
     const opacity = 1 - THREE.MathUtils.smoothstep(t, 0.55, 1);
-    const portalGlow = new THREE.Color(0x35ffb1);
+    const portalGlow = new THREE.Color(0x359dff);
     for (const entry of absorption.materials) {
       entry.material.opacity = entry.opacity * opacity;
       entry.material.depthWrite = opacity > 0.95;
@@ -328,11 +326,6 @@ export class Level1 {
       }
     }
 
-    if (this.bossRing) {
-      const ringFade = 1 - THREE.MathUtils.smoothstep(t, 0, 0.45);
-      this.bossRing.scale.setScalar(Math.max(0.001, ringFade));
-      this.bossRing.material.opacity = ringFade;
-    }
     const pulse = Math.sin(t * Math.PI);
     if (this.portalRoot) {
       const settledScale = 1 + Math.sin(time * 4) * 0.04;
@@ -349,10 +342,6 @@ export class Level1 {
       this.bossState = 'done';
       this.bossMarker.visible = false;
       this.scene.remove(this.bossMarker);
-      if (this.bossRing) {
-        this.bossRing.visible = false;
-        this.scene.remove(this.bossRing);
-      }
       this.bossAbsorption = null;
     }
   }
@@ -404,10 +393,12 @@ export class Level1 {
               if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
-                if (child.material) {
-                  if (child.material.emissive && child.material.emissive.getHex() > 0) {
-                    child.material.emissiveIntensity = 2.0;
+                for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+                  if (material.emissive?.getHex() > 0) {
+                    material.emissive.setHex(0x258bff);
+                    material.emissiveIntensity = 2.0;
                   }
+                  if (material.color?.g > material.color.r * 1.3) material.color.setHex(0x307dff);
                 }
               }
             });
@@ -436,8 +427,8 @@ export class Level1 {
               }
             }
 
-            // Atmospheric point light radiating from the portal center (emerald green)
-            this.portalLight = new THREE.PointLight(0x00ff88, 2.0, 25);
+            // Blue light identifies the exit across from the red spawn portal.
+            this.portalLight = new THREE.PointLight(0x258bff, 2.0, 25);
             this.portalLight.position.set(0, 3.2, -44.5);
             this.scene.add(this.portalLight);
             this.disposables.push(this.portalLight);
@@ -466,8 +457,8 @@ export class Level1 {
 
     const geo = new THREE.TorusGeometry(2.0, 0.15, 16, 48);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x00ff88,
-      emissive: 0x00ff88,
+      color: 0x307dff,
+      emissive: 0x258bff,
       emissiveIntensity: 1.5
     });
     const ring = new THREE.Mesh(geo, mat);
@@ -478,7 +469,7 @@ export class Level1 {
     this.scene.add(root);
     this.disposables.push(geo, mat);
 
-    this.portalLight = new THREE.PointLight(0x00ff88, 2, 20);
+    this.portalLight = new THREE.PointLight(0x258bff, 2, 20);
     this.portalLight.position.set(0, 2, -45);
     this.scene.add(this.portalLight);
     this.disposables.push(this.portalLight);
@@ -494,7 +485,7 @@ export class Level1 {
       const tint = material => {
         const copy = material.clone();
         if (copy.emissive?.getHex() > 0) { copy.emissive.setHex(0xff1810); copy.emissiveIntensity = 2; }
-        if (copy.color?.g > copy.color.r * 1.3) copy.color.setHex(0xff3025);
+        if (copy.color?.b > copy.color.r * 1.3) copy.color.setHex(0xff3025);
         this.redPortalMaterials.add(copy); return copy;
       };
       node.material = Array.isArray(node.material) ? node.material.map(tint) : tint(node.material);
@@ -524,7 +515,53 @@ export class Level1 {
   // Precompiles the reserve zombies' GPU programs behind the loading screen;
   // without this their first portal reveal compiles shaders mid-game and stalls a frame.
   async prepareShaders(renderer, camera) {
-    await compileHiddenObjects(renderer, this.scene, camera, this.zombieReserve.map(zombie => zombie.group));
+    this.cinematicRenderer = renderer;
+    const objects = [this.bossMarker, ...this.creditEffects.getWarmupObjects(),
+      ...this.zombieReserve.map(zombie => zombie.group)];
+    const warmFrame = () => {
+      if (!renderer.render || !renderer.setRenderTarget || !renderer.getViewport) return;
+      const previousTarget = renderer.getRenderTarget();
+      const viewport = renderer.getViewport(new THREE.Vector4());
+      const hidden = objects.filter(object => object && !object.visible);
+      const culled = [];
+      for (const object of objects) object?.traverse(node => {
+        if (!node.isMesh && !node.isPoints) return;
+        culled.push({ node, value: node.frustumCulled }); node.frustumCulled = false;
+      });
+      try {
+        for (const object of hidden) object.visible = true;
+        // Use the screen's actual color/shadow pipeline, with a tiny viewport
+        // covered by the loading overlay, to avoid compiling offscreen variants.
+        renderer.setRenderTarget(null); renderer.setViewport(0, 0, 4, 4);
+        // Upload meshes, skinning textures and shadow programs under the loading
+        // screen too; compiling materials alone leaves that work for the first shot.
+        renderer.render(this.scene, camera);
+      } finally {
+        renderer.setRenderTarget(previousTarget); renderer.setViewport(viewport);
+        for (const object of hidden) object.visible = false;
+        for (const { node, value } of culled) node.frustumCulled = value;
+      }
+    };
+    await compileHiddenObjects(renderer, this.scene, camera, objects);
+    warmFrame();
+    // Portal travel fades both the Dean and his degree. Prepare that material
+    // variant now so the first reveal and disappearance cannot compile mid-shot.
+    const materials = new Set();
+    this.bossMarker?.traverse(node => {
+      if (node.isMesh) for (const material of Array.isArray(node.material) ? node.material : [node.material]) materials.add(material);
+    });
+    const saved = [...materials].map(material => ({ material, transparent: material.transparent, depthWrite: material.depthWrite }));
+    try {
+      for (const { material } of saved) {
+        material.transparent = true; material.depthWrite = false; material.needsUpdate = true;
+      }
+      await compileHiddenObjects(renderer, this.scene, camera, objects);
+      warmFrame();
+    } finally {
+      for (const entry of saved) Object.assign(entry.material, {
+        transparent: entry.transparent, depthWrite: entry.depthWrite, needsUpdate: true,
+      });
+    }
   }
 
   _spawnOrbZombies() {
@@ -613,11 +650,23 @@ export class Level1 {
     if (this.wakeUpIntro && !this.wakeUpIntro.done) return { title: 'Waking in the woods',
       detail: 'Find your feet. Your thesis is still out there.', timer: 'A strange dream begins',
       progress: this.wakeUpIntro.time / this.wakeUpIntro.duration, tone: 'watch' };
-    const entering = !!this.playerAbsorption;
-    const done = this.bossState === 'done';
-    return { title: entering ? 'Entering The Sophomore Room' : done ? 'Follow the Dean into the green portal' : 'The Freshman Woods',
-      detail: entering ? 'The portal pulls you through.' : done ? 'Walk up to the green portal to continue to second year.' : 'Collect the yellow orbs. Each orb releases two zombies from the red portal.',
-      timer: `${this.creditsCollected} / ${this.credits.length} orbs collected`, progress: this.creditsCollected / Math.max(1, this.credits.length), tone: done ? 'follow' : 'watch' };
+    if (this.playerAbsorption) return { title: 'Entering The Sophomore Room',
+      detail: 'The portal pulls you through.', timer: 'All zombies defeated', progress: 1, tone: 'follow' };
+    if (this.bossState === 'done' && !this.bossCutscene) {
+      const remaining = this.remainingZombies;
+      const total = this.zombies.length + this.zombieReserve.length;
+      if (remaining > 0) return { title: 'Eliminate the remaining zombies',
+        detail: 'The Dean escaped. Kill every zombie to unlock the blue portal.',
+        timer: `${remaining} ${remaining === 1 ? 'zombie' : 'zombies'} remaining`,
+        progress: (total - remaining) / Math.max(1, total), tone: 'danger' };
+      return { title: 'Follow the Dean into the blue portal',
+        detail: 'All zombies defeated. Walk up to the blue portal to continue to second year.',
+        timer: 'Blue portal unlocked', progress: 1, tone: 'follow' };
+    }
+    return { title: 'The Freshman Woods',
+      detail: 'Collect the yellow orbs. Each orb releases two zombies from the red portal.',
+      timer: `${this.creditsCollected} / ${this.credits.length} orbs collected`,
+      progress: this.creditsCollected / Math.max(1, this.credits.length), tone: 'watch' };
   }
 
   /**
@@ -632,15 +681,19 @@ export class Level1 {
       this.wakeUpIntro.update(dt);
       return events;
     }
-    this.spawnDelay = Math.max(0, this.spawnDelay - dt);
     this.redPortalMixer?.update(dt);
+    this.portalMixer?.update(dt);
     if (this.redPortalLight) this.redPortalLight.intensity = 3.5 + Math.sin(time * 4) * 0.8;
     this.creditEffects?.update(dt, player);
     if (this.playerAbsorption) {
-      this.portalMixer?.update(dt);
       this._updatePlayerAbsorption(dt);
       return { ...events, levelComplete: this.levelComplete, autoAdvance: this.levelComplete };
     }
+    if (this.bossCutscene) {
+      events.bossReached = this.bossCutscene.update(dt, time);
+      return events; // Hold enemies and queued spawns while the camera owns control.
+    }
+    this.spawnDelay = Math.max(0, this.spawnDelay - dt);
 
     // Animate credits (bob & spin)
     for (const credit of this.credits) {
@@ -661,11 +714,6 @@ export class Level1 {
       }
     }
 
-    // Update portal animation mixer
-    if (this.portalMixer) {
-      this.portalMixer.update(dt);
-    }
-
     // Idle portal pulse before the boss appears
     if (this.bossState === 'waiting' && this.portalRoot) {
       this.portalRoot.scale.setScalar(1 + Math.sin(time * 2) * 0.02);
@@ -674,48 +722,17 @@ export class Level1 {
 
     // Spawn the boss once all credits are collected
     if (this.bossState === 'waiting' && this.creditsCollected >= this.credits.length) {
-      this._spawnBoss();
+      this._spawnBoss(player);
+      if (this.bossCutscene) return events;
     }
 
-    // Boss runs from the edge of the player side toward the portal
-    if (this.bossState === 'running') {
-      this._updateBossAnimation(dt);
-      const runSpeed = 4.0;
-      // Begin the lift before the entrance steps so his feet never sink into them.
-      const target = this.portalApproachPoint;
-      const pos = this.bossMarker.position;
-      const offset = new THREE.Vector3().subVectors(target, pos);
-      const dist = offset.length();
-      const step = runSpeed * dt;
+    if (this.bossState === 'done') {
+      // After the escape, clear every zombie before following through the blue portal.
+      const unlocked = this.bluePortalUnlocked;
+      if (this.portalRoot) this.portalRoot.scale.setScalar(1 + Math.sin(time * 4) * (unlocked ? 0.04 : 0.01));
+      if (this.portalLight) this.portalLight.intensity = unlocked ? 4 + Math.sin(time * 6) : 1.5 + Math.sin(time * 3) * 0.25;
 
-      if (this.bossRing) {
-        this.bossRing.rotation.z += dt * 1.5;
-      }
-
-      if (dist > step) {
-        offset.normalize().multiplyScalar(step);
-        this.bossMarker.position.add(offset);
-        this.bossRing.position.x = this.bossMarker.position.x;
-        this.bossRing.position.z = this.bossMarker.position.z;
-        // Face the portal while running
-        this.bossMarker.lookAt(target);
-        // The model's run animation supplies the stride; keep its feet grounded.
-        this.bossMarker.position.y = 0;
-      } else {
-        this._beginBossAbsorption();
-        events.bossReached = true;
-      }
-    }
-
-    // Boss disappears into the portal
-    if (this.bossState === 'absorbing') {
-      this._updateBossAbsorption(dt, time);
-    } else if (this.bossState === 'done') {
-      // The player must enter the same portal after the Dean has disappeared.
-      if (this.portalRoot) this.portalRoot.scale.setScalar(1 + Math.sin(time * 4) * 0.04);
-      if (this.portalLight) this.portalLight.intensity = 4.0 + Math.sin(time * 6) * 1.0;
-
-      if (Math.hypot(player.group.position.x - this.portalApproachPoint.x, player.group.position.z - this.portalApproachPoint.z) < 2.2) {
+      if (unlocked && Math.hypot(player.group.position.x - this.portalApproachPoint.x, player.group.position.z - this.portalApproachPoint.z) < 2.2) {
         this._beginPlayerAbsorption(player);
         return events;
       }
@@ -774,6 +791,7 @@ export class Level1 {
     this.woods?.dispose();
     this.woods = null;
     this.wakeUpIntro?.restore();
+    this.bossCutscene?.restore();
     this._restorePlayerAppearance();
     this.redPortalMixer?.stopAllAction();
     this.redPortalRoot?.removeFromParent();
@@ -811,11 +829,6 @@ export class Level1 {
       this.boss.dispose();
       this.boss = null;
       this.bossMarker = null;
-    }
-    if (this.bossRing) {
-      this.scene.remove(this.bossRing);
-      this.bossRing.geometry.dispose();
-      this.bossRing.material.dispose();
     }
     this.obstacles = [];
     this.treeMeshes = [];

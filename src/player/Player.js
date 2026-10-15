@@ -49,6 +49,13 @@ export class Player {
     this.jumpHeld = false;
     this.dodgeCooldownTimer = 0;
     this.dodgeDirection = new THREE.Vector3();
+    this._moveForward = new THREE.Vector3();
+    this._moveRight = new THREE.Vector3();
+    this._moveDirection = new THREE.Vector3();
+    this._cameraPivot = new THREE.Vector3();
+    this._cameraShoulder = new THREE.Vector3();
+    this._cameraBackward = new THREE.Vector3();
+    this._cameraDesired = new THREE.Vector3();
     this.hitReactionDuration = 0.48;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
@@ -368,10 +375,11 @@ export class Player {
     this.group.rotation.y = this.yaw;
 
     // ---- Movement ----
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
-    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+    const sinYaw = Math.sin(this.yaw), cosYaw = Math.cos(this.yaw);
+    const forward = this._moveForward.set(-sinYaw, 0, -cosYaw);
+    const right = this._moveRight.set(cosYaw, 0, -sinYaw);
 
-    let moveDir = new THREE.Vector3();
+    const moveDir = this._moveDirection.set(0, 0, 0);
     if (inp.isDown('KeyW')) moveDir.add(forward);
     if (inp.isDown('KeyS')) moveDir.sub(forward);
     if (inp.isDown('KeyA')) moveDir.sub(right);
@@ -547,16 +555,16 @@ export class Player {
     if (this.isFirstPerson) {
       this.camera.position.copy(this.group.position).add(this.firstPersonOffset);
     } else {
-      const pivot = this.group.position.clone().add(this.cameraPivotOffset);
-      const shoulder = new THREE.Vector3(this.thirdPersonOffset.x, this.thirdPersonOffset.y, 0)
+      const pivot = this._cameraPivot.copy(this.group.position).add(this.cameraPivotOffset);
+      const shoulder = this._cameraShoulder.set(this.thirdPersonOffset.x, this.thirdPersonOffset.y, 0)
         .applyQuaternion(this.camera.quaternion).add(pivot);
-      const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
+      const backward = this._cameraBackward.set(0, 0, 1).applyQuaternion(this.camera.quaternion);
       let distance = this.thirdPersonOffset.z;
       // Shorten the boom when looking up so the camera stays above the ground.
       if (backward.y < 0 && Number.isFinite(this.cameraGroundY)) {
         distance = Math.min(distance, (shoulder.y - this.cameraGroundY - this.cameraCollisionRadius) / -backward.y);
       }
-      const desired = shoulder.addScaledVector(backward, Math.max(0, distance));
+      const desired = this._cameraDesired.copy(shoulder).addScaledVector(backward, Math.max(0, distance));
       this.camera.position.lerpVectors(pivot, desired, this._cameraClearance(pivot, desired));
     }
     if (this.isFirstPerson && this.isDodging) {

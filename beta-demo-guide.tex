@@ -1,0 +1,204 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=22mm,headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+\definecolor{ink}{HTML}{18242D}
+\definecolor{accent}{HTML}{9B3C2D}
+\definecolor{pale}{HTML}{F4F1EC}
+\hypersetup{colorlinks=true,linkcolor=accent,urlcolor=accent,pdftitle={Thesis of the Dead -- Beta Demonstration Guide}}
+\setlist[itemize]{leftmargin=1.4em,itemsep=2pt,topsep=3pt}
+\setlist[enumerate]{leftmargin=1.7em,itemsep=3pt,topsep=3pt}
+\titleformat{\section}{\Large\bfseries\color{ink}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{accent}}{\thesubsection}{0.6em}{}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Thesis of the Dead}
+\rhead{\small CGV Beta Demonstration}
+\cfoot{\thepage}
+
+\newcommand{\key}[1]{\textbf{#1}}
+\newcommand{\say}[1]{\begin{quote}\small\color{ink}#1\end{quote}}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{20mm}
+  {\Large Computer Graphics and Visualisation\\[3pt]
+  COMS3006A / COMS3025A\par}
+  \vspace{18mm}
+  {\Huge\bfseries\color{ink} Thesis of the Dead\par}
+  \vspace{5mm}
+  {\LARGE Beta Demonstration Notes\par}
+  \vspace{8mm}
+  {\large What we built, why we built it this way, and what to show\par}
+  \vfill
+  \vspace{15mm}
+  \begin{minipage}{0.86\textwidth}\centering\small
+    These notes describe the game, its design choices, and the graphics techniques used in its current implementation.
+  \end{minipage}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{What tomorrow's beta is about}
+
+The beta is graded and contributes to our class mark. We will show the game, explain our design and graphics choices, and answer questions against the project rubric. The brief allows a few minor bugs or incomplete details, but the game should feel fundamentally playable and close to production. This is our last formal opportunity to get feedback before final submission.
+
+The trailer is part of the beta and must be no longer than two minutes. The devlog is required for the final submission, not this beta.
+
+\subsection{Our opening}
+\say{Our game is called \emph{Thesis of the Dead}. It follows a student in the middle of a psychological episode, reliving his undergraduate journey as a series of distorted memories. The levels are not meant to be literal places: they are experiences unfolding inside his mind as university pressure, fear of failure, and exhaustion become a zombie-filled world. In the first memory, he wanders through a moonlit forest collecting credits while zombies gather around him. In the second, the Dean leads him through increasingly difficult tests of timing, movement, and memory. In the final memory, a one-minute deadline and the houses producing zombies turn his pressure into a desperate fight, ending in a confrontation with the Dean. The portals connect these shifts in memory, and the Dean represents the authority and expectations that follow the student through them.}
+
+\subsection{What the story means}
+The game presents the journey through the student's point of view. The familiar milestones of undergraduate study return in a warped form: credits become objects to collect, assessment becomes a hazardous course, and the final deadline becomes a timed battle. The zombies represent the pressure and fears that build up and become harder to ignore. The Dean is both a character in the game and a recurring figure of academic authority in the student's memories. Moving through the portals feels like being pulled from one memory into another rather than travelling between ordinary locations. The psychological episode is a framing device for the story; the game does not name a specific diagnosis.
+
+\section{A short walkthrough that fits the demo}
+
+We do not need to finish the whole campaign in front of the tutors. We should show one clear moment from each chapter, explain what the player is trying to do, and use a prepared checkpoint if reaching a later section would take too long.
+
+\begin{enumerate}
+  \item \key{Start with the menu and the premise.} Give the opening above. Mention that the game is made with Three.js and runs in a browser. If asked, show the Credits screen from the menu.
+  \item \key{Show the woods.} Point out the moonlit environment and one glowing credit. Collecting a credit releases two zombies from the red portal. Show the combat briefly, then explain the ending: the Dean leaves through the blue portal, and the player must defeat the remaining zombies before following him.
+  \item \key{Show the Sophomore Room.} Explain the four challenges before attempting one: sweeping saw blades, six moving bridge platforms above a lethal pit, a retracting-spike corridor with zombie waves, and memory-tile routes. Show the Dean emerge and run the saw route in the opening cinematic.
+  \item \key{Show the desert.} Explain the 60-second timer and the houses. A standing house produces zombies; destroying it stops those reinforcements. If the boss checkpoint is ready, show one of the Dean's telegraphed attacks and dodge it.
+  \item \key{Finish with one technical example.} Explain the credit-orb shader or the saw hierarchy while the object is visible.
+\end{enumerate}
+
+Keep the demo build open and ready. Check that the controls work, the audio level is sensible, and the browser console has no new errors. If a bug occurs, describe what should have happened, recover, and continue.
+
+\section{How the three chapters fit together}
+
+\begin{tabularx}{\textwidth}{>{\bfseries}p{0.16\textwidth} X X}
+  \toprule
+  Chapter & What we ask the player to do & Why it is different \\
+  \midrule
+  Freshman Woods & Explore a distorted memory of the student's first year, collect eight credits, fight the zombies drawn to them, then follow the Dean after clearing the remaining enemies. & The forest makes the student's early university experience feel uncertain and isolating; collecting credits turns academic progress into a source of danger. \\
+  Sophomore Room & Follow the Dean through saws, moving platforms, retracting spikes and a zombie ambush, then watch and repeat a route across memory tiles. & The course turns assessment pressure into physical obstacles and tests of focus, timing, and recall. \\
+  Final Encounter & Survive the desert deadline, destroy the houses producing reinforcements, and then fight the Dean. & The timer and endless waves express pressure closing in; destroying the houses gives the student a way to push back before confronting the figure at the centre of these memories. \\
+  \bottomrule
+\end{tabularx}
+
+If the tutor asks what makes the levels genuinely different, we can say: \emph{the first turns academic progress into uneasy exploration, the second makes assessment a test of movement and memory, and the third turns deadline pressure into a timed fight and confrontation with the Dean.}
+
+\section{How we built the graphics}
+
+\subsection{Lighting choices}
+
+We gave each chapter its own light because we wanted the player to feel the change in setting immediately.
+
+\say{The woods are meant to feel like a cold night, so we use a directional moonlight as the main light. It creates consistent shadows across the trees. Ambient and hemisphere fill stop the scene from becoming unreadable black wherever the moonlight does not reach. The colored portals and credit orbs have local point lights, which makes them stand out as places and objects the player should notice. Fog and the custom night sky help hide the far edge of the level.}
+
+\say{The Sophomore Room is an enclosed stone corridor, so we built its lighting around wall torches instead of a distant sun. The flames, smoke and embers animate, and our torch shader gives nearby surfaces warm light. We keep eight nearby torch slots for that lighting, but only two point lights cast shadows, each with a 512-pixel shadow map. We chose that limit because point-light shadows are expensive and the room has many torches.}
+
+\say{The final arena is open and sunlit. A warm directional light gives the houses and terrain clear shadows, and a hemisphere light adds color from the sky and ground so the shadows still have detail. The sand-colored fog and sky soften the horizon and make the settlement feel dry and exposed.}
+
+The moon and sun have larger authored shadow maps, but the graphics-quality setting caps them to 512 pixels on Low, 1024 on Medium, and 2048 on High. Medium is the default. That lets the game keep shadow detail on a stronger machine while giving a weaker machine a lower-cost option. During cutscenes we also pause shadow-map updates to avoid spending a frame recalculating shadows for moving objects; gameplay refreshes them afterward.
+
+\subsection{Textures, UVs, and mipmaps}
+
+\say{In the Sophomore Room we use the same stone material across the floor, bridge platforms, and memory tiles. That was a deliberate art choice: all of those surfaces should read as parts of one dungeon. The material uses a base-color map for the stone color, a normal map for small surface grooves, and a surface map for roughness and ambient occlusion. The grooves affect how light falls across the surface without needing extra polygons.}
+
+\say{We set the floor UVs in code instead of stretching one image over a whole corridor. The code checks which way each face points, projects the UVs across its top or side, and repeats the texture every 2.8 world units. This keeps the stone tile size consistent on long floors and the sides of platforms. We wrap the maps so the texture can repeat, set the color map to sRGB, and use anisotropy 8 because the floor is often seen at a shallow angle. The desert and spike-trap textures use anisotropy 4.}
+
+\say{We let Three.js generate mipmaps for our regular loaded textures; we do not store a separate hand-made mip chain. Mipmaps are smaller copies of the same image that the renderer can use when a surface takes up fewer pixels on screen. They reduce distant shimmer. Anisotropic filtering helps retain detail when the surface is viewed at a grazing angle. Mipmaps use extra memory, so they do not remove the need to keep source textures sensible. Our spike-trap loader scales any source texture larger than 1024 pixels down before using it.}
+
+Three.js uses a mipmapped minification filter by default for ordinary textures, and our code does not override that default for the floor maps. Color images are marked sRGB because their pixel values represent display colors; normal, roughness and occlusion maps are data and should not be gamma-corrected as if they were colors.
+
+\subsection{Scene graph and hierarchy}
+
+\say{We use parent-child groups when parts should move together. A Level 2 root holds the room objects. The entrance portal has its own root for the portal model, animated surface and light. The saw is split into a moving carriage, a rotor under the carriage, and the blade under the rotor. That lets us move the carriage across the corridor while the blade spins in place.}
+
+\say{The player is a root group with a separate body group and gun group. The loaded character model sits inside the body group, and the gun has a muzzle point attached to it. The Dean is also a group containing a skinned zombie rig. We attach his degree scroll to a hand bone, so it follows the animated arm instead of needing its position updated by hand. Each child uses coordinates relative to its parent; Three.js combines those transforms to place it in the world.}
+
+\begin{verbatim}
+Scene
+|-- SophomoreRoom root
+|   |-- Portal root -> model, surface, light
+|   |-- Saw carriage -> rotor -> blade model
+|   |-- Bridges, spike pit, memory tiles
+|   `-- Dean -> skinned rig -> hand bone -> degree
+`-- Player -> body -> character rig
+           `-> gun -> muzzle point
+\end{verbatim}
+
+We keep the camera outside that player hierarchy. Its position is calculated from the player's position and camera offsets. That gives us room to place the third-person view over a shoulder, check for obstacles behind the player, and switch to first person without changing the character's rig.
+
+\subsection{Materials, camera, and custom shaders}
+
+Most lit environment surfaces use Three.js physically based materials. In practice, that means the surface maps describe color and small-scale response, and the lights determine how those surfaces look. The desert ground uses a bump map to break up its surface. The renderer uses ACES tone mapping and sRGB output so the bright portal, fire and orb highlights can sit alongside dark areas without simply clipping to white. Antialiasing is on except at the Low graphics setting. The perspective camera has a 60-degree field of view; C switches between first- and third-person views.
+
+\say{The clearest custom-shader example is the credit orb. In the vertex shader, we move each vertex slightly along its normal using time-based sine waves, so the orb subtly breathes. We pass position, a world-space normal, and the direction to the camera into the fragment shader. There we combine moving noise, engraved bands, and a Fresnel rim highlight to make the bronze-and-gold surface shimmer. The CPU updates a time uniform, and a boost uniform makes the orb flare when a credit is collected. We wrote both shader stages because a static material would not give us that animated surface effect.}
+
+Another example is the forest atmosphere. The firefly vertex shader moves seeded points on the GPU and makes them blink; the fragment shader shapes their glow and fades them into the fog or near a credit. The mist is instanced, and the vegetation shader adds time-based wind sway. The portal surface has its own animated shader for the moving color and rim. These effects are part of the levels' visual identity rather than a separate demo scene.
+
+\section{How the game plays}
+
+\subsection{Controls}
+
+\begin{tabularx}{\textwidth}{>{\bfseries}p{0.23\textwidth} X}
+  \toprule
+  Input & What it does in our game \\
+  \midrule
+  WASD & Move relative to the camera direction. \\
+  Mouse & Look and aim. Click the game view if it needs pointer lock. \\
+  Left click & Fire the selected gun or use the selected melee weapon. \\
+  Right click & Fire one pistol when using dual pistols. \\
+  Shift & Sprint. \\
+  Space & Jump. Release and press again for another jump. \\
+  Q & Roll or dodge. Release and press again for another roll. \\
+  F & Bash at close range with a firearm; an empty firearm can also bash. \\
+  1; 2--6 & Open the weapon wheel, or equip a weapon directly. \\
+  C & Switch between first- and third-person camera views. \\
+  R / Esc & Retry the current checkpoint / pause the game. \\
+  \bottomrule
+\end{tabularx}
+
+\subsection{Movement, hazards, and failure}
+
+The player has horizontal velocity and vertical velocity. Gravity changes the vertical velocity each frame; the game then integrates movement over elapsed time and checks for collisions. When the player is falling, the platform code checks whether they crossed a platform from above. That matters in Level 2 because there is no safe floor beneath the moving bridge or memory tiles. Missing a jump means falling into the spikes, not landing on an invisible floor.
+
+In the saw corridor, the Dean's scripted path chooses a side based on the predicted saw sweep. The player can read the opening or roll through a dangerous timing window. On the bridge, the player jumps between six platforms that move horizontally. The spike corridor adds retracting floor spikes and twelve zombies in four waves. After clearing them, the player watches the Dean demonstrate a route and repeats it on memory tiles. The four routes grow from 4 to 10 jumps. We keep the generated pattern on checkpoint retries, so the player can learn from a failed attempt.
+
+In the final arena, the timer begins at 60 seconds. Each standing house produces zombies. Destroying a house stops those reinforcements, so the player has to decide whether to shoot the current enemies or remove the source of the next wave. Once the arena is clear, the Dean's boss attacks have wind-ups that give the player a chance to roll out of the way.
+
+\section{How this maps to the marking rubric}
+
+\begin{tabularx}{\textwidth}{>{\bfseries}p{0.24\textwidth} >{\bfseries}p{0.09\textwidth} X}
+  \toprule
+  Area & Marks & What we can show in our game \\
+  \midrule
+  Viewing & 10\% & The animated 3D world, player movement, camera switching, portals, and animated characters. We can explain how the camera is positioned from the player. \\
+  Control and Playability & 10\% & Keyboard and mouse controls, shooting and melee, jumping and rolling, objectives, damage, failure, checkpoints, and level completion. \\
+  3D Effects & 15\% & Chapter lighting, shadows, PBR textures, normal and bump maps, fog, sky shaders, particles, portals, and post-processing. \\
+  Shaders & 10\% & The credit orb has custom vertex and fragment shaders. We can explain the time and boost uniforms and how the shader creates its animated surface. \\
+  Gameplay and Experience & 25\% & Three different chapter challenges, a connected story, clear progression, a Dean guide and boss, enemy waves, checkpoints, and retry behavior. \\
+  Polish & 10\% & Menus, pause/options, HUD, camera views, quality settings, loading feedback, credits, and checkpoint restart. \\
+  Innovation & 10\% & The custom shaders and atmosphere, generated memory routes, moving hazards, enemy-producing destructible houses, and boss fight. \\
+  Trailer & 10\% & The beta includes a trailer of no more than two minutes. The devlog is required for final submission, not beta. \\
+  \bottomrule
+\end{tabularx}
+
+\section{The short version to remember}
+
+\begin{quote}\large\bfseries\color{ink}
+We tell the story of a student reliving his undergraduate journey during a psychological episode. The forest, assessment course, and deadline fight are distorted memories shaped by academic pressure; the portals connect them, and the Dean represents the authority and expectations that recur throughout. Our lighting, textures, hierarchy, and shaders support both the changing memories and their different gameplay challenges.
+\end{quote}
+
+\vfill
+\noindent\small\color{gray}{Prepared from the current project source and the CGV beta brief.}
+
+\end{document}

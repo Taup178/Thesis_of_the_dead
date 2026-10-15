@@ -19,6 +19,7 @@ export class Level3 {
   constructor(scene, options = {}) {
     this.scene = scene; this.previousBackground = scene.background; this.previousFog = scene.fog;
     this.root = new THREE.Group(); this.root.name = 'FinalEncounter'; scene.add(this.root);
+    this.worldBounds = { minX: -46, maxX: 46, minZ: -46, maxZ: 46 };
     this.zombies = []; this.credits = []; this.houses = []; this.spawnRecords = [];
     this.creditsCollected = 0; this.levelComplete = false; this.allowsShooting = true;
     this.timeRemaining = FINAL_ENCOUNTER_SECONDS; this.timerExpired = false; this.elapsed = 0;
@@ -397,11 +398,12 @@ export class Level3 {
       zombie.group.visible = false; zombie.group.name = `House_${house.index + 1}_Door_${door.index + 1}`;
       zombie.speed = 1.9 + door.index * 0.13; this.root.add(zombie.group); this.zombies.push(zombie);
       this.spawnRecords.push({ house, door, zombie, phase: 'waiting', progress: 0, route: [],
+        routeDirection: new THREE.Vector3(), steeringTarget: new THREE.Vector3(),
         routeTime: door.index * 0.2, releaseAt: releaseAt + door.delay, deathHandled: false });
     }
   }
 
-  getWorldBounds() { return { minX: -46, maxX: 46, minZ: -46, maxZ: 46 }; }
+  getWorldBounds() { return this.worldBounds; }
   getRestartState() {
     if (this.transformationPreview) return { transformationPreview: true };
     if (this.arenaCleared) return { arenaCleared: true, timeRemaining: this.timeRemaining, ...(this.bossPreview ? { bossPreview: true } : {}) };
@@ -585,8 +587,9 @@ export class Level3 {
     const waypoint = !direct && record.route[0];
     if (waypoint) {
       // Extend the steering target so the normal attack range cannot stop a zombie at a path corner.
-      const direction = new THREE.Vector3(waypoint.x - zombie.group.position.x, 0, waypoint.z - zombie.group.position.z).normalize();
-      zombie.update(dt, zombie.group.position.clone().addScaledVector(direction, 5));
+      const direction = record.routeDirection.set(waypoint.x - zombie.group.position.x, 0,
+        waypoint.z - zombie.group.position.z).normalize();
+      zombie.update(dt, record.steeringTarget.copy(zombie.group.position).addScaledVector(direction, 5));
     } else {
       const result = zombie.update(dt, player.group.position);
       if (result.hit && direct && !player.isDodging) player.takeDamage(result.damage);
