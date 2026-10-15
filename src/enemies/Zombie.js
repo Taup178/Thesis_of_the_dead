@@ -69,6 +69,8 @@ export class Zombie {
     this.damageRate = 1.0;
     this.health = 30;
     this.attackTimer = 0;
+    this.audioIdleTimer = 5 + Math.random() * 7;
+    this.audioDetected = false;
 
     // Hierarchical group (the loaded model goes inside this)
     this.group = new THREE.Group();
@@ -237,13 +239,22 @@ export class Zombie {
       this.die();
       return true;
     }
+    globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/zombie/hurt-01.ogg', './assets/audio/sfx/zombie/hurt-02.ogg'], {
+      volume: 0.46, pitch: 0.88 + Math.random() * 0.18, position: this.group.position,
+      category: 'voice', group: 'zombie', maxVoices: 4, cooldownKey: `zombie-damage-${this.group.id}`, cooldown: 0.45,
+    });
     return false;
   }
 
   die() {
+    if (!this.alive) return;
     this.alive = false;
     this.speed = 0;
     this.attackTimer = 0;
+    globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/zombie/death-01.ogg', './assets/audio/sfx/zombie/death-02.ogg'], {
+      volume: 0.56, pitch: 0.88 + Math.random() * 0.16, position: this.group.position,
+      category: 'voice', group: 'zombie', maxVoices: 3, cooldownKey: `zombie-death-${this.group.id}`, cooldown: 2,
+    });
 
     // Play death animation
     if (this.actions['Death'] && !this.deathPlayed) {
@@ -282,6 +293,21 @@ export class Zombie {
     const zombiePos = this._scratchZombiePosition.set(this.group.position.x, 0, this.group.position.z);
     const dir = this._scratchDirection.subVectors(playerPos, zombiePos);
     const dist = dir.length();
+    this.audioIdleTimer -= dt;
+    if (dist < 16 && !this.audioDetected) {
+      this.audioDetected = true;
+      globalThis.__thesisAudioManager?.playRandom('./assets/audio/sfx/zombie/detection.ogg', {
+        volume: 0.5, pitch: 0.9 + Math.random() * 0.16, position: this.group.position, category: 'voice', group: 'zombie',
+        maxVoices: 4, maxDistance: 28, referenceDistance: 5, cooldownKey: `zombie-detect-${this.group.id}`, cooldown: 8,
+      });
+    }
+    if (dist < 20 && this.audioIdleTimer <= 0) {
+      this.audioIdleTimer = 10 + Math.random() * 9;
+      globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/zombie/moan-1.ogg', './assets/audio/sfx/zombie/moan-2.ogg', './assets/audio/sfx/zombie/moan-3.ogg'], {
+        volume: 0.34, pitch: 0.86 + Math.random() * 0.2, position: this.group.position, category: 'voice', group: 'zombie',
+        maxVoices: 3, maxDistance: 30, referenceDistance: 4, cooldownKey: `zombie-idle-${this.group.id}`, cooldown: 8,
+      });
+    }
 
     this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
 
@@ -310,6 +336,10 @@ export class Zombie {
     if (dist < 1.5 && this.damageCooldown <= 0) {
       this.damageCooldown = this.damageRate;
       this._playAttack();
+      globalThis.__thesisAudioManager?.playRandom('./assets/audio/sfx/zombie/attack.ogg', {
+        volume: 0.56, pitch: 0.84 + Math.random() * 0.16, position: this.group.position, category: 'voice', group: 'zombie',
+        maxVoices: 3, maxDistance: 24, referenceDistance: 3, cooldownKey: `zombie-attack-${this.group.id}`, cooldown: 0.65,
+      });
       this._hitResult.hit = true;
       this._hitResult.damage = this.damage;
       return this._hitResult;

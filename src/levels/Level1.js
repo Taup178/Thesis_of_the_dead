@@ -58,6 +58,7 @@ export class Level1 {
     // Boss sequence: waiting -> emerging -> running -> absorbing -> done
     this.bossState = 'waiting';
     this.bossCutscene = null;
+    this.portalActive = false;
     this.portalTimer = 0;
     this.bossAbsorption = null;
     this.portalApproachPoint = new THREE.Vector3(0, 0, -43.2);
@@ -652,29 +653,18 @@ export class Level1 {
       progress: this.wakeUpIntro.time / this.wakeUpIntro.duration, tone: 'watch' };
     if (this.playerAbsorption) return { title: 'Entering The Sophomore Room',
       detail: 'The portal pulls you through.', timer: 'All zombies defeated', progress: 1, tone: 'follow' };
-    if (this.bossState === 'done' && !this.bossCutscene) {
-      const remaining = this.remainingZombies;
-      const total = this.zombies.length + this.zombieReserve.length;
-      if (remaining > 0) return { title: 'Eliminate the remaining zombies',
-        detail: 'The Dean escaped. Kill every zombie to unlock the blue portal.',
-        timer: `${remaining} ${remaining === 1 ? 'zombie' : 'zombies'} remaining`,
-        progress: (total - remaining) / Math.max(1, total), tone: 'danger' };
-      return { title: 'Follow the Dean into the blue portal',
-        detail: 'All zombies defeated. Walk up to the blue portal to continue to second year.',
-        timer: 'Blue portal unlocked', progress: 1, tone: 'follow' };
-    }
-    return { title: 'The Freshman Woods',
-      detail: 'Collect the yellow orbs. Each orb releases two zombies from the red portal.',
-      timer: `${this.creditsCollected} / ${this.credits.length} orbs collected`,
-      progress: this.creditsCollected / Math.max(1, this.credits.length), tone: 'watch' };
+    const total = this.credits?.length || 8;
+    const allCredits = this.creditsCollected >= total;
+    const portalReady = this.bossState === 'done';
+    return { title: portalReady ? 'Follow the Dean into the green portal' : allCredits ? 'THE DEAN HAS APPEARED' : `Collect Academic Credits (${this.creditsCollected}/${total})`,
+      detail: portalReady ? 'The green portal is ready. Walk into it to continue to second year.' : allCredits ? 'All Academic Credits collected! The Dean has appeared.' : 'Search the woods for Academic Credits. Each one releases two zombies from the red portal.',
+      timer: `Academic Credits: ${this.creditsCollected}/${total}`, progress: this.creditsCollected / Math.max(1, total), tone: portalReady ? 'follow' : allCredits ? 'danger' : 'watch' };
   }
 
-  /**
-   * Per-frame update.
-   * Returns { creditCollected, bossReached, levelComplete }
-   */
+  /** Per-frame update, including audio-relevant story events. */
   update(dt, player, time) {
-    const events = { creditCollected: false, bossReached: false, levelComplete: false };
+    const events = { creditCollected: false, finalCreditCollected: false, deanReveal: false,
+      bossReached: false, portalActivated: false, portalEntry: false, levelComplete: false };
     if (this.nightSky) this.nightSky.update(player.group.position);
     if (this.atmosphere) this.atmosphere.update(dt);
     if (this.wakeUpIntro && !this.wakeUpIntro.done) {
@@ -691,6 +681,10 @@ export class Level1 {
     }
     if (this.bossCutscene) {
       events.bossReached = this.bossCutscene.update(dt, time);
+      if (this.bossState === 'done' && !this.portalActive) {
+        this.portalActive = true;
+        events.portalActivated = true;
+      }
       return events; // Hold enemies and queued spawns while the camera owns control.
     }
     this.spawnDelay = Math.max(0, this.spawnDelay - dt);
@@ -709,8 +703,10 @@ export class Level1 {
         this.creditsCollected++;
         this._spawnOrbZombies();
         player.addScore(100);
-        this.creditEffects.onCollected(credit, player, this.creditsCollected === this.credits.length);
+        const finalCredit = this.creditsCollected === this.credits.length;
+        this.creditEffects.onCollected(credit, player, finalCredit);
         events.creditCollected = true;
+        events.finalCreditCollected = finalCredit;
       }
     }
 
@@ -723,6 +719,7 @@ export class Level1 {
     // Spawn the boss once all credits are collected
     if (this.bossState === 'waiting' && this.creditsCollected >= this.credits.length) {
       this._spawnBoss(player);
+      events.deanReveal = true;
       if (this.bossCutscene) return events;
     }
 
@@ -734,6 +731,7 @@ export class Level1 {
 
       if (unlocked && Math.hypot(player.group.position.x - this.portalApproachPoint.x, player.group.position.z - this.portalApproachPoint.z) < 2.2) {
         this._beginPlayerAbsorption(player);
+        events.portalEntry = true;
         return events;
       }
     }

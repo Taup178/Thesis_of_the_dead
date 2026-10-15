@@ -4,6 +4,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 export const NATURE_ASSET_ROOT = './assets/models/stylized-nature/';
 export const WOODS_ASSETS = ['birch-trees', 'trees', 'maple-trees', 'pine-trees', 'dead-trees',
   'rocks', 'bushes', 'grass', 'flowers'];
+export const TREE_TRUNK_RADIUS_MULTIPLIERS = Object.freeze({
+  trees: Object.freeze([0.075, 0.075, 0.155]),
+  'dead-trees': Object.freeze([0.11, 0.16, 0.13]),
+  'pine-trees': Object.freeze([0.075, 0.31, 0.075]),
+});
+export function treeTrunkColliderRadius(kind, variant, height) {
+  return Math.max(0.7, height * (TREE_TRUNK_RADIUS_MULTIPLIERS[kind]?.[variant] ?? 0.075));
+}
 
 function seededRandom(seed = 73419) {
   return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
@@ -31,17 +39,21 @@ export function woodsClearance(x, z, credits = []) {
 export function createWoodsLayout(credits = []) {
   const random = seededRandom();
   const placements = [], obstacles = [];
-  const add = (kind, x, z, height, radius = 0) => {
-    placements.push({ kind, x, z, height, yaw: random() * Math.PI * 2, variant: Math.floor(random() * 3) });
-    if (radius) obstacles.push({ x, z, radius });
+  const add = (kind, x, z, height, radius = 0, values = null) => {
+    const placement = { kind, x, z, height, yaw: values?.yaw ?? random() * Math.PI * 2, variant: values?.variant ?? Math.floor(random() * 3) };
+    placements.push(placement);
+    const colliderRadius = radius === 'tree-trunk' ? treeTrunkColliderRadius(kind, placement.variant, height) : radius;
+    if (colliderRadius) obstacles.push({ x, z, radius: colliderRadius, kind, variant: placement.variant });
   };
   for (let attempt = 0, count = 0; attempt < 1800 && count < 58; attempt++) {
     const x = (random() - 0.5) * 112, z = (random() - 0.5) * 112;
-    if (woodsClearance(x, z, credits) < 2 || obstacles.some(o => Math.hypot(x - o.x, z - o.z) < 6)) continue;
+    const values = { yaw: random() * Math.PI * 2, variant: Math.floor(random() * 3) };
     const kind = x < -14 ? 'birch-trees' : x > 17 ? 'pine-trees'
       : z < -18 ? 'dead-trees' : random() < 0.3 ? 'maple-trees' : 'trees';
     const height = kind === 'pine-trees' ? 14 + random() * 7 : 10 + random() * 6;
-    add(kind, x, z, height, Math.max(0.55, height * 0.055)); count++;
+    const trunkRadius = treeTrunkColliderRadius(kind, values.variant, height);
+    if (woodsClearance(x, z, credits) < trunkRadius || obstacles.some(o => Math.hypot(x - o.x, z - o.z) < o.radius + trunkRadius + 0.25)) continue;
+    add(kind, x, z, height, 'tree-trunk', values); count++;
   }
   // Two broken rings create depth beyond the square arena without blocking its edges.
   for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 40; i++) {
