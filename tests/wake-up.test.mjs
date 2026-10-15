@@ -76,8 +76,8 @@ test('restarting while waking restores the model and first-person visibility', (
 test('motion blur bypasses rendering when off and clears history after pause, resize and camera cuts', () => {
   let direct = 0, composited = 0;
   const effect = Object.create(DreamMotionBlur.prototype);
-  effect.renderer = { render() { direct++; } };
-  effect.composer = { render() { composited++; }, setSize(w, h) { assert.deepEqual([w, h], [800, 600]); } };
+  effect.renderer = { render() { direct++; }, getPixelRatio: () => 1 };
+  effect.composer = { render() { composited++; }, setSize(w, h) { assert.deepEqual([w, h], [800, 600]); }, setPixelRatio(ratio) { assert.equal(ratio, 1); } };
   effect.blur = { uniforms: { damp: { value: 0 } } };
   effect.reset(); effect.render(1 / 60, true);
   assert.equal(effect.blur.uniforms.damp.value, 0);

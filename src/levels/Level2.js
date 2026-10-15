@@ -8,6 +8,7 @@ import { SophomoreAmbush, AMBUSH_WAVES } from './SophomoreAmbush.js';
 import { createSophomoreRoom, createTileGeometry, createTileFracture } from '../environment/SophomoreRoom.js';
 import { createSophomoreGauntlet, updateSophomoreGauntlet, getSophomoreBladeX } from './SophomoreGauntlet.js';
 import { RoomExitPortal, PortalPassage, PortalEmergence, PORTAL_TRAVEL_SPEED } from '../props/RoomExitPortal.js';
+import { compileHiddenObjects } from '../core/ShaderWarmup.js';
 
 const DIFFICULTY = [
   { jumpDuration: 0.72, pause: 0.24, tileTime: 3.2 },
@@ -107,6 +108,13 @@ export class Level2 {
     this.dean._playAction('Idle');
     this._setTileColor(this.tiles[i][j], RED);
     onProgress?.(1);
+  }
+
+  async prepareShaders(renderer, camera) {
+    const groups = this.ambush && !this.ambush.cleared
+      ? this.ambush.records.filter(record => record.zombie.alive).map(record => record.zombie.group)
+      : [];
+    await compileHiddenObjects(renderer, this.scene, camera, groups);
   }
 
   preparePlayer(player) {

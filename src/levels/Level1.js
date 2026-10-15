@@ -4,6 +4,7 @@ import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { Zombie } from '../enemies/Zombie.js';
 import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScroll.js';
 import { CreditEnergyEffects } from '../props/CreditEnergyEffects.js';
+import { compileHiddenObjects } from '../core/ShaderWarmup.js';
 import { NightSky } from '../environment/NightSky.js';
 import { WakeUpIntro } from '../player/WakeUpIntro.js';
 import { StylizedWoods } from '../environment/StylizedWoods.js';
@@ -518,6 +519,12 @@ export class Level1 {
       this.zombieReserve.push(zombie);
     }
     await Promise.all(this.zombieReserve.map(zombie => zombie.ready));
+  }
+
+  // Precompiles the reserve zombies' GPU programs behind the loading screen;
+  // without this their first portal reveal compiles shaders mid-game and stalls a frame.
+  async prepareShaders(renderer, camera) {
+    await compileHiddenObjects(renderer, this.scene, camera, this.zombieReserve.map(zombie => zombie.group));
   }
 
   _spawnOrbZombies() {

@@ -37,5 +37,5 @@ export class DreamMotionBlur {
     this.fresh = false;
   }
 
-  setSize(width, height) { this.composer.setSize(width, height); this.reset(); }
+  setSize(width, height) { this.composer.setPixelRatio(this.renderer.getPixelRatio()); this.composer.setSize(width, height); this.reset(); }
 }

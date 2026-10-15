@@ -5,6 +5,7 @@ import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
+import { applyQuality, loadQuality, saveQuality } from './Quality.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
@@ -22,11 +23,10 @@ export class Game {
 
     // ---- Three.js basics ----
     this.scene = new THREE.Scene();
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.quality = loadQuality();
+    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality !== 'low', powerPreference: 'high-performance' });
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.VSMShadowMap;
+    this.qualityConfig = applyQuality(this.renderer, this.scene, this.quality);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -146,6 +146,9 @@ export class Game {
 
     // Options
     document.getElementById('sensitivity-slider').addEventListener('input', () => this._applyMouseSensitivity());
+    const qualitySelect = document.getElementById('quality-select');
+    qualitySelect.value = this.quality;
+    qualitySelect.addEventListener('change', () => this._setQuality(qualitySelect.value));
 
     // Pause
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
@@ -196,6 +199,13 @@ export class Game {
     if (this.player) this.player.mouseSensitivity = setting * 0.0004;
   }
 
+  _setQuality(level) {
+    this.quality = level;
+    this.qualityConfig = applyQuality(this.renderer, this.scene, level);
+    saveQuality(level);
+    this.motionBlur.setSize(window.innerWidth, window.innerHeight);
+  }
+
   // =====================================================================
   // State Transitions
   // =====================================================================
@@ -220,11 +230,13 @@ export class Game {
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && launch.get('section') === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } : null);
     this.currentLevel = level;
+    applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
 
     level.audioContext = this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
+    await level.prepareShaders?.(this.renderer, this.camera);
 
     // Create player
     if (this.player) this.player.dispose();
@@ -262,12 +274,14 @@ export class Game {
       progressBar.style.width = `${p * 100}%`;
     }, { preserveCheckpoint });
     this.currentLevel = level;
+    applyQuality(this.renderer, this.scene, this.quality);
 
     if (this.player) {
       level.audioContext = this.heartbeat.context;
       level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
       await level.prepareAudio?.();
       await level.prepareCinematics?.(this.renderer, this.camera);
+    await level.prepareShaders?.(this.renderer, this.camera);
       this.player.reset(level.spawnPoint);
       level.preparePlayer?.(this.player);
     }
@@ -305,11 +319,13 @@ export class Game {
     }
 
     this.currentLevel = level;
+    applyQuality(this.renderer, this.scene, this.quality);
     this.player.reset(level.spawnPoint);
     level.audioContext = this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
+    await level.prepareShaders?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
 
     this.state = this.STATE.PLAYING;
@@ -661,7 +677,7 @@ export class Game {
     const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
-    this.motionBlur.render(dt, effects.blur);
+    this.motionBlur.render(dt, this.qualityConfig.blur ? effects.blur : 0);
   }
 
   _updateCinematicPresentation() {

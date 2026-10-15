@@ -153,6 +153,23 @@ html, body {
   cursor: pointer;
 }
 
+.option-row select {
+  flex: 1;
+  max-width: 220px;
+  padding: 8px 10px;
+  font: inherit;
+  color: #eee;
+  background: #161616;
+  border: 2px solid #c62828;
+  cursor: pointer;
+}
+
+.option-hint {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  margin: -8px 0 20px;
+}
+
 /* ---- Loading ---- */
 .progress-bar-container {
   width: 100%;

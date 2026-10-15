@@ -77,7 +77,9 @@ test('pause menu buttons invoke their actions without bubbling to the resume ove
 test('Game restart forwards full-restart intent and restores player and controls', async () => {
   const originalDocument = globalThis.document;
   const originalSetTimeout = globalThis.setTimeout;
+  const originalWindow = globalThis.window;
   globalThis.setTimeout = () => 0;
+  globalThis.window = { innerWidth: 1920, innerHeight: 1080, devicePixelRatio: 1 };
   globalThis.document = {
     getElementById(id) {
       if (id === 'progress-bar') return { style: {} };
@@ -98,6 +100,8 @@ test('Game restart forwards full-restart intent and restores player and controls
   const game = {
     combat: { reset() {} },
     state: 'paused',
+    quality: 'high',
+    scene: { traverse() {} },
     STATE: { LOADING: 'loading', PLAYING: 'playing' },
     _showOverlay() {},
     hudEl: { classList: { add() {}, remove() {} } },
@@ -110,7 +114,7 @@ test('Game restart forwards full-restart intent and restores player and controls
     },
     player,
     heartbeat: { context: {} },
-    renderer: {},
+    renderer: { setPixelRatio() {}, setSize() {}, shadowMap: {} },
     camera: {},
     levelTitleDisplay: { textContent: '', classList: { add() {}, remove() {} } },
   };
@@ -127,6 +131,8 @@ test('Game restart forwards full-restart intent and restores player and controls
   } finally {
     globalThis.document = originalDocument;
     globalThis.setTimeout = originalSetTimeout;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
   }
 });
 
