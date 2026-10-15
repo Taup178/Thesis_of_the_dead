@@ -6,11 +6,8 @@ import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
 import { applyQuality, loadQuality, saveQuality } from './Quality.js';
-<<<<<<< HEAD
 import { compileHiddenObjects } from './ShaderWarmup.js';
-=======
 import { PAD, stepFocusIndex } from './Gamepad.js';
->>>>>>> e550e0eb4334bb32395662b925673d21d248c1dd
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
@@ -273,7 +270,7 @@ export class Game {
     this.player.group.position.copy(level.spawnPoint);
     await level.prepareShaders?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
-    await this._warmLoadedView();
+    await this._warmLoadedView?.();
 
     // Enter playing state
     this.state = this.STATE.PLAYING;
@@ -314,7 +311,7 @@ export class Game {
     await level.prepareShaders?.(this.renderer, this.camera);
       this.player.reset(level.spawnPoint);
       level.preparePlayer?.(this.player);
-      await this._warmLoadedView();
+      await this._warmLoadedView?.();
     }
 
     this.state = this.STATE.PLAYING;
@@ -358,7 +355,7 @@ export class Game {
     await level.prepareCinematics?.(this.renderer, this.camera);
     await level.prepareShaders?.(this.renderer, this.camera);
     level.preparePlayer?.(this.player);
-    await this._warmLoadedView();
+    await this._warmLoadedView?.();
 
     this.state = this.STATE.PLAYING;
     this._showOverlay(null);
@@ -823,17 +820,14 @@ export class Game {
 
     // ---- Render ----
     this._updateCinematicPresentation();
-<<<<<<< HEAD
-    const active = this.state === this.STATE.PLAYING && this.input.pointerLocked && !document.hidden;
+    const active = this.state === this.STATE.PLAYING
+      && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
     const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
     if (freezeCinematicShadows !== this.cinematicShadowsFrozen) {
       this.renderer.shadowMap.autoUpdate = !freezeCinematicShadows;
       if (!freezeCinematicShadows) this.renderer.shadowMap.needsUpdate = true;
       this.cinematicShadowsFrozen = freezeCinematicShadows;
     }
-=======
-    const active = this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
->>>>>>> e550e0eb4334bb32395662b925673d21d248c1dd
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
