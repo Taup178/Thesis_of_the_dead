@@ -17,3 +17,6 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 *.swp
+
+# Personal local audition asset: intentionally excluded from public distribution.
+public/assets/audio/dean-laugh.mp3

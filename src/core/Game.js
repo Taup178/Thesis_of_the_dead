@@ -9,9 +9,20 @@ import { applyQuality, loadQuality, saveQuality } from './Quality.js';
 import { compileHiddenObjects } from './ShaderWarmup.js';
 import { PAD, stepFocusIndex } from './Gamepad.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
+import { getGlobalAudioManager } from './AudioManager.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
 const NO_OBSTACLES = [];
+const LEVEL_AUDIO_ASSETS = Object.freeze([
+  './assets/audio/sfx/collect/credit-chime.ogg', './assets/audio/sfx/collect/ammo-pickup-event-a.wav',
+  './assets/audio/sfx/collect/ammo-pickup-event-b.wav', './assets/audio/sfx/ui/confirm.ogg',
+  ...[1, 2, 3, 4, 5].map(index => `./assets/audio/sfx/player/shaun-exertion-0${index}.ogg`),
+  './assets/audio/sfx/player/garybran-forest-step-01.ogg', './assets/audio/sfx/player/garybran-forest-step-02.ogg',
+  './assets/audio/sfx/player/shaun-hurt-01.ogg', './assets/audio/sfx/player/shaun-hurt-02.ogg',
+  './assets/audio/sfx/player/shaun-death.ogg',
+  ...['pistol-bang-01', 'pistol-bang-02', 'smg-bang-01', 'smg-bang-02', 'smg-bang-03', 'melee-impact-1', 'melee-impact-2', 'bullet-impact-1', 'bullet-impact-2', 'artninja-sword-swing-01', 'artninja-sword-swing-02'].map(name => `./assets/audio/sfx/weapon/${name}.ogg`),
+  ...['moan-1', 'moan-2', 'moan-3', 'detection', 'attack', 'hurt-01', 'hurt-02', 'death-01', 'death-02'].map(name => `./assets/audio/sfx/zombie/${name}.ogg`),
+]);
 
 /**
  * Game - Top-level orchestrator.
@@ -40,6 +51,10 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
     this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
     this.heartbeat = new Heartbeat();
+    this.audio = getGlobalAudioManager();
+    this.audio?.unlock?.();
+    const volumeSlider = document.getElementById('volume-slider');
+    if (volumeSlider && this.audio?.setVolume) this.audio.setVolume(Number(volumeSlider.value) / 100);
 
     // ---- Input ----
     this.input = new InputManager();
@@ -149,12 +164,13 @@ export class Game {
     });
 
     // Main menu
-    document.getElementById('btn-start').addEventListener('click', () => this.startGame());
-    document.getElementById('btn-credits').addEventListener('click', () => this._showOverlay('credits-overlay'));
-    document.getElementById('btn-options').addEventListener('click', () => this._showOverlay('options-overlay'));
-    document.getElementById('btn-credits-back').addEventListener('click', () => this._showOverlay('menu-overlay'));
-    document.getElementById('btn-options-back').addEventListener('click', () =>
-      this._showOverlay(this.state === this.STATE.PAUSED ? 'pause-overlay' : 'menu-overlay'));
+    document.getElementById('btn-start').addEventListener('click', () => { this._playUiConfirm?.(); this.startGame(); });
+    document.getElementById('btn-credits').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('credits-overlay'); });
+    document.getElementById('btn-options').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('options-overlay'); });
+    document.getElementById('btn-credits-back').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('menu-overlay'); });
+    document.getElementById('btn-options-back').addEventListener('click', () => {
+      this._playUiConfirm?.(); this._showOverlay(this.state === this.STATE.PAUSED ? 'pause-overlay' : 'menu-overlay');
+    });
 
     // Options
     document.getElementById('sensitivity-slider').addEventListener('input', () => this._applyMouseSensitivity());
@@ -164,31 +180,33 @@ export class Game {
     const gamepadToggle = document.getElementById('gamepad-toggle');
     gamepadToggle.checked = this.input.gamepadEnabled;
     gamepadToggle.addEventListener('change', () => this.input.setGamepadEnabled(gamepadToggle.checked));
+    const volumeSlider = document.getElementById('volume-slider');
+    if (volumeSlider) volumeSlider.addEventListener('input', () => this.audio?.setVolume?.(Number(volumeSlider.value) / 100));
 
     // Pause
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
     document.getElementById('btn-pause-resume').addEventListener('click', event => {
-      event.stopPropagation(); this.resume();
+      event.stopPropagation(); this._playUiConfirm?.(); this.resume();
     });
     document.getElementById('btn-pause-restart').addEventListener('click', event => {
-      event.stopPropagation(); this.restartLevel({ preserveCheckpoint: false });
+      event.stopPropagation(); this._playUiConfirm?.(); this.restartLevel({ preserveCheckpoint: false });
     });
     document.getElementById('btn-pause-options').addEventListener('click', event => {
-      event.stopPropagation(); this._showOverlay('options-overlay');
+      event.stopPropagation(); this._playUiConfirm?.(); this._showOverlay('options-overlay');
     });
     document.getElementById('btn-pause-menu').addEventListener('click', event => {
-      event.stopPropagation(); this.returnToMenu();
+      event.stopPropagation(); this._playUiConfirm?.(); this.returnToMenu();
     });
 
     // Game over
-    document.getElementById('btn-retry').addEventListener('click', () => this.restartLevel());
-    document.getElementById('btn-menu').addEventListener('click', () => this.returnToMenu());
+    document.getElementById('btn-retry').addEventListener('click', () => { this._playUiConfirm?.(); this.restartLevel(); });
+    document.getElementById('btn-menu').addEventListener('click', () => { this._playUiConfirm?.(); this.returnToMenu(); });
 
     // Level complete
-    document.getElementById('btn-nextlevel').addEventListener('click', () => this.loadNextLevel());
+    document.getElementById('btn-nextlevel').addEventListener('click', () => { this._playUiConfirm?.(); this.loadNextLevel(); });
 
     // Win
-    document.getElementById('btn-win-menu').addEventListener('click', () => this.returnToMenu());
+    document.getElementById('btn-win-menu').addEventListener('click', () => { this._playUiConfirm?.(); this.returnToMenu(); });
   }
 
   _showOverlay(id) {
@@ -201,8 +219,16 @@ export class Game {
     this.container.classList.toggle('playing', !id && this.state === this.STATE.PLAYING);
   }
 
+  _playUiConfirm() {
+    this.audio?.playSfx?.('./assets/audio/sfx/ui/confirm.ogg', {
+      volume: 0.22, category: 'sfx', group: 'ui', maxVoices: 1,
+      cooldownKey: 'ui-confirm', cooldown: 0.08,
+    });
+  }
+
   async _captureMouse({ pauseOnFailure = true } = {}) {
     this.heartbeat.unlock();
+    this.audio?.unlock?.();
     this.input.flushMouseDelta();
     if (this.input.pointerLocked) return;
     // Automatic captures (after loading) fail without a user gesture; their
@@ -257,8 +283,10 @@ export class Game {
       directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
     this.currentLevel = level;
     applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
+    this.audio?.setLevelTheme?.(level.title);
+    this.audio?.preload?.(LEVEL_AUDIO_ASSETS);
 
-    level.audioContext = this.heartbeat.context;
+    level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
@@ -289,6 +317,7 @@ export class Game {
 
   async restartLevel({ preserveCheckpoint = true } = {}) {
     this.combat.reset();
+    this.audio?.stopAll?.();
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
@@ -302,9 +331,10 @@ export class Game {
     }, { preserveCheckpoint });
     this.currentLevel = level;
     applyQuality(this.renderer, this.scene, this.quality);
+    this.audio?.restartLevelTheme?.(level.title);
 
     if (this.player) {
-      level.audioContext = this.heartbeat.context;
+      level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
       level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
       await level.prepareAudio?.();
       await level.prepareCinematics?.(this.renderer, this.camera);
@@ -325,6 +355,7 @@ export class Game {
 
   async loadNextLevel() {
     this.combat.reset();
+    this.audio?.stopAll?.();
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
@@ -339,6 +370,7 @@ export class Game {
 
     if (!level) {
       // Game complete!
+      this.audio?.stopAll?.();
       this.state = this.STATE.WIN;
       this._showOverlay('win-overlay');
       this.hudEl.classList.add('hidden');
@@ -348,8 +380,9 @@ export class Game {
 
     this.currentLevel = level;
     applyQuality(this.renderer, this.scene, this.quality);
+    this.audio?.setLevelTheme?.(level.title);
     this.player.reset(level.spawnPoint);
-    level.audioContext = this.heartbeat.context;
+    level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
@@ -370,6 +403,7 @@ export class Game {
     if (this.state !== this.STATE.PLAYING) return;
     this.state = this.STATE.PAUSED;
     this.currentLevel?.pauseEffects?.();
+    this.audio?.pause?.();
     this._showOverlay('pause-overlay');
     this.hudEl.classList.add('hidden');
     if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
@@ -378,6 +412,7 @@ export class Game {
   resume() {
     if (this.state !== this.STATE.PAUSED) return;
     this.state = this.STATE.PLAYING;
+    this.audio?.resume?.();
     this._showOverlay(null);
     this.hudEl.classList.remove('hidden');
     this._captureMouse();
@@ -385,6 +420,7 @@ export class Game {
 
   returnToMenu() {
     this.combat.reset();
+    this.audio?.stopAll?.();
     this.state = this.STATE.MENU;
     document.exitPointerLock();
     if (this.player) {
@@ -796,6 +832,7 @@ export class Game {
         dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
         this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
       );
+      this.audio?.setListenerPosition?.(this.player.group.position);
       this._handleShooting(dt);
 
       // The escape follows elapsed time, so a slow frame cannot stretch the film.
@@ -803,7 +840,22 @@ export class Game {
       const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
 
       if (events.creditCollected) {
-        // Brief flash or sound could go here
+        const finalCredit = events.finalCreditCollected === true;
+        this.audio?.playSfx?.('./assets/audio/sfx/collect/credit-chime.ogg', {
+          volume: finalCredit ? 0.92 : 0.66, pitch: finalCredit ? 0.88 : 1,
+          category: 'sfx', group: 'pickup', maxVoices: 3, position: this.player.group.position,
+        });
+        if (finalCredit) this.audio?.playFinalCreditMilestone?.();
+      }
+      if (events.deanReveal) this.audio?.playDeanReveal?.();
+      if (events.portalActivated) {
+        this.audio?.playPortalActivation?.();
+        this.audio?.startPortalHum?.(this.currentLevel.portalRoot?.position);
+      }
+      if (this.currentLevel.portalActive) this.audio?.updatePortalHum?.(this.currentLevel.portalRoot?.position);
+      if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
+      if (this.currentLevel.title?.toLowerCase().includes('final')) {
+        this.audio?.setFinalEncounterPhase?.(this.currentLevel.bossFight?.phase === 'combat' ? 'boss' : 'arena');
       }
 
       if (events.levelComplete) {

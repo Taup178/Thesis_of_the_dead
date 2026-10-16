@@ -1,5 +1,6 @@
+// This private, optional local asset is intentionally ignored by Git. A clean public
+// checkout falls back to this original duration without failing the cinematic.
 export const DEAN_LAUGH_URL = './assets/audio/dean-laugh.mp3';
-// Original MP3 frame duration; playback always uses the browser's exact decoded sample duration.
 export const DEAN_LAUGH_FALLBACK_SECONDS = 311040 / 44100;
 const ENVELOPE_STEP = 0.025;
 let loaded;
@@ -8,7 +9,7 @@ export async function loadDeanLaugh(context) {
   if (!context?.decodeAudioData) return null;
   if (!loaded) loaded = (async () => {
     const response = await fetch(DEAN_LAUGH_URL);
-    if (!response.ok) throw new Error(`Could not load the Dean laugh (${response.status})`);
+    if (!response.ok) return null;
     const buffer = await context.decodeAudioData(await response.arrayBuffer());
     const stride = Math.max(1, Math.round(buffer.sampleRate * ENVELOPE_STEP));
     const envelope = new Float32Array(Math.ceil(buffer.length / stride));
@@ -29,7 +30,7 @@ export async function loadDeanLaugh(context) {
     }
     for (let frame = 0; frame < envelope.length; frame++) envelope[frame] /= maximum;
     return { buffer, envelope, envelopeStep: stride / buffer.sampleRate };
-  })().catch(error => { loaded = null; throw error; });
+  })().catch(() => null);
   return loaded;
 }
 

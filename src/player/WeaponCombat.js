@@ -145,6 +145,14 @@ export class WeaponCombat {
     player.shotTime = 0.14; player.aimTime = 0.38;
     player.weaponPresentation?.update(0);
     this.shootCooldown = weapon.cooldown;
+    const audio = globalThis.__thesisAudioManager;
+    if (weapon.id === 'smg') {
+      audio?.playRandom(['./assets/audio/sfx/weapon/smg-bang-01.ogg', './assets/audio/sfx/weapon/smg-bang-02.ogg', './assets/audio/sfx/weapon/smg-bang-03.ogg'],
+        { volume: 0.72, pitch: 0.96 + Math.random() * 0.08, category: 'sfx', group: 'weapon', maxVoices: 5 });
+    } else {
+      for (let i = 0; i < shots; i++) audio?.playRandom(['./assets/audio/sfx/weapon/pistol-bang-01.ogg', './assets/audio/sfx/weapon/pistol-bang-02.ogg'],
+        { volume: 0.68, pitch: 0.96 + Math.random() * 0.08, category: 'sfx', group: 'weapon', maxVoices: 5, delay: i * 0.035 });
+    }
     return true;
   }
 
@@ -156,7 +164,11 @@ export class WeaponCombat {
       if (hit) {
         if (!level.handleBulletHit?.(hit, bullet.damage ?? 15, player)) {
           const zombie = level.zombies.find(z => z.alive && z.group.visible && belongsTo(hit.object, z.group));
-          if (zombie) this.damageZombie(zombie, bullet.damage ?? 15, player);
+          if (zombie) {
+            globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/weapon/bullet-impact-1.ogg', './assets/audio/sfx/weapon/bullet-impact-2.ogg'],
+              { volume: 0.48, position: hit.point, category: 'sfx', group: 'weapon', maxVoices: 5 });
+            this.damageZombie(zombie, bullet.damage ?? 15, player);
+          }
         }
       } else { bullet.mesh.position.addScaledVector(bullet.direction, travel); bullet.distance += travel; }
       if (hit || bullet.distance >= 100) { bullet.mesh.removeFromParent(); this.projectiles.splice(i, 1); }
@@ -176,6 +188,8 @@ export class WeaponCombat {
       this.ray.set(origin, center.clone().sub(origin).normalize()); this.ray.near = 0; this.ray.far = origin.distanceTo(center) + 0.1;
       const hit = this.ray.intersectObjects(targets, false)[0];
       if (!hit || !belongsTo(hit.object, zombie.group)) continue;
+      globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/weapon/melee-impact-1.ogg', './assets/audio/sfx/weapon/melee-impact-2.ogg'],
+        { volume: zombie.isBoss ? 1 : 0.68, position: center, category: 'sfx', group: 'weapon', maxVoices: 5 });
       if (zombie.isBoss) level.handleMeleeHit?.(zombie, attack ? attack.damage : 20, player);
       else this.damageZombie(zombie, attack ? attack.damage : 30, player);
       return zombie;
@@ -207,6 +221,8 @@ export class WeaponCombat {
       if (!player.alive || player.scriptedMovement || player.ammo >= player.maxAmmo || pickup.group.position.distanceTo(player.group.position) > 1.4) continue;
       const amount = Math.min(pickup.amount, player.maxAmmo - player.ammo);
       player.ammo += amount; pickup.amount -= amount; this.notice = `+${amount} bullets`; this.noticeTime = 2;
+      globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/collect/ammo-pickup-event-a.wav', './assets/audio/sfx/collect/ammo-pickup-event-b.wav'],
+        { volume: 0.48, category: 'sfx', group: 'pickup', maxVoices: 1, cooldownKey: 'ammo-pickup', cooldown: 0.15 });
       if (pickup.amount === 0) { pickup.group.removeFromParent(); this.pickups.splice(i, 1); }
     }
   }

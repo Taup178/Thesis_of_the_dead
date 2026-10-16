@@ -59,6 +59,7 @@ export class Player {
     this.hitReactionDuration = 0.48;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
+    this.stepTimer = 0;
     this.isFirstPerson = false;
     this.alive = true;
 
@@ -248,6 +249,7 @@ export class Player {
       this.actions.Stab.clampWhenFinished = true;
     }
     this.weaponPresentation?.bash();
+    this._playExertion();
     return true;
   }
 
@@ -284,12 +286,26 @@ export class Player {
     }
     this.weaponPresentation?.bash({ chain: !!canChain });
     this.weaponPresentation?.update(0);
+    globalThis.__thesisAudioManager?.playRandom([
+      './assets/audio/sfx/weapon/artninja-sword-swing-01.ogg',
+      './assets/audio/sfx/weapon/artninja-sword-swing-02.ogg',
+    ], { volume: sword ? 0.52 : 0.42, pitch: 0.94 + Math.random() * 0.12,
+      category: 'sfx', group: 'weapon', maxVoices: 5, cooldownKey: 'melee-swing', cooldown: 0.08 });
+    this._playExertion();
     return true;
   }
 
   takeDamage(amount) {
     if (!this.alive || this.isDodging || amount <= 0) return;
     this.health = Math.max(0, this.health - amount);
+    const audio = globalThis.__thesisAudioManager;
+    if (this.health <= 0) {
+      audio?.playSfx('./assets/audio/sfx/player/shaun-death.ogg', { volume: 0.78, category: 'voice', group: 'player-vocal', maxVoices: 1, cooldownKey: 'shaun-death', cooldown: 2 });
+    } else {
+      audio?.playRandom(['./assets/audio/sfx/player/shaun-hurt-01.ogg', './assets/audio/sfx/player/shaun-hurt-02.ogg'], {
+        volume: amount >= 20 ? 0.68 : 0.52, category: 'voice', group: 'player-vocal', maxVoices: 1, cooldownKey: 'shaun-hurt', cooldown: 0.45,
+      });
+    }
     this.damageFlashTime = 0.35;
     this.hitReactionTime = this.hitReactionDuration;
     const reaction = this.actions?.HitReact;
@@ -335,6 +351,7 @@ export class Player {
     this.dodgeCooldownTimer = 0;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
+    this.stepTimer = 0;
     this.yaw = 0;
     this.pitch = 0;
     this.velocity.set(0, 0, 0);
@@ -411,6 +428,7 @@ export class Player {
       this.verticalVelocity = platforming?.jumpVelocity ?? this.jumpVelocity;
       this.grounded = false;
       if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
+      this._playExertion();
     } else if (dodgePressed && (!platforming || platforming.allowDodge) && this.grounded && !this.isDodging && this.dodgeCooldownTimer <= 0) {
       if (moveDir.lengthSq() === 0) moveDir.copy(forward);
       this.isDodging = true;
@@ -419,6 +437,7 @@ export class Player {
       const heading = Math.atan2(-this.dodgeDirection.x, -this.dodgeDirection.z);
       this.dodgeFacing = Math.atan2(Math.sin(heading - this.yaw), Math.cos(heading - this.yaw));
       this.hitReactionTime = 0;
+      this._playExertion();
       const duck = this.actions?.Duck;
       if (duck) {
         duck.setLoop(THREE.LoopOnce, 1);
@@ -453,14 +472,10 @@ export class Player {
 
     // Integrate position
     const previousY = this.group.position.y;
-    this.group.position.x += this.velocity.x * dt;
-    this.group.position.z += this.velocity.z * dt;
+    this._moveHorizontally(this.velocity.x * dt, this.velocity.z * dt, obstacles);
     this.group.position.y += this.velocity.y * dt;
 
     // Obstacle collision resolution (e.g. tree trunks)
-    if (obstacles && obstacles.length > 0) {
-      this._resolveObstacles(obstacles);
-    }
 
     if (platforming) {
       // Land only when descending across a platform's top. Gaps have no floor.
@@ -504,6 +519,7 @@ export class Player {
     const moving = speed > 0.1;
     const aiming = this.isAiming;
     this._updateRollPose();
+    this._updateMovementAudio(dt, moving, speed);
 
     if (!this.mixer) return;
     if (this.hitReactionTime > 0 || this.isDodging) {
@@ -541,6 +557,27 @@ export class Player {
       pivotHeight * (1 - Math.cos(angle)), Math.cos(this.dodgeFacing) * pivotOffset);
   }
 
+  _updateMovementAudio(dt, moving, speed) {
+    if (!moving || !this.grounded || this.isDodging || this.bashTime > 0) { this.stepTimer = 0; return; }
+    this.stepTimer -= dt;
+    if (this.stepTimer > 0) return;
+    globalThis.__thesisAudioManager?.playRandom([
+      './assets/audio/sfx/player/garybran-forest-step-01.ogg',
+      './assets/audio/sfx/player/garybran-forest-step-02.ogg',
+    ], { volume: 0.18 + Math.min(speed / 30, 0.10), pitch: 0.94 + Math.random() * 0.12,
+      category: 'sfx', group: 'player', maxVoices: 2, cooldownKey: 'player-footstep', cooldown: 0.09 });
+    this.stepTimer = Math.max(0.22, 0.5 - speed * 0.02);
+  }
+
+  _playExertion() {
+    globalThis.__thesisAudioManager?.playRandom([
+      './assets/audio/sfx/player/shaun-exertion-01.ogg', './assets/audio/sfx/player/shaun-exertion-02.ogg',
+      './assets/audio/sfx/player/shaun-exertion-03.ogg', './assets/audio/sfx/player/shaun-exertion-04.ogg',
+      './assets/audio/sfx/player/shaun-exertion-05.ogg',
+    ], { volume: 0.36, pitch: 0.96 + Math.random() * 0.08, category: 'voice', group: 'player-vocal', maxVoices: 1,
+      cooldownKey: 'player-exertion', cooldown: 0.42 });
+  }
+
   _directionalWalkName() {
     const sideways = this.velocity.x * Math.cos(this.yaw) - this.velocity.z * Math.sin(this.yaw);
     const backward = this.velocity.x * Math.sin(this.yaw) + this.velocity.z * Math.cos(this.yaw);
@@ -549,6 +586,16 @@ export class Player {
       return Math.abs(backward) > 0.1 ? `Walk${backward > 0 ? 'Backward' : 'Forward'}${side}` : `Strafe${side}`;
     }
     return backward > 0.1 ? 'WalkBackward' : null;
+  }
+
+  _moveHorizontally(deltaX, deltaZ, obstacles) {
+    if (!obstacles?.length) { this.group.position.x += deltaX; this.group.position.z += deltaZ; return; }
+    const steps = Math.max(1, Math.ceil(Math.hypot(deltaX, deltaZ) / Math.max(0.15, (this.radius || 0.4) * 0.5)));
+    for (let step = 0; step < steps; step++) {
+      this.group.position.x += deltaX / steps;
+      this.group.position.z += deltaZ / steps;
+      this._resolveObstacles(obstacles);
+    }
   }
 
   _updateCamera() {
