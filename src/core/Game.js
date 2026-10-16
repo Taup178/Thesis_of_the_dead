@@ -286,7 +286,7 @@ export class Game {
     this.audio?.setLevelTheme?.(level.title);
     this.audio?.preload?.(LEVEL_AUDIO_ASSETS);
 
-    level.audioContext = this.heartbeat.context;
+    level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
@@ -334,7 +334,7 @@ export class Game {
     this.audio?.restartLevelTheme?.(level.title);
 
     if (this.player) {
-      level.audioContext = this.heartbeat.context;
+      level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
       level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
       await level.prepareAudio?.();
       await level.prepareCinematics?.(this.renderer, this.camera);
@@ -382,7 +382,7 @@ export class Game {
     applyQuality(this.renderer, this.scene, this.quality);
     this.audio?.setLevelTheme?.(level.title);
     this.player.reset(level.spawnPoint);
-    level.audioContext = this.heartbeat.context;
+    level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);

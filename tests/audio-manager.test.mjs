@@ -268,8 +268,23 @@ test('cleared footstep and melee variants are preloaded for event-driven playbac
   assert.doesNotMatch(gameSource, /player\/footstep-0[01]\.ogg|weapon\/swish-[12]\.wav/);
 });
 
-test('the unresolved Dean laugh is absent while the Level 3 timing fallback remains safe', async () => {
-  assert.equal(existsSync('public/assets/audio/dean-laugh.mp3'), false);
-  assert.equal(await loadDeanLaugh({ decodeAudioData() {} }), null);
-  assert.doesNotMatch(readFileSync('src/enemies/DeanLaughAudio.js', 'utf8'), /dean-laugh\.mp3/);
+test('the optional private Dean laugh falls back safely when absent from a public checkout', async () => {
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  try {
+    assert.equal(await loadDeanLaugh({ decodeAudioData() {} }), null);
+  } finally { globalThis.fetch = oldFetch; }
+  assert.match(readFileSync('.gitignore', 'utf8'), /public\/assets\/audio\/dean-laugh\.mp3/);
+});
+
+test('the optional local Dean laugh decodes once and retains its cinematic duration', async () => {
+  const module = await import(`../src/enemies/DeanLaughAudio.js?local-test=${Date.now()}`);
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async url => ({ ok: String(url).endsWith('dean-laugh.mp3'), arrayBuffer: async () => new ArrayBuffer(8) });
+  const context = { decodeAudioData: async () => ({ sampleRate: 48000, length: 4800, duration: 0.1, numberOfChannels: 1, getChannelData: () => new Float32Array(4800) }) };
+  try {
+    const clip = await module.loadDeanLaugh(context);
+    assert.equal(clip.buffer.duration, 0.1);
+    assert.equal(clip.envelopeStep, 0.025);
+  } finally { globalThis.fetch = oldFetch; }
 });

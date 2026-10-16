@@ -59,6 +59,42 @@ test('grounded movement emits varied footsteps at the existing cadence, never wh
   assert.equal(calls.length, 1, 'jumps and rolls remain silent');
 }));
 
+test('Level 1 footstep voices cannot suppress a successful shared jump or roll exertion', () => withAudio(calls => {
+  const player = Object.create(Player.prototype);
+  player._playExertion();
+  assert.equal(calls[0][2].group, 'player-vocal');
+  assert.equal(calls[0][2].maxVoices, 1);
+  calls.length = 0;
+  Object.assign(player, { stepTimer: 0, grounded: true, isDodging: false, bashTime: 0 });
+  player._updateMovementAudio(0.016, true, 8);
+  player._playExertion();
+  assert.equal(calls[0][2].group, 'player');
+  assert.equal(calls[1][2].group, 'player-vocal');
+}));
+
+test('successful Level 1, Level 2, and Level 3 jump/roll paths share one exertion trigger', () => withAudio(calls => {
+  const makeInput = pressed => ({
+    pointerLocked: true, gamepadInUse: false, mouseDeltaX: 0, mouseDeltaY: 0,
+    isDown: () => false, flushMouseDelta() {},
+    consumeKeyPress: key => pressed.delete(key),
+  });
+  const playablePlatforming = { canMove: true, allowDodge: true, allowSprint: true, moveSpeed: 5, surfaces: [] };
+  for (const [name, platforming] of [['Level 1', null], ['Level 2', playablePlatforming], ['Level 3', null]]) {
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+    const jump = new Player(scene, makeInput(new Set(['Space'])), camera);
+    jump.update(1 / 60, [], null, platforming);
+    assert.equal(calls.at(-1)[2].group, 'player-vocal', `${name} successful jump`);
+
+    const roll = new Player(scene, makeInput(new Set(['KeyQ'])), camera);
+    roll.update(1 / 60, [], null, platforming);
+    assert.equal(calls.at(-1)[2].group, 'player-vocal', `${name} successful roll`);
+  }
+  const before = calls.length;
+  const blocked = new Player(new THREE.Scene(), makeInput(new Set(['KeyQ'])), new THREE.PerspectiveCamera());
+  blocked.update(1 / 60, [], null, { canMove: false, allowDodge: false, surfaces: [] });
+  assert.equal(calls.length, before, 'failed actions do not vocalize');
+}));
+
 test('sword and dagger swings use the cleared Artninja whooshes only after a valid melee start', () => withAudio(calls => {
   const player = Object.create(Player.prototype);
   Object.assign(player, { weapon: 'sword', bashTime: 0, alive: true, isDodging: false, scriptedMovement: false, actions: {} });

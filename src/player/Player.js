@@ -300,10 +300,10 @@ export class Player {
     this.health = Math.max(0, this.health - amount);
     const audio = globalThis.__thesisAudioManager;
     if (this.health <= 0) {
-      audio?.playSfx('./assets/audio/sfx/player/shaun-death.ogg', { volume: 0.78, category: 'voice', group: 'player', maxVoices: 1, cooldownKey: 'shaun-death', cooldown: 2 });
+      audio?.playSfx('./assets/audio/sfx/player/shaun-death.ogg', { volume: 0.78, category: 'voice', group: 'player-vocal', maxVoices: 1, cooldownKey: 'shaun-death', cooldown: 2 });
     } else {
       audio?.playRandom(['./assets/audio/sfx/player/shaun-hurt-01.ogg', './assets/audio/sfx/player/shaun-hurt-02.ogg'], {
-        volume: amount >= 20 ? 0.68 : 0.52, category: 'voice', group: 'player', maxVoices: 1, cooldownKey: 'shaun-hurt', cooldown: 0.45,
+        volume: amount >= 20 ? 0.68 : 0.52, category: 'voice', group: 'player-vocal', maxVoices: 1, cooldownKey: 'shaun-hurt', cooldown: 0.45,
       });
     }
     this.damageFlashTime = 0.35;
@@ -574,7 +574,7 @@ export class Player {
       './assets/audio/sfx/player/shaun-exertion-01.ogg', './assets/audio/sfx/player/shaun-exertion-02.ogg',
       './assets/audio/sfx/player/shaun-exertion-03.ogg', './assets/audio/sfx/player/shaun-exertion-04.ogg',
       './assets/audio/sfx/player/shaun-exertion-05.ogg',
-    ], { volume: 0.36, pitch: 0.96 + Math.random() * 0.08, category: 'voice', group: 'player', maxVoices: 1,
+    ], { volume: 0.36, pitch: 0.96 + Math.random() * 0.08, category: 'voice', group: 'player-vocal', maxVoices: 1,
       cooldownKey: 'player-exertion', cooldown: 0.42 });
   }
 

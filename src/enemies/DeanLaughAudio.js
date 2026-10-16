@@ -1,11 +1,37 @@
-// The former third-party laugh recording was removed because its redistribution rights
-// could not be established. Keep this duration so the existing failure cinematic and
-// its animation timing remain unchanged while no unverified audio is fetched or played.
+// This private, optional local asset is intentionally ignored by Git. A clean public
+// checkout falls back to this original duration without failing the cinematic.
+export const DEAN_LAUGH_URL = './assets/audio/dean-laugh.mp3';
 export const DEAN_LAUGH_FALLBACK_SECONDS = 311040 / 44100;
+const ENVELOPE_STEP = 0.025;
+let loaded;
 
 export async function loadDeanLaugh(context) {
-  void context;
-  return null;
+  if (!context?.decodeAudioData) return null;
+  if (!loaded) loaded = (async () => {
+    const response = await fetch(DEAN_LAUGH_URL);
+    if (!response.ok) return null;
+    const buffer = await context.decodeAudioData(await response.arrayBuffer());
+    const stride = Math.max(1, Math.round(buffer.sampleRate * ENVELOPE_STEP));
+    const envelope = new Float32Array(Math.ceil(buffer.length / stride));
+    const channels = Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index));
+    let maximum = 0.001;
+    for (let frame = 0; frame < envelope.length; frame++) {
+      const start = frame * stride, end = Math.min(buffer.length, start + stride);
+      let sum = 0;
+      for (const channel of channels) for (let sample = start; sample < end; sample++) sum += channel[sample] ** 2;
+      envelope[frame] = Math.sqrt(sum / ((end - start) * channels.length));
+    }
+    const raw = envelope.slice();
+    for (let frame = 0; frame < envelope.length; frame++) {
+      let sum = 0;
+      for (let offset = -2; offset <= 2; offset++) sum += raw[Math.max(0, Math.min(raw.length - 1, frame + offset))] * (3 - Math.abs(offset));
+      envelope[frame] = sum / 9;
+      maximum = Math.max(maximum, envelope[frame]);
+    }
+    for (let frame = 0; frame < envelope.length; frame++) envelope[frame] /= maximum;
+    return { buffer, envelope, envelopeStep: stride / buffer.sampleRate };
+  })().catch(() => null);
+  return loaded;
 }
 
 export function laughAmplitude(clip, time) {
