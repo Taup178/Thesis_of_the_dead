@@ -31,6 +31,8 @@ export class Level3 {
     this.resumeArena = !!options?.arenaCleared || this.transformationPreview;
     if (this.resumeArena) this.timeRemaining = Math.max(0, Math.min(FINAL_ENCOUNTER_SECONDS, options.timeRemaining ?? FINAL_ENCOUNTER_SECONDS));
     this.bossCutscene = null;
+    this.houseEmergenceCuePlayed = false;
+    this.houseEmergenceCuePending = false;
     this.arenaCleared = this.resumeArena; this.degreeBurn = null; this.degreeBurnCutscene = null; this.failed = false;
   }
 
@@ -543,6 +545,7 @@ export class Level3 {
     }
     this.targetHold = Math.max(0, this.targetHold - dt);
     for (const house of this.houses) house.update(dt);
+    this.houseEmergenceCuePending = false;
     for (const record of this.spawnRecords) this._updateZombie(record, dt, player);
     const arenaClear = this.houses.every(house => !house.alive) && this.zombies.every(zombie => !zombie.alive);
     if (this.bossFight?.centerMarker) this.bossFight.centerMarker.visible = this.bossFight.phase === 'waiting' && arenaClear;
@@ -553,7 +556,8 @@ export class Level3 {
     }
     this.bossFight?.update(dt, player);
     this._updateBossCutscene(dt);
-    return { levelComplete: this.levelComplete, creditCollected: false };
+    return { levelComplete: this.levelComplete, creditCollected: false,
+      houseZombiesEmerging: this.houseEmergenceCuePending };
   }
 
   _updateZombie(record, dt, player) {
@@ -569,6 +573,10 @@ export class Level3 {
     if (record.phase === 'waiting') {
       if (this.elapsed < (record.releaseAt ?? 1 + door.delay) && house.alive) return;
       record.phase = 'exiting'; zombie.group.visible = true; zombie._playAction('Walk');
+      if (!this.houseEmergenceCuePlayed) {
+        this.houseEmergenceCuePlayed = true;
+        this.houseEmergenceCuePending = true;
+      }
     }
     if (record.phase === 'exiting') {
       record.progress = Math.min(1, record.progress + dt / 2.1);

@@ -30,7 +30,7 @@ export class WeaponCombat {
     this.root.clear(); this.projectiles = []; this.pickups = [];
     this.shootCooldown = 0; this.bashCooldown = 0; this.pendingBash = null; this.pendingMelee = null;
     this.cancelMelee(); this.attackClickHeld = false; this.weaponId = null;
-    this.kills = 0; this.rewarded = new WeakSet(); this.notice = ''; this.noticeTime = 0;
+    this.kills = 0; this.rewarded = new WeakSet(); this.notice = ''; this.noticeTime = 0; this.firstZombieHit = false;
   }
 
   cancelMelee() {
@@ -198,7 +198,10 @@ export class WeaponCombat {
   }
 
   damageZombie(zombie, damage, player) {
-    if (!zombie.takeDamage(damage) || this.rewarded.has(zombie)) return;
+    const wasAlive = zombie.alive;
+    const killed = zombie.takeDamage(damage);
+    if (wasAlive && weaponById(player.weapon)?.type === 'gun') this.firstZombieHit = true;
+    if (!killed || this.rewarded.has(zombie)) return;
     this.rewarded.add(zombie); player.addScore(200); this.kills++;
     // Every second defeated zombie guarantees supplies, while others leave no ammo.
     if (this.kills % 2 === 0) this.dropAmmo(zombie.group.position);

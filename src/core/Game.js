@@ -15,8 +15,7 @@ import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
 const NO_OBSTACLES = [];
 const LEVEL_AUDIO_ASSETS = Object.freeze([
-  './assets/audio/sfx/collect/credit-chime.ogg', './assets/audio/sfx/collect/ammo-pickup-event-a.wav',
-  './assets/audio/sfx/collect/ammo-pickup-event-b.wav', './assets/audio/sfx/ui/confirm.ogg',
+  './assets/audio/sfx/collect/ammo-pickup-event-a.wav', './assets/audio/sfx/collect/ammo-pickup-event-b.wav',
   ...[1, 2, 3, 4, 5].map(index => `./assets/audio/sfx/player/shaun-exertion-0${index}.ogg`),
   './assets/audio/sfx/player/garybran-forest-step-01.ogg', './assets/audio/sfx/player/garybran-forest-step-02.ogg',
   './assets/audio/sfx/player/shaun-hurt-01.ogg', './assets/audio/sfx/player/shaun-hurt-02.ogg',
@@ -101,6 +100,16 @@ export class Game {
     this.targetHealthFill = document.getElementById('target-health-fill');
     this.controlsHint = document.getElementById('controls-hint');
     this.worldMessage = document.getElementById('world-message');
+    this.fieldNote = document.getElementById('field-note');
+    this.fieldNoteTitle = document.getElementById('field-note-title');
+    this.fieldNoteDetail = document.getElementById('field-note-detail');
+    this.fieldNotePrompt = document.getElementById('field-note-prompt');
+    this.firstLevelTutorialSeen = new Set();
+    this.firstLevelHintQueue = [];
+    this.firstLevelHintTime = 0;
+    this.firstLevelTutorialBlocking = false;
+    this.firstLevelTutorialActive = null;
+    this.firstLevelTutorialInventoryPause = false;
     this.ammoHud = document.getElementById('ammo-hud');
     this.ammoLabel = document.getElementById('ammo-label');
     this.ammoCount = document.getElementById('ammo-count');
@@ -150,6 +159,12 @@ export class Game {
   // UI Binding
   // =====================================================================
   _bindUI() {
+    const unlockAudio = () => this.audio?.unlock?.();
+    document.addEventListener('pointerdown', unlockAudio, { capture: true, passive: true });
+    document.addEventListener('keydown', unlockAudio, { capture: true });
+    document.querySelectorAll?.('.menu-btn')?.forEach(button => {
+      button.addEventListener('pointerenter', () => this.audio?.playUiHover?.());
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.pause();
     });
@@ -224,10 +239,7 @@ export class Game {
   }
 
   _playUiConfirm() {
-    this.audio?.playSfx?.('./assets/audio/sfx/ui/confirm.ogg', {
-      volume: 0.22, category: 'sfx', group: 'ui', maxVoices: 1,
-      cooldownKey: 'ui-confirm', cooldown: 0.08,
-    });
+    this.audio?.playUiConfirm?.();
   }
 
   async _captureMouse({ pauseOnFailure = true } = {}) {
@@ -265,6 +277,14 @@ export class Game {
   // =====================================================================
   async startGame() {
     this.combat.reset();
+    this.firstLevelTutorialSeen.clear();
+    this.firstLevelHintQueue.length = 0;
+    this.firstLevelHintTime = 0;
+    this.firstLevelTutorialBlocking = false;
+    this.firstLevelTutorialActive = null;
+    this.firstLevelTutorialInventoryPause = false;
+    this.fieldNote?.classList.remove('visible', 'paused-guide');
+    this.fieldNote?.setAttribute('aria-hidden', 'true');
     this.state = this.STATE.LOADING;
     this._showOverlay('loading-overlay');
     this.hudEl.classList.add('hidden');
@@ -500,6 +520,37 @@ export class Game {
     this.combat.cancelMelee();
     this.input.consumeMousePresses?.(0);
     this._closeWeaponWheel();
+    this._finishFirstLevelInventoryPause();
+  }
+
+  _finishFirstLevelInventoryPause() {
+    if (!this.firstLevelTutorialInventoryPause) return;
+    this.firstLevelTutorialInventoryPause = false;
+    this.audio?.resume?.();
+  }
+
+  _handleFirstLevelTutorialControl() {
+    if (!this.firstLevelTutorialBlocking) return false;
+    const control = this.firstLevelTutorialActive?.control;
+    if (control && this.input.consumeKeyPress(control)) {
+      const hint = this.firstLevelTutorialActive;
+      this.firstLevelTutorialBlocking = false;
+      this.firstLevelTutorialActive = null;
+      this.fieldNote?.classList.remove('visible', 'paused-guide');
+      this.fieldNote?.setAttribute('aria-hidden', 'true');
+      this.audio?.resume?.();
+      if (hint.id === 'loadout') {
+        this.firstLevelTutorialInventoryPause = true;
+        this._openWeaponWheel();
+        return true;
+      }
+      // Re-queue the acknowledged input so it performs the move the guide described.
+      this.input.pressedKeys.add(control);
+      return false;
+    }
+    this.input.pressedKeys.clear();
+    this.input.flushMouseDelta();
+    return true;
   }
 
   _cycleWeapon(direction) {
@@ -578,6 +629,7 @@ export class Game {
   _highlightMenuButton(buttons, index) {
     this._menuNav.highlighted?.classList.remove('gamepad-focus');
     const button = buttons[index];
+    if (button && button !== this._menuNav.highlighted) this.audio?.playUiHover?.();
     this._menuNav.highlighted = button || null;
     if (button) {
       button.classList.add('gamepad-focus');
@@ -800,10 +852,14 @@ export class Game {
 
     // ---- Handle one-shot key presses ----
     let inventoryFrame = this.weaponWheelOpen;
+    if (this._handleFirstLevelTutorialControl()) inventoryFrame = true;
     if (this.state === this.STATE.PLAYING && this.player?.alive && !this.player.scriptedMovement
       && this.currentLevel?.allowsShooting !== false) {
       if (this.input.consumeKeyPress('Digit1')) {
-        if (this.weaponWheelOpen) this._closeWeaponWheel();
+        if (this.weaponWheelOpen) {
+          this._closeWeaponWheel();
+          this._finishFirstLevelInventoryPause();
+        }
         else this._openWeaponWheel();
         inventoryFrame = true;
       }
@@ -845,19 +901,22 @@ export class Game {
         this._handleShooting(dt);
 
         // The escape follows elapsed time, so a slow frame cannot stretch the film.
-        const cinematicClock = this.currentLevel.bossCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive;
+        const cinematicClock = this.currentLevel.bossCutscene?.usesElapsedTime
+          || this.currentLevel.orbPortalCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive;
         const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
         const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
+        this._checkFirstLevelTutorial(events, dt);
 
         if (events.creditCollected) {
           const finalCredit = events.finalCreditCollected === true;
-          this.audio?.playSfx?.('./assets/audio/sfx/collect/credit-chime.ogg', {
-            volume: finalCredit ? 0.92 : 0.66, pitch: finalCredit ? 0.88 : 1,
-            category: 'sfx', group: 'pickup', maxVoices: 3, position: this.player.group.position,
-          });
+          this.audio?.playCreditPickup?.();
           if (finalCredit) this.audio?.playFinalCreditMilestone?.();
         }
+        if (events.firstCreditCollected) {
+          this.audio?.playTheme?.('freshman-rannsaka', './assets/audio/music/rannsaka.mp3', { volume: 0.62 });
+        }
         if (events.deanReveal) this.audio?.playDeanReveal?.();
+        if (events.houseZombiesEmerging) this.audio?.setFinalEncounterPhase?.('house-emergence');
         if (events.portalActivated) {
           this.audio?.playPortalActivation?.();
           this.audio?.startPortalHum?.(this.currentLevel.portalRoot?.position);
@@ -866,7 +925,9 @@ export class Game {
         if (events.portalArrival || events.portalPassage) this.audio?.playPortalEntry?.();
         if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
         if (this.currentLevel.title?.toLowerCase().includes('final')) {
-          this.audio?.setFinalEncounterPhase?.(this.currentLevel.bossFight?.phase === 'combat' ? 'boss' : 'arena');
+          const phase = this.currentLevel.bossFight?.phase === 'combat' ? 'boss'
+            : this.currentLevel.houseEmergenceCuePlayed ? 'house-emergence' : 'arena';
+          this.audio?.setFinalEncounterPhase?.(phase);
         }
 
         if (events.levelComplete) {
@@ -880,7 +941,7 @@ export class Game {
           if (!this.player.deathSequence) this.gameOver();
         }
 
-        if (!this.currentLevel.bossCutscene) this._updateHUD();
+        if (!this.currentLevel.bossCutscene && !this.currentLevel.orbPortalCutscene) this._updateHUD();
       }
     }
 
@@ -896,7 +957,8 @@ export class Game {
     }
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
-    const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
+    const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime
+      || this.currentLevel?.orbPortalCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
     this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0);
   }
 
@@ -907,10 +969,73 @@ export class Game {
     if (finished) this.gameOver();
   }
 
+  _queueFirstLevelHint(id, title, detail) {
+    if (this.firstLevelTutorialSeen.has(id)) return;
+    this.firstLevelTutorialSeen.add(id);
+    const controls = {
+      loadout: ['Digit1', 'PRESS 1 TO OPEN INVENTORY'],
+      roll: ['KeyQ', 'PRESS Q TO ROLL'],
+      strike: ['KeyF', 'PRESS F TO STRIKE'],
+    };
+    const [control, prompt] = controls[id];
+    this.firstLevelHintQueue.push({ id, title, detail, control, prompt });
+  }
+
+  _checkFirstLevelTutorial(events, dt) {
+    const level = this.currentLevel;
+    if (!level?.title?.includes('Freshman Woods')) return;
+
+    if (this.combat.firstZombieHit) {
+      this._queueFirstLevelHint('loadout', 'First blood', 'The shot drew blood. Press 1 to inspect your loadout.');
+    }
+
+    if (!level.bossCutscene && !level.orbPortalCutscene && !level.portalCinematicActive && this.player?.alive) {
+      let nearestZombieSq = Infinity;
+      for (const zombie of level.zombies || []) {
+        if (!zombie.alive || !zombie.group.visible || zombie.portalExit) continue;
+        nearestZombieSq = Math.min(nearestZombieSq, zombie.group.position.distanceToSquared(this.player.group.position));
+      }
+      if (nearestZombieSq <= 7.84) {
+        this._queueFirstLevelHint('strike', 'Too close for a clean shot', 'Press F to strike at close range; with a firearm, Shaun pistol-whips the target.');
+      } else if (nearestZombieSq <= 64) {
+        this._queueFirstLevelHint('roll', 'It is closing in', 'Press Q to roll clear when the dead get within reach.');
+      }
+    }
+
+    this._updateFirstLevelTutorial(dt);
+  }
+
+  _updateFirstLevelTutorial(dt) {
+    const level = this.currentLevel;
+    if (!this.fieldNote) return;
+    if (!level?.title?.includes('Freshman Woods')) {
+      this.fieldNote.classList.remove('visible');
+      this.fieldNote.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    if (this.state !== this.STATE.PLAYING) return;
+    if (level.bossCutscene || level.orbPortalCutscene || level.portalCinematicActive) return;
+
+    if (this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause) return;
+    if (this.firstLevelHintQueue.length) {
+      const hint = this.firstLevelHintQueue.shift();
+      this.fieldNoteTitle.textContent = hint.title;
+      this.fieldNoteDetail.textContent = hint.detail;
+      this.fieldNotePrompt.textContent = hint.prompt;
+      this.firstLevelHintTime = 0;
+      this.firstLevelTutorialActive = hint;
+      this.firstLevelTutorialBlocking = true;
+      this.audio?.pause?.();
+      this.fieldNote.setAttribute('aria-hidden', 'false');
+      this.fieldNote.classList.add('visible', 'paused-guide');
+    }
+  }
+
   _updateCinematicPresentation() {
     const playing = this.state === this.STATE.PLAYING && this.input.pointerLocked;
     const bossIntro = !!this.currentLevel?.bossCutscene;
-    const cinematic = playing && (bossIntro || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
+    const cinematic = playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
+      || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
       || !!this.currentLevel?.transformationCinematicActive);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);

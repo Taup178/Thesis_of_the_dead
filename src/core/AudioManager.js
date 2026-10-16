@@ -1,19 +1,12 @@
 const DEFAULT_VOLUME = 0.7;
 const MAX_GROUP_VOICES = Object.freeze({ zombie: 4, player: 3, weapon: 5, pickup: 3 });
 const STORY_CUE_SETTINGS = Object.freeze({
-  deanReveal: Object.freeze({ duration: 1.05, volume: 0.26, frequency: 180, endFrequency: 62, type: 'sawtooth', cooldown: 2 }),
-  portalActivation: Object.freeze({ duration: 0.7, volume: 0.22, frequency: 220, endFrequency: 760, type: 'triangle', cooldown: 1 }),
-  portalEntry: Object.freeze({ duration: 0.9, volume: 0.23, frequency: 960, endFrequency: 180, type: 'triangle', cooldown: 1 }),
+  deanReveal: Object.freeze({ duration: 0.9, volume: 0.095, cutoffStart: 1500, cutoffEnd: 190, bodyVolume: 0.075, bodyFrequency: 58, attack: 0.12, cooldown: 2 }),
+  portalActivation: Object.freeze({ duration: 0.82, volume: 0.1, cutoffStart: 1900, cutoffEnd: 230, bodyVolume: 0.07, bodyFrequency: 62, attack: 0.09, cooldown: 1 }),
+  portalEntry: Object.freeze({ duration: 1.05, volume: 0.12, cutoffStart: 2400, cutoffEnd: 150, bodyVolume: 0.09, bodyFrequency: 52, attack: 0.035, cooldown: 1 }),
   portalHum: Object.freeze({ frequency: 112, nearVolume: 0.09, referenceDistance: 9, maxDistance: 38 }),
 });
 const MUSIC_SCENES = Object.freeze({
-  freshman: {
-    key: 'freshman-woods',
-    layers: [
-      { url: './assets/audio/music/forest-ambience.mp3', volume: 0.72, channel: 'ambience' },
-      { url: './assets/audio/music/forest-mystery.ogg', volume: 0.62, channel: 'music' },
-    ],
-  },
   sophomore: {
     key: 'sophomore-room',
     layers: [
@@ -23,12 +16,15 @@ const MUSIC_SCENES = Object.freeze({
   },
   finalArena: {
     key: 'final-arena',
-    layers: [{ url: './assets/audio/music/arena-wind.ogg', volume: 0.62, channel: 'ambience' }],
+    layers: [],
+  },
+  finalHouseEmergence: {
+    key: 'final-house-emergence',
+    layers: [{ url: './assets/audio/music/tar.mp3', volume: 0.68, channel: 'music' }],
   },
   finalDean: {
     key: 'final-dean',
     layers: [
-      { url: './assets/audio/music/arena-wind.ogg', volume: 0.3, channel: 'ambience' },
       { url: './assets/audio/music/lost-horror.ogg', volume: 0.72, channel: 'music' },
     ],
   },
@@ -243,46 +239,69 @@ export class AudioManager {
     return this.playSfx(sources, options);
   }
 
-  _playSynth(key, { duration, volume = 0.12, frequency = 220, endFrequency = frequency, type = 'sine', cooldown = 0.2 } = {}) {
-    // The story cues are generated at runtime, so unlock before scheduling them.
-    // This is harmless after the initial gesture and covers a browser that has
-    // suspended the context between menu interaction and the later level event.
+  _playDesignedCue(key, { duration, volume = 0.05, cutoffStart = 1400, cutoffEnd = 500,
+    bodyVolume = 0, bodyFrequency = 72, attack = 0.01, cooldown = 0.2 } = {}) {
     this.unlock();
     const context = this.ensureContext();
-    if (!context?.createOscillator || !context?.createGain) return null;
+    if (!context?.createBuffer || !context?.createBufferSource || !context?.createBiquadFilter || !context?.createGain) return null;
     const now = context.currentTime;
     const readyAt = this.cooldowns.get(key) || 0;
     if (readyAt > now) return null;
     this.cooldowns.set(key, now + cooldown);
     try {
-      const oscillator = context.createOscillator(), gain = context.createGain();
-      oscillator.type = type;
-      oscillator.frequency.setValueAtTime(frequency, now);
-      // Keep this on the same, broadly-supported scheduling surface as the
-      // existing game buses.  A failed exponential ramp was caught below and
-      // left every generated story cue silent.
-      oscillator.frequency.linearRampToValueAtTime(Math.max(20, endFrequency), now + duration);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(volume, now + 0.035);
-      gain.gain.linearRampToValueAtTime(0.0001, now + duration);
-      oscillator.connect(gain); gain.connect(this.sfxGain);
-      const effect = { oscillator, gain };
+      const frames = Math.max(1, Math.ceil(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, frames, context.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+
+      const noise = context.createBufferSource();
+      noise.buffer = buffer;
+      const filter = context.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(cutoffStart, now);
+      filter.frequency.linearRampToValueAtTime(cutoffEnd, now + duration);
+      const noiseGain = context.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, now);
+      noiseGain.gain.linearRampToValueAtTime(volume, now + attack);
+      noiseGain.gain.linearRampToValueAtTime(0.0001, now + duration);
+      noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(this.sfxGain);
+
+      const sources = [noise], nodes = [noise, filter, noiseGain];
+      if (bodyVolume > 0 && context.createOscillator) {
+        const body = context.createOscillator();
+        const bodyGain = context.createGain();
+        body.type = 'sine';
+        body.frequency.setValueAtTime(bodyFrequency, now);
+        bodyGain.gain.setValueAtTime(0.0001, now);
+        bodyGain.gain.linearRampToValueAtTime(bodyVolume, now + Math.min(attack, 0.025));
+        bodyGain.gain.linearRampToValueAtTime(0.0001, now + duration);
+        body.connect(bodyGain); bodyGain.connect(this.sfxGain);
+        sources.push(body); nodes.push(body, bodyGain);
+      }
+      const effect = { sources, nodes };
       this.generatedEffects.add(effect);
-      oscillator.onended = () => {
-        oscillator.disconnect(); gain.disconnect(); this.generatedEffects.delete(effect);
+      let remaining = sources.length;
+      const cleanup = () => {
+        remaining--;
+        if (remaining > 0) return;
+        nodes.forEach(node => node.disconnect());
+        this.generatedEffects.delete(effect);
       };
-      oscillator.start(now); oscillator.stop(now + duration + 0.02);
-      return oscillator;
+      sources.forEach(source => { source.onended = cleanup; source.start(now); source.stop(now + duration + 0.02); });
+      return effect;
     } catch (error) {
-      console.warn('[AudioManager] Synth playback failed.', error);
+      console.warn('[AudioManager] Designed cue playback failed.', error);
       return null;
     }
   }
 
-  playDeanReveal() { return this._playSynth('dean-reveal', STORY_CUE_SETTINGS.deanReveal); }
-  playPortalActivation() { return this._playSynth('portal-activation', STORY_CUE_SETTINGS.portalActivation); }
-  playPortalEntry() { return this._playSynth('portal-entry', STORY_CUE_SETTINGS.portalEntry); }
-  playFinalCreditMilestone() { return this._playSynth('final-credit', { duration: 0.65, volume: 0.16, frequency: 440, endFrequency: 880, type: 'sine', cooldown: 1 }); }
+  playUiHover() { return this._playDesignedCue('ui-hover', { duration: 0.07, volume: 0.12, cutoffStart: 1450, cutoffEnd: 720, attack: 0.004, cooldown: 0.045 }); }
+  playUiConfirm() { return this._playDesignedCue('ui-confirm', { duration: 0.2, volume: 0.34, cutoffStart: 1150, cutoffEnd: 240, bodyVolume: 0.24, bodyFrequency: 68, attack: 0.008, cooldown: 0.12 }); }
+  playCreditPickup() { return this._playDesignedCue('credit-pickup', { duration: 0.24, volume: 0.06, cutoffStart: 1450, cutoffEnd: 330, bodyVolume: 0.05, bodyFrequency: 88, attack: 0.006, cooldown: 0.1 }); }
+  playDeanReveal() { return this._playDesignedCue('dean-reveal', STORY_CUE_SETTINGS.deanReveal); }
+  playPortalActivation() { return this._playDesignedCue('portal-activation', STORY_CUE_SETTINGS.portalActivation); }
+  playPortalEntry() { return this._playDesignedCue('portal-entry', STORY_CUE_SETTINGS.portalEntry); }
+  playFinalCreditMilestone() { return this._playDesignedCue('final-credit', { duration: 0.48, volume: 0.07, cutoffStart: 1000, cutoffEnd: 220, bodyVolume: 0.06, bodyFrequency: 66, attack: 0.02, cooldown: 1 }); }
 
   startPortalHum(position) {
     if (this.portalHum) return this.updatePortalHum(position);
@@ -395,7 +414,10 @@ export class AudioManager {
 
   setLevelTheme(levelName) {
     const title = String(levelName || '').toLowerCase();
-    if (title.includes('freshman')) return this._startMusicScene(MUSIC_SCENES.freshman.key, MUSIC_SCENES.freshman.layers);
+    if (title.includes('freshman')) {
+      this.stopTheme(0);
+      return this.preload('./assets/audio/music/rannsaka.mp3').then(() => null);
+    }
     if (title.includes('sophomore')) return this._startMusicScene(MUSIC_SCENES.sophomore.key, MUSIC_SCENES.sophomore.layers);
     if (title.includes('final')) return this.setFinalEncounterPhase('arena');
     this.stopTheme();
@@ -408,7 +430,8 @@ export class AudioManager {
   }
 
   setFinalEncounterPhase(phase) {
-    const scene = phase === 'boss' ? MUSIC_SCENES.finalDean : MUSIC_SCENES.finalArena;
+    const scene = phase === 'boss' ? MUSIC_SCENES.finalDean
+      : phase === 'house-emergence' ? MUSIC_SCENES.finalHouseEmergence : MUSIC_SCENES.finalArena;
     return this._startMusicScene(scene.key, scene.layers);
   }
 
@@ -433,7 +456,9 @@ export class AudioManager {
       try { voice.source.stop(); } catch {}
     }
     for (const effect of this.generatedEffects) {
-      try { effect.oscillator.stop(); } catch {}
+      for (const source of effect.sources || [effect.oscillator]) {
+        try { source.stop(); } catch {}
+      }
     }
   }
 

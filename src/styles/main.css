@@ -703,6 +703,39 @@ html, body {
 #target-health-fill { height: 100%; background: linear-gradient(90deg, #b88142, #f1cc86); transition: width 0.12s ease; }
 #target-health { color: #f0e4d2; font-size: 12px; font-variant-numeric: tabular-nums; }
 #target-hud[data-destroyed="true"] #target-health { color: #b9d7a5; }
+#field-note {
+  position: absolute;
+  left: 32px;
+  bottom: 130px;
+  width: min(360px, calc(100vw - 64px));
+  padding: 15px 18px 16px;
+  border-left: 2px solid rgba(180, 72, 56, 0.8);
+  background: rgba(8, 11, 13, 0.28);
+  color: #eee3d1;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+  pointer-events: none;
+}
+#field-note.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+#field-note.paused-guide {
+  left: 50%; bottom: auto; top: 50%;
+  width: min(420px, calc(100vw - 40px));
+  padding: 22px 26px 20px;
+  border-left-width: 3px;
+  background: rgba(8, 11, 13, 0.32);
+  transform: translate(-50%, calc(-50% + 8px));
+  text-align: left;
+}
+#field-note.paused-guide.visible { transform: translate(-50%, -50%); }
+.field-note-kicker { margin-bottom: 6px; color: #c7a66d; font-size: 9px; font-weight: 700; letter-spacing: 2px; }
+.field-note-kicker span { padding: 0 3px; color: #a94a3d; }
+#field-note-title { color: #f4eadb; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase; }
+#field-note-detail { margin: 5px 0 0; color: #c9c4bb; font-size: 12px; line-height: 1.5; }
+#field-note-prompt { display: inline-block; margin-top: 15px; padding: 6px 10px; border: 1px solid rgba(199, 166, 109, 0.65);
+  border-radius: 3px; color: #e6d2ae; background: rgba(8, 11, 13, 0.2); font-size: 10px; letter-spacing: 1px; }
+@media (max-width: 600px) { #field-note { left: 16px; bottom: 120px; width: calc(100vw - 32px); } }
 #world-message { position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%); max-width: min(520px, 85vw);
   padding: 14px 22px; border: 1px solid #d8ba7a; border-radius: 6px; background: rgba(20, 22, 26, 0.92); color: #ffe0a0;
   font-size: 14px; text-align: center; }

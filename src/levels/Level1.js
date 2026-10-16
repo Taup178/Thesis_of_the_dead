@@ -11,6 +11,7 @@ import { StylizedWoods } from '../environment/StylizedWoods.js';
 import { ForestAtmosphere } from '../environment/ForestAtmosphere.js';
 import { getPortalTravelDuration } from '../props/RoomExitPortal.js';
 import { WoodsBossCutscene } from './WoodsBossCutscene.js';
+import { OrbPortalCutscene } from './OrbPortalCutscene.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -58,6 +59,7 @@ export class Level1 {
     // Boss sequence: waiting -> emerging -> running -> absorbing -> done
     this.bossState = 'waiting';
     this.bossCutscene = null;
+    this.orbPortalCutscene = null;
     this.portalActive = false;
     this.portalTimer = 0;
     this.bossAbsorption = null;
@@ -663,7 +665,7 @@ export class Level1 {
 
   /** Per-frame update, including audio-relevant story events. */
   update(dt, player, time) {
-    const events = { creditCollected: false, finalCreditCollected: false, deanReveal: false,
+    const events = { creditCollected: false, firstCreditCollected: false, finalCreditCollected: false, deanReveal: false,
       bossReached: false, portalActivated: false, portalEntry: false, levelComplete: false };
     if (this.nightSky) this.nightSky.update(player.group.position);
     if (this.atmosphere) this.atmosphere.update(dt);
@@ -687,6 +689,10 @@ export class Level1 {
       }
       return events; // Hold enemies and queued spawns while the camera owns control.
     }
+    if (this.orbPortalCutscene) {
+      this.orbPortalCutscene.update(dt);
+      return events; // The first pair gets a clear entrance before the player takes over.
+    }
     this.spawnDelay = Math.max(0, this.spawnDelay - dt);
 
     // Animate credits (bob & spin)
@@ -706,9 +712,13 @@ export class Level1 {
         const finalCredit = this.creditsCollected === this.credits.length;
         this.creditEffects.onCollected(credit, player, finalCredit);
         events.creditCollected = true;
+        events.firstCreditCollected = this.creditsCollected === 1;
         events.finalCreditCollected = finalCredit;
+        if (events.firstCreditCollected && player.camera) this.orbPortalCutscene = new OrbPortalCutscene(this, player);
       }
     }
+
+    if (this.orbPortalCutscene) return events;
 
     // Idle portal pulse before the boss appears
     if (this.bossState === 'waiting' && this.portalRoot) {
@@ -789,6 +799,7 @@ export class Level1 {
     this.woods?.dispose();
     this.woods = null;
     this.wakeUpIntro?.restore();
+    this.orbPortalCutscene?.restore();
     this.bossCutscene?.restore();
     this._restorePlayerAppearance();
     this.redPortalMixer?.stopAllAction();

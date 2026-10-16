@@ -15,15 +15,14 @@ those packs without editing. Their sounds still require in-game listening review
 
 | Game asset | Candidate source file | Pack / attribution | Source page |
 | --- | --- | --- | --- |
-| `music/forest-ambience.mp3` | `level1/original_downloads/forest_ambient__Forest_Ambience.mp3` | Forest Ambience, TinyWorlds | https://opengameart.org/content/forest-ambience |
-| `music/forest-mystery.ogg` | `level1/original_downloads/forest_mystery__forest_2.ogg` | Cathedral in the Forest Ambient Loop, congusbongus | https://opengameart.org/content/cathedral-in-the-forest-ambient-loop |
+| `music/rannsaka.mp3` | `Zombie_Kit/Rannsaka [4uVc4yhe-aw].mp3` | Supplied project asset; creator/source and licence details were not included in the pack | Not documented |
+| `music/tar.mp3` | `Zombie_Kit/Tar [agmPnGNZ574].mp3` | Supplied project asset; creator/source and licence details were not included in the pack | Not documented |
 | `music/dungeon-ambience.ogg` | `level2/original_downloads/dungeon_ambient__dungeon002.ogg` | Dungeon Ambience, yd | https://opengameart.org/content/dungeon-ambience |
 | `music/lost-horror.ogg` | `level2/original_downloads/lost_horror__lost.ogg` | Lost in a Bad Place Horror Ambience Loop, congusbongus | https://opengameart.org/content/lost-in-a-bad-place-horror-ambience-loop |
 | `music/arena-wind.ogg` | `level3/original_downloads/wind_loop__wind_woosh_loop.ogg` | Wind Whoosh Loop, SketchMan3 | https://opengameart.org/content/wind-whoosh-loop |
 | `sfx/zombie/moan-1.ogg`–`moan-3.ogg`, `detection.ogg` | `shared/extracted/zombie_extra/{zombienoise1,zombienoise2,zombienoise3,fastzombie1}.ogg` | Zombie Noises and Moans, ianzazz | https://opengameart.org/content/zombie-noises-and-moans |
 | `sfx/weapon/pistol-bang-*.ogg`, `smg-bang-*.ogg` | `shared/extracted/gun_bangs/bang_01.ogg`–`bang_05.ogg` | 25 CC0 Bang Firework SFX, rubberduck | https://opengameart.org/content/25-cc0-bang-firework-sfx |
-| `sfx/collect/credit-chime.ogg`, `ammo-pickup.ogg` | `shared/extracted/gun_explosions/residue-sfx/{crystia,ammopickup}.ogg` | Residue SFX, FacadeGaikan | https://opengameart.org/content/residue-sfx |
-| `sfx/collect/credit-complete.ogg` | `shared/extracted/kenney_interface/Audio/confirmation_003.ogg` | Interface Sounds, Kenney | https://kenney.nl/assets/interface-sounds |
+| `sfx/collect/ammo-pickup.ogg` | `shared/extracted/gun_explosions/residue-sfx/ammopickup.ogg` | Residue SFX, FacadeGaikan | https://opengameart.org/content/residue-sfx |
 | `sfx/weapon/melee-impact-1.ogg`–`melee-impact-2.ogg` | `shared/extracted/kenney_impact/Audio/impactPunch_medium_000.ogg`–`impactPunch_medium_001.ogg` | Impact Sounds, Kenney | https://kenney.nl/assets/impact-sounds |
 | `sfx/weapon/bullet-impact-1.ogg`–`bullet-impact-2.ogg` | `shared/extracted/kenney_impact/Audio/impactSoft_medium_000.ogg`–`impactSoft_medium_001.ogg` | Impact Sounds, Kenney | https://kenney.nl/assets/impact-sounds |
 
@@ -52,7 +51,6 @@ the conditions below.
 | --- | --- | --- | --- |
 | `sfx/collect/ammo-pickup-event-a.wav` | `ammo-pickup-event-a.wav`, 0.005–0.300 s of `213607__dpoggioli__ammo-pick-up.wav` | dpoggioli — https://freesound.org/people/Dpoggioli/sounds/213607/ | CC BY 4.0; credit creator, title, URL, license, and that it was excerpted. |
 | `sfx/collect/ammo-pickup-event-b.wav` | `ammo-pickup-event-b.wav`, 0.475–1.080 s of same | dpoggioli — same URL | CC BY 4.0; same attribution. |
-| `sfx/ui/confirm.ogg` | `ui-confirm.ogg`, full 0.576 s `345299__scrampunk__okay.wav` | Scrampunk Games — https://freesound.org/people/Scrampunk/sounds/345299/ | Preserve embedded CC BY 3.0 notice and current-page CC BY 4.0 record; credit creator, title, URL, license records, and Ogg conversion. |
 | `sfx/player/shaun-exertion-01.ogg`–`05.ogg` | 0.275–0.350 s excerpts of `841313__takareads__strenuous_grunts.flac` | takareads — https://freesound.org/people/takareads/sounds/841313/ | CC0 1.0; retain source credit for traceability and record excerpt/Ogg conversion. |
 
 All other reviewed gun, blade, Shaun-hurt, zombie, milestone, portal, and

@@ -33,11 +33,17 @@ class FakeAudioContext {
   constructor() {
     this.state = 'running';
     this.currentTime = 0;
+    this.sampleRate = 48000;
     this.destination = new FakeNode();
     this.sources = [];
   }
   createGain() { return new FakeNode(); }
+  createBiquadFilter() { const node = new FakeNode(); node.frequency = new FakeParam(350); return node; }
   createDynamicsCompressor() { return new FakeNode(); }
+  createBuffer(channels, length) {
+    const data = Array.from({ length: channels }, () => new Float32Array(length));
+    return { getChannelData: channel => data[channel] };
+  }
   createBufferSource() {
     const source = new FakeNode();
     this.sources.push(source);
@@ -167,38 +173,45 @@ test('pausing and stopping cancel pending one-shots without leaving voice reserv
   }
 });
 
-test('final encounter transitions from arena ambience to dark Dean-phase ambience', async () => {
+test('final encounter is quiet before house emergence, then plays Tar and the Dean score without wind ambience', async () => {
   await withAudioGlobals(async urls => {
     const manager = new AudioManager();
     await manager.setLevelTheme('Chapter 3: The Final Encounter');
-    assert.equal(manager.themeKey, 'final-arena');
+    assert.equal(manager.themeKey, null);
+    await manager.setFinalEncounterPhase('house-emergence');
+    assert.equal(manager.themeKey, 'final-house-emergence');
+    assert.ok(urls.some(url => url.endsWith('/music/tar.mp3')));
     await manager.setFinalEncounterPhase('boss');
     assert.equal(manager.themeKey, 'final-dean');
-    assert.ok(urls.some(url => url.endsWith('/music/arena-wind.ogg')));
+    assert.ok(!urls.some(url => url.endsWith('/music/arena-wind.ogg')));
     assert.ok(urls.some(url => url.endsWith('/music/lost-horror.ogg')));
     assert.ok(!urls.some(url => url.endsWith('/music/final-boss.mp3')));
     manager.stopAll();
   });
 });
 
-test('pause preserves theme sources and a restart replaces them with one fresh scene', async () => {
+test('Level 1 stays quiet until the first-orb song starts and a restart clears it', async () => {
   await withAudioGlobals(async () => {
     const manager = new AudioManager();
     await manager.setLevelTheme('Chapter 1: Freshman Woods');
-    const initialSources = [...manager.themeSources];
-    assert.equal(initialSources.length, 2);
+    assert.equal(manager.themeSources.size, 0);
+    assert.ok(manager.cache.has('./assets/audio/music/rannsaka.mp3'));
 
     manager.pause();
     assert.equal(manager.context.state, 'suspended');
-    assert.deepEqual([...manager.themeSources], initialSources);
+    assert.equal(manager.themeSources.size, 0);
     manager.resume();
     assert.equal(manager.context.state, 'running');
-    assert.deepEqual([...manager.themeSources], initialSources);
+
+    await manager.playTheme('freshman-rannsaka', './assets/audio/music/rannsaka.mp3', { volume: 0.62 });
+    const firstOrbSources = [...manager.themeSources];
+    assert.equal(firstOrbSources.length, 1);
+    assert.equal(manager.themeKey, 'freshman-rannsaka');
 
     await manager.restartLevelTheme('Chapter 1: Freshman Woods');
-    assert.equal(manager.themeKey, 'freshman-woods');
-    assert.equal(manager.themeSources.size, 2);
-    for (const track of initialSources) assert.equal(manager.themeSources.has(track), false);
+    assert.equal(manager.themeKey, null);
+    assert.equal(manager.themeSources.size, 0);
+    for (const track of firstOrbSources) assert.equal(manager.themeSources.has(track), false);
     manager.stopAll();
   });
 });
@@ -214,13 +227,16 @@ test('generated story cues route to the audible buses and clean up safely', asyn
     assert.equal(hum.gain.connections[0], manager.ambienceGain);
 
     for (const cue of [
+      manager.playUiHover(),
+      manager.playUiConfirm(),
+      manager.playCreditPickup(),
       manager.playDeanReveal(),
       manager.playPortalActivation(),
       manager.playPortalEntry(),
       manager.playFinalCreditMilestone(),
     ]) {
       assert.ok(cue);
-      assert.equal(cue.connections[0].connections[0], manager.sfxGain);
+      assert.equal(cue.nodes.at(-1).connections[0], manager.sfxGain);
     }
     manager.pause();
     assert.equal(manager.generatedEffects.size, 0);
@@ -235,7 +251,6 @@ test('Batch 1 cleared assets are present and use one-shot cooldown cleanup', asy
   const assets = [
     'public/assets/audio/sfx/collect/ammo-pickup-event-a.wav',
     'public/assets/audio/sfx/collect/ammo-pickup-event-b.wav',
-    'public/assets/audio/sfx/ui/confirm.ogg',
     ...[1, 2, 3, 4, 5].map(index => `public/assets/audio/sfx/player/shaun-exertion-0${index}.ogg`),
     ...[1, 2].map(index => `public/assets/audio/sfx/player/garybran-forest-step-0${index}.ogg`),
     ...[1, 2].map(index => `public/assets/audio/sfx/weapon/artninja-sword-swing-0${index}.ogg`),

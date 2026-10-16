@@ -5,10 +5,10 @@ export class MenuMusic {
     this.active = false;
     this.pending = false;
     this.audio.loop = true;
-    this.audio.volume = Number(volumeControl.value) / 100;
+    this.audio.volume = Number(volumeControl.value) / 100 * 0.3;
     this.onGesture = () => this.play();
     this.onVolume = () => {
-      this.audio.volume = Number(volumeControl.value) / 100;
+      this.audio.volume = Number(volumeControl.value) / 100 * 0.3;
       if (this.audio.volume === 0) this.audio.pause();
       else this.play();
     };
