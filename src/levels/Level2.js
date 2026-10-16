@@ -65,6 +65,12 @@ export class Level2 {
     this.hopTimer = 0;
     this.hopStarted = false;
     this.levelComplete = false;
+    this.portalActive = false;
+    this.portalRoot = null;
+    this.portalArrivalPending = false;
+    this.portalActivationPending = false;
+    this.portalPassagePending = false;
+    this.portalEntryPending = false;
     this.failureReason = '';
     this.deanFacing = new THREE.Quaternion();
     this.deanFacingTarget = new THREE.Quaternion();
@@ -196,6 +202,7 @@ export class Level2 {
 
   _beginArrival(player) {
     this.phase = 'dean_arrival';
+    this.portalArrivalPending = true;
     this.arrivalPlayer = player;
     this.arrivalPlayerVisible = player.group.visible;
     this.arrivalBodyVisible = player.bodyMesh.visible;
@@ -244,6 +251,7 @@ export class Level2 {
       this.dean._playAction('Idle', 0.08);
       this.bossMarker.lookAt(this.spawnPoint);
       this.phase = 'player_arrival';
+      this.portalArrivalPending = true;
       player.group.visible = true;
       player.mixer?.update(0);
       this.playerArrival = this.preparedPlayerArrival ?? new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
@@ -307,6 +315,7 @@ export class Level2 {
     createSophomoreGauntlet(this);
     this.torches.placeBetweenBladeAnchors(this.blades.map(blade => blade.z - 0.38));
     this.exitPortal = new RoomExitPortal(this.root, this.exitPosition);
+    this.portalRoot = this.exitPortal.root;
     this.entrancePortal = new RoomExitPortal(this.root, this.entrancePosition, { red: true, rotationY: Math.PI });
   }
 
@@ -478,6 +487,8 @@ export class Level2 {
     player.addScore(300);
     if (this.stageIndex === this.patterns.length - 1) {
       this.phase = 'dean_exit';
+      this.portalActive = true;
+      this.portalActivationPending = true;
       for (const column of this.tiles) for (const other of column) other.timer = null;
       this.dean._playAction('Walk');
       return;
@@ -531,12 +542,15 @@ export class Level2 {
         }
         this.dean._playAction('Idle');
         this.deanPassage = new PortalPassage(this.bossMarker, this.exitPortal.center);
+        this.portalPassagePending = true;
       }
       this.deanPassage.update(dt);
       if (this.deanPassage.complete) this.phase = 'exit';
     } else if (this.phase === 'exit') {
       if (player.grounded && player.alive && player.group.position.distanceTo(this.portalApproachPoint) < 1.15) {
         this.phase = 'entering';
+        this.portalActive = false;
+        this.portalEntryPending = true;
         player.scriptedMovement = true; player.velocity.set(0, 0, 0); player.verticalVelocity = 0;
         this.portalPlayer = player; this.playerBodyVisible = player.bodyMesh.visible; player.bodyMesh.visible = true;
         if (player.mixer) player._playAnimation('Idle_Gun', 'Idle');
@@ -724,7 +738,18 @@ export class Level2 {
   }
 
   update(dt, player) {
-    const events = { creditCollected: false, levelComplete: false };
+    const events = {
+      creditCollected: false,
+      portalArrival: this.portalArrivalPending,
+      portalActivated: this.portalActivationPending,
+      portalPassage: this.portalPassagePending,
+      portalEntry: this.portalEntryPending,
+      levelComplete: false,
+    };
+    this.portalArrivalPending = false;
+    this.portalActivationPending = false;
+    this.portalPassagePending = false;
+    this.portalEntryPending = false;
     this.spikeHitCooldown = Math.max(0, this.spikeHitCooldown - dt);
     this.retractingSpikes?.update(dt);
     this.exitPortal?.update(dt, this.phase === 'entering' || this.phase === 'dean_exit');
@@ -801,8 +826,7 @@ export class Level2 {
       player.velocity.set(0, 0, 0);
       // A fall into the pit is immediately fatal, including during a roll or hit cooldown.
       player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0;
-      player.health = 0; player.alive = false;
-      player.hitReactionTime = 0; player.damageFlashTime = 0;
+      player.takeDamage(player.health);
       player._updateCamera();
     } else if (player.alive && this.spikeHitCooldown === 0 && this.retractingSpikes?.hitsPlayer(player)) {
       // Retracting floor spikes use combat damage, with time between injuries.

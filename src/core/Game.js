@@ -863,6 +863,7 @@ export class Game {
           this.audio?.startPortalHum?.(this.currentLevel.portalRoot?.position);
         }
         if (this.currentLevel.portalActive) this.audio?.updatePortalHum?.(this.currentLevel.portalRoot?.position);
+        if (events.portalArrival || events.portalPassage) this.audio?.playPortalEntry?.();
         if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
         if (this.currentLevel.title?.toLowerCase().includes('final')) {
           this.audio?.setFinalEncounterPhase?.(this.currentLevel.bossFight?.phase === 'combat' ? 'boss' : 'arena');
