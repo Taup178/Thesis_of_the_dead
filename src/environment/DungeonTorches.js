@@ -75,6 +75,7 @@ export class DungeonTorches {
   constructor(root, backZ, frontZ) {
     this.root = root; this.time = { value: 0 }; this.disposed = false;
     this.decorated = new WeakSet();
+    this.originalHooks = new Map();
     const rows = Math.max(2, Math.ceil((frontZ - backZ - 8) / 12) + 1);
     this.layout = { firstZ: frontZ - 4, spacing: (frontZ - backZ - 8) / (rows - 1), rows, mountY: MOUNT_Y };
     this.anchors = [];
@@ -85,16 +86,12 @@ export class DungeonTorches {
         id: row * 2 + (side > 0 ? 1 : 0), row,
         angle: side < 0 ? Math.PI / 2 : -Math.PI / 2, phase: row * 2.399 + (side > 0 ? 1.731 : 0) });
     }
-    // Eight permanent shader slots; only the nearest pair renders shadow maps.
-    this.lights = Array.from({ length: 8 }, (_, index) => {
+    // One stable, shadow-free pair lights nearby actors. Local shader lights
+    // illuminate the rest of the corridor without twelve cube-shadow passes.
+    this.lights = Array.from({ length: 2 }, (_, index) => {
       const light = new THREE.PointLight(0xffb65c, POWER, RANGE, 2);
       light.name = `TorchLight_${index}`;
-      light.castShadow = index < 2;
-      if (light.castShadow) {
-        light.shadow.mapSize.set(512, 512);
-        light.shadow.camera.near = 0.12; light.shadow.camera.far = RANGE;
-        light.shadow.bias = -0.00015; light.shadow.normalBias = 0.025; light.shadow.radius = 2;
-      }
+      light.castShadow = false;
       root.add(light); return light;
     });
     this.lightUniforms = {
@@ -103,16 +100,28 @@ export class DungeonTorches {
       dungeonTorchSource: { value: new THREE.Vector3(10 - FLAME_INSET, FLAME_Y + 0.22, RANGE) },
       dungeonTorchColor: { value: this.lights[0].color.clone() },
       dungeonTorchSlotsA: { value: new THREE.Vector4() }, dungeonTorchSlotsB: { value: new THREE.Vector4() },
-      dungeonTorchBlockedRows: { value: new THREE.Vector4(-1, -1, -1, -1) },
+      dungeonTorchMovedRows: { value: new THREE.Vector4(-1, -1, -1, -1) },
+      dungeonTorchMovedZ: { value: new THREE.Vector4() },
     };
     this.update(0, new THREE.Vector3(0, 0, frontZ - 12));
   }
 
-  removeAtBladeAnchors(anchorZs) {
-    const blocked = [...new Set(this.anchors.filter(anchor =>
-      anchorZs.some(z => Math.abs(anchor.position.z - z) < 1.25)).map(anchor => anchor.row))];
-    this.anchors = this.anchors.filter(anchor => !blocked.includes(anchor.row));
-    this.lightUniforms.dungeonTorchBlockedRows.value.fromArray(Array.from({ length: 4 }, (_, index) => blocked[index] ?? -1));
+  placeBetweenBladeAnchors(anchorZs) {
+    const rails = [...anchorZs].sort((a, b) => b - a);
+    if (rails.length < 2) return;
+    const gaps = rails.slice(1).map((z, index) => (rails[index] + z) / 2);
+    const moved = new Map();
+    // Relocate each wall pair together, before building the torch/fire instances.
+    for (const anchor of this.anchors) {
+      const z = anchor.position.z;
+      if (z > rails[0] + 1.75 || z < rails.at(-1) - 1.75) continue;
+      const midpoint = gaps.reduce((nearest, gap) => Math.abs(gap - z) < Math.abs(nearest - z) ? gap : nearest);
+      moved.set(anchor.row, midpoint);
+      anchor.position.z = anchor.flame.z = midpoint;
+    }
+    const rows = [...moved.keys()], positions = [...moved.values()];
+    this.lightUniforms.dungeonTorchMovedRows.value.fromArray(Array.from({ length: 4 }, (_, index) => rows[index] ?? -1));
+    this.lightUniforms.dungeonTorchMovedZ.value.fromArray(Array.from({ length: 4 }, (_, index) => positions[index] ?? 0));
     this.update(0, this.lights[0].position.clone());
   }
 
@@ -146,22 +155,30 @@ export class DungeonTorches {
           totalEmissiveRadiance*=vec3(1.,.26,.035)*coalHeat*firePulse(torchTime,vTorchPhase);`);
     };
     material.customProgramCacheKey = () => 'dungeon-torch-coals-v1';
-    this.mesh = new THREE.InstancedMesh(geometry, material, this.anchors.length);
-    this.mesh.name = 'DungeonWallTorches'; this.mesh.castShadow = this.mesh.receiveShadow = true;
     const transform = new THREE.Object3D();
-    this.anchors.forEach((anchor, index) => {
-      transform.position.copy(anchor.position); transform.rotation.y = anchor.angle;
-      transform.scale.setScalar(TORCH_SCALE); transform.updateMatrix();
-      this.mesh.setMatrixAt(index, transform.matrix);
-    });
-    this.root.add(this.mesh);
+    this.meshes = [];
+    this.batches = [];
+    // Small spatial batches let walls behind the camera cull their detailed holders.
+    for (let start = 0; start < this.anchors.length; start += 4) {
+      const anchors = this.anchors.slice(start, start + 4), batch = geometry.clone();
+      batch.setAttribute('torchPhase', new THREE.InstancedBufferAttribute(Float32Array.from(anchors, anchor => anchor.phase), 1));
+      const mesh = new THREE.InstancedMesh(batch, material, anchors.length);
+      mesh.name = 'DungeonWallTorches'; mesh.castShadow = false; mesh.receiveShadow = true;
+      anchors.forEach((anchor, index) => {
+        transform.position.copy(anchor.position); transform.rotation.y = anchor.angle;
+        transform.scale.setScalar(TORCH_SCALE); transform.updateMatrix(); mesh.setMatrixAt(index, transform.matrix);
+      });
+      mesh.computeBoundingSphere(); this.root.add(mesh); this.meshes.push(mesh);
+      this.batches.push({ mesh, minZ: Math.min(...anchors.map(anchor => anchor.position.z)), maxZ: Math.max(...anchors.map(anchor => anchor.position.z)) });
+    }
+    geometry.dispose(); this.mesh = this.meshes[0];
     this.fire = this._billboards(phases, 0.86, 1.2, 0, fireFragment, 'TorchFlames', 2);
     this.smoke = this._billboards(phases, 1.5, 2.4, 0.9, smokeFragment, 'TorchSmoke', 1);
     this._embers();
   }
 
-  installLighting() {
-    this.root.traverse(node => {
+  installLighting(root = this.root) {
+    root.traverse(node => {
       if (!node.isMesh) return;
       for (const material of Array.isArray(node.material) ? node.material : [node.material]) this.decorateMaterial(material);
     });
@@ -170,6 +187,7 @@ export class DungeonTorches {
   decorateMaterial(material) {
     if (!material.isMeshStandardMaterial || this.decorated.has(material)) return;
     this.decorated.add(material);
+    this.originalHooks.set(material, { onBeforeCompile: material.onBeforeCompile, customProgramCacheKey: material.customProgramCacheKey });
     const previous = material.onBeforeCompile.bind(material), key = material.customProgramCacheKey();
     material.onBeforeCompile = shader => {
       previous(shader);
@@ -185,29 +203,32 @@ export class DungeonTorches {
           #endif
           vDungeonTorchWorldPosition=(modelMatrix*dungeonWorld).xyz;`);
       shader.fragmentShader = `varying vec3 vDungeonTorchWorldPosition;
-        uniform float dungeonTorchTime; uniform vec4 dungeonTorchGrid,dungeonTorchSlotsA,dungeonTorchSlotsB,dungeonTorchBlockedRows;
+        uniform float dungeonTorchTime; uniform vec4 dungeonTorchGrid,dungeonTorchSlotsA,dungeonTorchSlotsB,dungeonTorchMovedRows,dungeonTorchMovedZ;
         uniform vec3 dungeonTorchSource,dungeonTorchColor;
         ${flickerGLSL.replace('firePulse', 'dungeonLightPulse')}
         ${shader.fragmentShader}`.replace('#include <lights_fragment_begin>', `#include <lights_fragment_begin>
-          // Shade distant torches at their physical positions too, without allocating more shadow maps.
-          // Sources already represented by the eight Three.js lights are skipped.
-          for(int candidate=0;candidate<10;candidate++) {
-            float torchRow=floor((dungeonTorchGrid.x-vDungeonTorchWorldPosition.z)/dungeonTorchGrid.y+.5)+float(candidate/2-2);
+          // Only the surrounding three rows can contribute substantial light.
+          // Skip sources already represented by the nearby real light pair.
+          for(int candidate=0;candidate<6;candidate++) {
+            float torchRow=floor((dungeonTorchGrid.x-vDungeonTorchWorldPosition.z)/dungeonTorchGrid.y+.5)+float(candidate/2-1);
             if(torchRow<0.||torchRow>=dungeonTorchGrid.z)continue;
-            if(any(lessThan(abs(dungeonTorchBlockedRows-vec4(torchRow)),vec4(.5))))continue;
+            float torchZ=dungeonTorchGrid.x-torchRow*dungeonTorchGrid.y;
+            for(int movedRow=0;movedRow<4;movedRow++) {
+              if(abs(dungeonTorchMovedRows[movedRow]-torchRow)<.5)torchZ=dungeonTorchMovedZ[movedRow];
+            }
             float sideIndex=mod(float(candidate),2.),torchIndex=torchRow*2.+sideIndex;
             if(any(lessThan(abs(dungeonTorchSlotsA-vec4(torchIndex)),vec4(.5)))||
                any(lessThan(abs(dungeonTorchSlotsB-vec4(torchIndex)),vec4(.5))))continue;
             PointLight distantTorch;
             distantTorch.position=(viewMatrix*vec4((sideIndex*2.-1.)*dungeonTorchSource.x,
-              dungeonTorchSource.y,dungeonTorchGrid.x-torchRow*dungeonTorchGrid.y,1.)).xyz;
+              dungeonTorchSource.y,torchZ,1.)).xyz;
             distantTorch.color=dungeonTorchColor*dungeonTorchGrid.w*dungeonLightPulse(dungeonTorchTime,torchRow*2.399+sideIndex*1.731);
             distantTorch.distance=dungeonTorchSource.z; distantTorch.decay=2.;
             IncidentLight torchIncident; getPointLightInfo(distantTorch,geometryPosition,torchIncident);
             if(torchIncident.visible)RE_Direct(torchIncident,geometryPosition,geometryNormal,geometryViewDir,geometryClearcoatNormal,material,reflectedLight);
           }`);
     };
-    material.customProgramCacheKey = () => `${key}|physical-dungeon-torches-v2`;
+    material.customProgramCacheKey = () => `${key}|physical-dungeon-torches-v4`;
     material.needsUpdate = true;
   }
 
@@ -260,23 +281,35 @@ export class DungeonTorches {
   update(dt, cameraPosition) {
     if (this.disposed) return;
     this.time.value += dt;
-    const { spacing } = this.layout;
-    const selected = this.anchors.map((anchor, index) => ({ index, distance: Math.abs(anchor.flame.z - cameraPosition.z) }))
-      .sort((a, b) => a.distance - b.distance).slice(0, 8).map(entry => entry.index);
-    const ids = Array.from({ length: 8 }, (_, index) => this.anchors[selected[index]]?.id ?? -1);
-    this.lightUniforms.dungeonTorchSlotsA.value.fromArray(ids);
-    this.lightUniforms.dungeonTorchSlotsB.value.fromArray(ids, 4);
+    // Keep distant flames and their light; the detailed holders are too small
+    // to resolve past this range and otherwise cost thousands of triangles each.
+    for (const batch of this.batches ?? []) batch.mesh.visible =
+      cameraPosition.z >= batch.minZ - 80 && cameraPosition.z <= batch.maxZ + 80;
+    // Select a complete wall pair, retaining it across tiny camera movements.
+    let nearest = this.nearestAnchor ?? 0, distance = Math.abs(this.anchors[nearest].flame.z - cameraPosition.z);
+    for (let index = 0; index < this.anchors.length; index += 2) {
+      const candidate = Math.abs(this.anchors[index].flame.z - cameraPosition.z);
+      if (candidate + 0.35 < distance) { nearest = index; distance = candidate; }
+    }
+    this.nearestAnchor = nearest;
+    this.lightUniforms.dungeonTorchSlotsA.value.set(this.anchors[nearest].id, this.anchors[nearest + 1].id, -1, -1);
+    this.lightUniforms.dungeonTorchSlotsB.value.set(-1, -1, -1, -1);
     this.lights.forEach((light, slot) => {
-      const anchor = this.anchors[selected[slot]];
+      const anchor = this.anchors[nearest + slot];
       if (!anchor) { light.intensity = 0; return; }
       light.position.copy(anchor.flame); light.position.y += 0.22;
       const t = this.time.value, p = anchor.phase;
       light.intensity = POWER * (1 + .045 * Math.sin(t * 6.7 + p) + .025 * Math.sin(t * 11.3 + p * 2.1) + .012 * Math.sin(t * 19 + p * .7));
-      // At a row handover both shadow strengths reach zero; light energy stays unchanged.
-      if (light.castShadow) light.shadow.intensity = 0.78 * (1 - THREE.MathUtils.smoothstep(
-        Math.abs(anchor.flame.z - cameraPosition.z), spacing * .28, spacing * .5));
     });
   }
 
-  dispose() { this.disposed = true; }
+  dispose() {
+    this.disposed = true;
+    // The player survives checkpoint loads and can leave for another chapter.
+    // Release this room's shader hooks instead of stacking lighting injections.
+    for (const [material, hooks] of this.originalHooks) {
+      Object.assign(material, hooks); material.needsUpdate = true;
+    }
+    this.originalHooks.clear();
+  }
 }

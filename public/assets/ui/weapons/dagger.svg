@@ -4,16 +4,17 @@
   <linearGradient id="metal" x2=".15" y2="1"><stop stop-color="#657480"/><stop offset=".45" stop-color="#35424c"/><stop offset="1" stop-color="#19232d"/></linearGradient>
   <linearGradient id="grip" x2="1" y2="1"><stop stop-color="#4b4540"/><stop offset="1" stop-color="#1c2024"/></linearGradient>
 </defs>
-<g transform="translate(50 26) rotate(-13 125 56)" stroke="#111a22" stroke-width="2" stroke-linejoin="round">
-  <path d="M95 54L188 42 230 57 188 72 95 60z" fill="url(#steel)"/>
-  <path d="M97 57h123" stroke="#edf7fa" stroke-width="1"/>
-  <path d="M100 55L188 46 226 57 100 57z" fill="#f3f8f9" stroke="none" opacity=".65"/>
-  <path d="M91 35h9v45h-9z" fill="url(#metal)"/>
-  <path d="M85 34h21v7H85zm0 40h21v7H85z" fill="url(#steel)"/>
-  <path d="M32 49h59v16H32z" fill="url(#grip)"/>
-  <path d="M39 50l5 14m3-14l5 14m3-14l5 14m3-14l5 14m3-14l5 14m3-14l5 14" stroke="#82796b" stroke-width="3"/>
-  <path d="M23 47h13v20H23z" fill="url(#metal)"/>
-  <path d="M25 48h9" stroke="#bccbd4"/>
+<g transform="translate(12 5) rotate(-12 160 80)" stroke="#172024" stroke-width="1.5" stroke-linejoin="round">
+  <path d="M114 66L194 66Q244 71 292 80Q244 89 194 94H114Z" fill="url(#steel)"/>
+  <path d="M114 80H292L194 94H114Z" fill="#667985"/>
+  <path d="M120 69H194Q244 73 287 80" fill="none" stroke="#f4f7f6" stroke-width="1"/>
+  <path d="M120 91H194Q243 87 287 80" fill="none" stroke="#c0cdd0" stroke-width="1"/>
+  <path d="M114 80H290" stroke="#d7e1e3" stroke-width="1.2"/>
+  <path d="M106 61H118V99H106Z" fill="url(#metal)"/>
+  <path d="M97 74Q96 59 110 48L117 51Q108 65 109 80Q108 95 117 109L110 112Q96 101 97 86Z" fill="url(#metal)"/>
+  <path d="M37 73Q65 68 101 73V87Q63 92 37 87Z" fill="url(#grip)"/>
+  <path d="M42 72L48 88M50 71L56 89M58 71L64 89M66 71L72 89M74 71L80 89M82 72L88 88M90 72L96 88" stroke="#78573d" stroke-width="1.8"/>
+  <path d="M28 71H39V90H28Z" fill="url(#metal)"/>
 </g>
 </svg>
 

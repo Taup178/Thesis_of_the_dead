@@ -18,7 +18,7 @@ const MUSIC_SCENES = Object.freeze({
     key: 'sophomore-room',
     layers: [
       { url: './assets/audio/music/dungeon-ambience.ogg', volume: 0.78, channel: 'ambience' },
-      { url: './assets/audio/music/lost-horror.ogg', volume: 0.52, channel: 'music' },
+      // Level2Music owns the score and its cue after the Dean clears the saws.
     ],
   },
   finalArena: {

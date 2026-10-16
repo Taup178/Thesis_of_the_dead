@@ -14,8 +14,8 @@ function withAudio(testBody) {
 }
 
 test('Shaun vocalizes only for real damage, with death replacing pain', () => withAudio(calls => {
-  const player = Object.create(Player.prototype);
-  Object.assign(player, { alive: true, isDodging: false, health: 20, damageFlashTime: 0, hitReactionTime: 0, hitReactionDuration: 0.48, actions: {} });
+  const player = new Player(new THREE.Scene(), { flushMouseDelta() {} }, new THREE.PerspectiveCamera());
+  player.health = 20;
   player.takeDamage(0); player.isDodging = true; player.takeDamage(5);
   assert.equal(calls.length, 0);
   player.isDodging = false; player.takeDamage(5);
@@ -24,6 +24,8 @@ test('Shaun vocalizes only for real damage, with death replacing pain', () => wi
   assert.match(calls[1][1], /shaun-death/);
   player.takeDamage(5);
   assert.equal(calls.length, 2);
+  assert.ok(player.deathSequence, 'the death vocal accompanies the visible death sequence');
+  player.deathSequence.dispose();
 }));
 
 test('zombie hurt and death vocals are distinct and death fires once', () => withAudio(calls => {

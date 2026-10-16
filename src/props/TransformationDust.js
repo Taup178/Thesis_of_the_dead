@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 const COUNT = 17;
+const WIDTH_SCALE = 1.18;
 const smooth = THREE.MathUtils.smoothstep;
 
 /** A bounded batch of turbulent plumes and ground-hugging dust, using the terrain's palette. */
@@ -121,7 +122,13 @@ export class TransformationDust {
         object.scale.set(size * burst, size * burst, 1);
         this.opacity[index] = burst * coreFade * 0.86;
       }
-      if (index >= 1 && index <= 6) object.rotation.set(-Math.PI / 2, 0, seed);
+      object.position.x = origin.x + (object.position.x - origin.x) * WIDTH_SCALE;
+      object.position.z = origin.z + (object.position.z - origin.z) * WIDTH_SCALE;
+      object.scale.x *= WIDTH_SCALE;
+      if (index >= 1 && index <= 6) {
+        object.scale.y *= WIDTH_SCALE;
+        object.rotation.set(-Math.PI / 2, 0, seed);
+      }
       else if (camera) { object.quaternion.copy(camera.quaternion); object.rotateZ(Math.sin(seed) * 0.28); }
       else object.rotation.set(0, 0, 0);
       object.updateMatrix(); this.clouds.setMatrixAt(index, object.matrix);

@@ -381,7 +381,7 @@ export class DeanBoss {
   _hitOnce(key, player, damage) {
     if (this.hitWindows.has(key)) return;
     this.hitWindows.add(key);
-    if (!player.isDodging) player.takeDamage(damage * (this.enraged ? 1.25 : 1));
+    if (!player.isDodging) player.takeDamage(damage * (this.enraged ? 1.25 : 1), { type: 'blunt', source: this.dean.group.position });
   }
 
   _launchRocks() {

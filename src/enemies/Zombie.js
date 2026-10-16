@@ -204,6 +204,8 @@ export class Zombie {
       : this.actions['Idle_Attack'] ? 'Idle_Attack' : 'Attack';
     const action = this.actions[name];
     this.attackTimer = action ? Math.min(action.getClip().duration, this.damageRate) : 0.6;
+    this.attackContactTime = this.attackTimer * 0.58;
+    this.attackPending = true;
     if (!action) return;
 
     action.setLoop(THREE.LoopOnce, 1);
@@ -255,6 +257,7 @@ export class Zombie {
       volume: 0.56, pitch: 0.88 + Math.random() * 0.16, position: this.group.position,
       category: 'voice', group: 'zombie', maxVoices: 3, cooldownKey: `zombie-death-${this.group.id}`, cooldown: 2,
     });
+    this.attackPending = false;
 
     // Play death animation
     if (this.actions['Death'] && !this.deathPlayed) {
@@ -312,6 +315,14 @@ export class Zombie {
     this.group.lookAt(playerPosition.x, this.group.position.y, playerPosition.z);
 
     // Hold the attack pose long enough to see it, even if the player backs away.
+    if (this.attackPending && this.attackTimer <= this.attackContactTime) {
+      this.attackPending = false;
+      if (dist < 1.65) {
+        this._hitResult.hit = true;
+        this._hitResult.damage = this.damage;
+      }
+      return this._hitResult;
+    }
     if (this.attackTimer > 0) return this._hitResult;
 
     if (dist >= 1.5) {
@@ -340,8 +351,6 @@ export class Zombie {
         volume: 0.56, pitch: 0.84 + Math.random() * 0.16, position: this.group.position, category: 'voice', group: 'zombie',
         maxVoices: 3, maxDistance: 24, referenceDistance: 3, cooldownKey: `zombie-attack-${this.group.id}`, cooldown: 0.65,
       });
-      this._hitResult.hit = true;
-      this._hitResult.damage = this.damage;
       return this._hitResult;
     }
 

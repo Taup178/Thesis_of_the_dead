@@ -592,7 +592,7 @@ export class Level3 {
       zombie.update(dt, record.steeringTarget.copy(zombie.group.position).addScaledVector(direction, 5));
     } else {
       const result = zombie.update(dt, player.group.position);
-      if (result.hit && direct && !player.isDodging) player.takeDamage(result.damage);
+      if (result.hit && direct && !player.isDodging) player.takeDamage(result.damage, { type: 'blunt', source: zombie.group.position });
     }
     for (const obstacle of this.navigation.obstacles) {
       const dx = zombie.group.position.x - obstacle.x, dz = zombie.group.position.z - obstacle.z;

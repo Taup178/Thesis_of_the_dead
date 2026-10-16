@@ -4,6 +4,7 @@ import { SurvivorWeapon } from './SurvivorWeapon.js';
 import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './DirectionalWalk.js';
 import { weaponById } from './WeaponInventory.js';
 import { SWORD_ATTACKS, createSwordSwingClips } from './SwordSwings.js';
+import { PlayerDeath } from './PlayerDeath.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -19,6 +20,9 @@ export class Player {
     this.moveSpeed = 8;        // units/sec
     this.sprintMultiplier = 1.7;
     this.jumpVelocity = 7.2;
+    this.jumpMomentumBoost = 1.1;
+    this.sprintJumpMomentumBoost = 1.25;
+    this.airAcceleration = 18; // limited steering; takeoff speed sets the airborne limit
     this.dodgeSpeed = 13;
     this.dodgeDuration = 0.42;  // seconds; covers roughly the same distance as the old dash
     this.dodgeCooldown = 0.8;
@@ -41,6 +45,7 @@ export class Player {
     this.yaw = 0;
     this.pitch = 0;
     this.velocity = new THREE.Vector3();
+    this.airSpeedLimit = 0;
     this.isDodging = false;
     this.dodgeTimer = 0;
     this.dodgeProgress = 0;
@@ -62,6 +67,8 @@ export class Player {
     this.stepTimer = 0;
     this.isFirstPerson = false;
     this.alive = true;
+    this.deathSequence = null;
+    this.hitDirection = new THREE.Vector3();
 
     // --- Build the player group ---
     this.group = new THREE.Group();
@@ -234,6 +241,7 @@ export class Player {
   }
 
   toggleCamera() {
+    if (!this.alive) return;
     this.isFirstPerson = !this.isFirstPerson;
     this.bodyMesh.visible = !this.isFirstPerson;
     this._updateCamera();
@@ -295,7 +303,7 @@ export class Player {
     return true;
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, impact = {}) {
     if (!this.alive || this.isDodging || amount <= 0) return;
     this.health = Math.max(0, this.health - amount);
     const audio = globalThis.__thesisAudioManager;
@@ -307,6 +315,19 @@ export class Player {
       });
     }
     this.damageFlashTime = 0.35;
+    if (impact.direction) this.hitDirection.copy(impact.direction);
+    else this.hitDirection.copy(this._moveForward).negate();
+    if (impact.source) this.hitDirection.subVectors(this.group.position, impact.source);
+    this.hitDirection.y = 0;
+    if (this.hitDirection.lengthSq() < 0.001) this.hitDirection.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
+    this.hitDirection.normalize();
+    if (this.health <= 0) {
+      this.alive = false;
+      this.deathSequence = new PlayerDeath(this, { ...impact, direction: this.hitDirection });
+      this.velocity.set(0, 0, 0);
+      this.verticalVelocity = 0;
+      return;
+    }
     this.hitReactionTime = this.hitReactionDuration;
     const reaction = this.actions?.HitReact;
     if (reaction) {
@@ -316,9 +337,11 @@ export class Player {
       if (this.currentAction === reaction) reaction.reset().play();
       else this._playAnimation('HitReact');
     }
-    if (this.health <= 0) {
-      this.alive = false;
-    }
+  }
+
+  updateDeath(dt) {
+    this.deathSequence?.update(dt);
+    return !this.deathSequence || this.deathSequence.done;
   }
 
   heal(amount) {
@@ -330,6 +353,11 @@ export class Player {
   }
 
   reset(spawnPoint) {
+    this.deathSequence?.dispose();
+    this.deathSequence = null;
+    this.mixer?.stopAllAction();
+    this.currentAction = null;
+    this.currentActionName = null;
     this.swordAttack = null;
     this.bodyMesh.position.set(0, 0, 0);
     this.bodyMesh.rotation.set(0, 0, 0);
@@ -355,6 +383,7 @@ export class Player {
     this.yaw = 0;
     this.pitch = 0;
     this.velocity.set(0, 0, 0);
+    this.airSpeedLimit = 0;
     this.verticalVelocity = 0;
     this.grounded = true;
     this.platformSupport = null;
@@ -366,12 +395,16 @@ export class Player {
     this.lastSafePosition.copy(this.group.position);
     this.group.rotation.y = this.yaw;
     this._updateCamera();
+    if (this.mixer) { this._playAnimation('Idle', 'Idle_Gun'); this.mixer.update(0); }
+    this.weaponPresentation?.update(0);
   }
 
   update(dt, obstacles = [], worldBounds = null, platforming = null) {
     this.boundaryNoticeTime = Math.max(0, (this.boundaryNoticeTime || 0) - dt);
     if (this.scriptedMovement) { this.input.flushMouseDelta(); this.shotTime = 0; this.weaponPresentation?.update(0); return; }
     if (!this.alive) return;
+    const wasGrounded = this.grounded;
+    let jumped = false;
     this.bashTime = Math.max(0, this.bashTime - dt);
     this.shotTime = Math.max(0, this.shotTime - dt);
     this.aimTime = Math.max(0, this.aimTime - dt);
@@ -403,7 +436,9 @@ export class Player {
     if (inp.isDown('KeyD')) moveDir.add(right);
     if (inp.moveAxisX || inp.moveAxisY) moveDir.addScaledVector(right, inp.moveAxisX).addScaledVector(forward, -inp.moveAxisY);
 
-    let speed = platforming?.moveSpeed ?? this.moveSpeed;
+    if (moveDir.lengthSq() > 0) moveDir.normalize();
+    const baseSpeed = platforming?.moveSpeed ?? this.moveSpeed;
+    let speed = baseSpeed;
     if ((!platforming || platforming.allowSprint) && (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'))) {
       speed *= this.sprintMultiplier;
     }
@@ -425,8 +460,23 @@ export class Player {
       this.dodgeProgress = 0;
       moveDir.set(0, 0, 0);
     } else if (jumpPressed && this.grounded && !this.isDodging) {
+      // Keep an established run-up; simultaneous movement + jump can launch from rest.
+      if (Math.hypot(this.velocity.x, this.velocity.z) < 0.1) {
+        this.velocity.x = moveDir.x * speed;
+        this.velocity.z = moveDir.z * speed;
+      }
+      const launchSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+      const cappedSpeed = Math.min(launchSpeed, baseSpeed * this.sprintMultiplier);
+      const sprintFraction = THREE.MathUtils.clamp((cappedSpeed / baseSpeed - 1) / (this.sprintMultiplier - 1), 0, 1);
+      const boost = THREE.MathUtils.lerp(this.jumpMomentumBoost, this.sprintJumpMomentumBoost, sprintFraction);
+      const scale = launchSpeed > 0 ? cappedSpeed / launchSpeed * boost : 0;
+      this.velocity.x *= scale;
+      this.velocity.z *= scale;
+      this.airSpeedLimit = Math.max(baseSpeed * 0.65, Math.hypot(this.velocity.x, this.velocity.z));
       this.verticalVelocity = platforming?.jumpVelocity ?? this.jumpVelocity;
       this.grounded = false;
+      this.platformSupport = null;
+      jumped = true;
       if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
       this._playExertion();
     } else if (dodgePressed && (!platforming || platforming.allowDodge) && this.grounded && !this.isDodging && this.dodgeCooldownTimer <= 0) {
@@ -462,9 +512,20 @@ export class Player {
       moveDir.normalize();
     }
 
-    // Apply horizontal movement
-    this.velocity.x = moveDir.x * speed;
-    this.velocity.z = moveDir.z * speed;
+    // Ground movement is responsive; airborne movement carries its launch velocity.
+    if (!canMove) {
+      this.velocity.x = 0; this.velocity.z = 0; this.airSpeedLimit = 0;
+    } else if (this.grounded || this.isDodging) {
+      this.velocity.x = moveDir.x * speed;
+      this.velocity.z = moveDir.z * speed;
+    } else if (!jumped && moveDir.lengthSq() > 0) {
+      const dx = moveDir.x * this.airSpeedLimit - this.velocity.x;
+      const dz = moveDir.z * this.airSpeedLimit - this.velocity.z;
+      const difference = Math.hypot(dx, dz);
+      const steering = difference > 0 ? Math.min(1, this.airAcceleration * dt / difference) : 0;
+      this.velocity.x += dx * steering;
+      this.velocity.z += dz * steering;
+    }
 
     // Gravity
     this.verticalVelocity += this.gravity * dt;
@@ -501,6 +562,12 @@ export class Player {
       this.grounded = true;
     } else {
       this.grounded = false;
+    }
+
+    if (this.grounded) this.airSpeedLimit = 0;
+    else if (wasGrounded && !jumped) {
+      // Walking off an edge carries the same momentum as a deliberate takeoff.
+      this.airSpeedLimit = Math.max(baseSpeed * 0.65, Math.hypot(this.velocity.x, this.velocity.z));
     }
 
     // Recover before updating the camera or shooting from an invalid position.
@@ -621,8 +688,10 @@ export class Player {
     }
     if (this.hitReactionTime > 0) {
       const impact = Math.sin(Math.PI * (1 - this.hitReactionTime / this.hitReactionDuration));
+      const side = this.hitDirection.x * Math.cos(this.yaw) - this.hitDirection.z * Math.sin(this.yaw);
       this.camera.position.y -= impact * 0.08;
-      this.camera.rotation.z += impact * 0.07;
+      this.camera.position.addScaledVector(this.hitDirection, impact * 0.07);
+      this.camera.rotation.z += impact * (side < 0 ? -0.07 : 0.07);
     }
     // Shooting happens before rendering, so its camera matrices must be current now.
     this.camera.updateMatrixWorld(true);
@@ -678,6 +747,7 @@ export class Player {
     this.input.flushMouseDelta();
     this.boundaryNoticeTime = 3.5;
     this.velocity.set(0, 0, 0);
+    this.airSpeedLimit = 0;
     this.verticalVelocity = 0;
     this.grounded = true;
     this.isDodging = false;
@@ -722,6 +792,8 @@ export class Player {
   }
 
   dispose() {
+    this.deathSequence?.dispose();
+    this.deathSequence = null;
     if (this.mixer) {
       this.mixer.stopAllAction();
     }

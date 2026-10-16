@@ -96,7 +96,12 @@ export class PortalPassage {
     this.duration = getPortalTravelDuration(this.path);
     const materials = new Set(); body.traverse(node => { if (node.isMesh) for (const mat of Array.isArray(node.material) ? node.material : [node.material]) materials.add(mat); });
     this.materials = [...materials].map(material => ({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite }));
-    for (const { material } of this.materials) { material.transparent = true; material.needsUpdate = true; }
+    this.activate();
+  }
+  activate() {
+    for (const { material } of this.materials) {
+      if (!material.transparent) { material.transparent = true; material.needsUpdate = true; }
+    }
   }
   update(dt) {
     this.time += dt;
@@ -116,7 +121,11 @@ export class PortalPassage {
   }
   restore() {
     this.group.scale.copy(this.scale); this.group.visible = this.visible;
-    for (const entry of this.materials) Object.assign(entry.material, { opacity: entry.opacity, transparent: entry.transparent, depthWrite: entry.depthWrite, needsUpdate: true });
+    for (const entry of this.materials) {
+      const changed = entry.material.transparent !== entry.transparent;
+      Object.assign(entry.material, { opacity: entry.opacity, transparent: entry.transparent, depthWrite: entry.depthWrite });
+      if (changed) entry.material.needsUpdate = true;
+    }
   }
 }
 
@@ -126,6 +135,9 @@ export class PortalEmergence extends PortalPassage {
     super(group, center, body, new THREE.Vector3(0, 0, -1));
     this.destination = group.position.clone();
     this.update(0);
+  }
+  restart() {
+    this.time = 0; this.activate(); this.update(0);
   }
   update(dt) {
     this.time += dt;

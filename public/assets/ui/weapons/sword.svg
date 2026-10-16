@@ -1,19 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 160" role="img" aria-label="sword">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 160" role="img" aria-label="Katana">
 <defs>
   <linearGradient id="steel" x2=".2" y2="1"><stop stop-color="#edf4f5"/><stop offset=".4" stop-color="#b7c6ce"/><stop offset=".5" stop-color="#758a98"/><stop offset="1" stop-color="#d4dce0"/></linearGradient>
   <linearGradient id="metal" x2=".15" y2="1"><stop stop-color="#657480"/><stop offset=".45" stop-color="#35424c"/><stop offset="1" stop-color="#19232d"/></linearGradient>
   <linearGradient id="grip" x2="1" y2="1"><stop stop-color="#4b4540"/><stop offset="1" stop-color="#1c2024"/></linearGradient>
 </defs>
-<g transform="translate(28 34) rotate(-13 145 56)" stroke="#111a22" stroke-width="2" stroke-linejoin="round">
-  <path d="M95 54L260 47 295 57 260 67 95 60z" fill="url(#steel)"/>
-  <path d="M97 57h173" stroke="#edf7fa" stroke-width="1"/>
-  <path d="M100 55L260 50 291 57 100 57z" fill="#f3f8f9" stroke="none" opacity=".65"/>
-  <path d="M91 35h9v45h-9z" fill="url(#metal)"/>
-  <path d="M85 34h21v7H85zm0 40h21v7H85z" fill="url(#steel)"/>
-  <path d="M32 49h59v16H32z" fill="url(#grip)"/>
-  <path d="M39 50l5 14m3-14l5 14m3-14l5 14m3-14l5 14m3-14l5 14m3-14l5 14" stroke="#82796b" stroke-width="3"/>
-  <path d="M23 47h13v20H23z" fill="url(#metal)"/>
-  <path d="M25 48h9" stroke="#bccbd4"/>
+<g transform="translate(8 17) rotate(-8 160 70)" stroke="#172024" stroke-width="1.4" stroke-linejoin="round">
+  <path d="M99 66C171 65 236 55 284 38L310 21 299 42C247 65 179 79 99 78Z" fill="url(#steel)"/>
+  <path d="M102 72C177 72 246 59 297 38L310 21" fill="none" stroke="#f0f5f3" stroke-width="1.2"/>
+  <path d="M104 76C146 77 191 72 224 64S272 51 293 43" fill="none" stroke="#e8eeea" stroke-width="1" opacity=".7"/>
+  <path d="M286 38L293 45" stroke="#819096" stroke-width=".8"/>
+  <path d="M98 64H108V80H98Z" fill="#a58a54"/>
+  <ellipse cx="95" cy="72" rx="5" ry="21" fill="url(#metal)"/>
+  <ellipse cx="95" cy="72" rx="3.5" ry="18" fill="none" stroke="#8c7955" stroke-width=".7"/>
+  <path d="M23 65Q57 62 90 66V78Q53 81 23 77Z" fill="#a69b7b"/>
+  <path d="M25 64L39 78M36 64L50 78M47 64L61 78M58 64L72 78M69 64L83 78M80 65L91 76M25 77L39 64M36 78L50 64M47 78L61 64M58 78L72 64M69 78L83 65M80 78L91 67" stroke="#222829" stroke-width="4"/>
+  <path d="M19 64H27V79H19ZM85 65H91V79H85Z" fill="url(#metal)"/>
 </g>
 </svg>
 

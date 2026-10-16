@@ -72,7 +72,7 @@ export class DeanEarthWave {
         if (!wave.hit && !player.isDodging && player.group.position.y < 1.55
           && wave.age >= tile.delay + 0.04 && last <= tile.delay + 0.65
           && Math.hypot(player.group.position.x - tile.position.x, player.group.position.z - tile.position.z) < 1.05) {
-          wave.hit = true; player.takeDamage(wave.damage);
+          wave.hit = true; player.takeDamage(wave.damage, { type: 'blunt', source: tile.position });
         }
       }
       if (wave.age > 2.5) {

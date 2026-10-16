@@ -4,19 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Thesis of the Dead</title>
+  <link rel="preload" as="image" href="./assets/ui/menu-archive.png" fetchpriority="high" />
+  <link rel="preload" as="font" href="./assets/ui/fonts/IMFeENsc28P.ttf" type="font/ttf" crossorigin />
   <link rel="stylesheet" href="./src/styles/main.css" />
 </head>
 <body>
+  <audio id="menu-music" src="./assets/audio/red-moon.mp3" loop preload="auto"></audio>
   <!-- Main Menu Overlay -->
-  <div id="menu-overlay" class="overlay">
-    <div class="menu-container">
-      <h1 class="game-title">Thesis of the Dead</h1>
-      <p class="game-subtitle">Will you survive the Final Draft?</p>
-      <div class="menu-buttons">
-        <button id="btn-start" class="menu-btn">Start Game</button>
-        <button id="btn-credits" class="menu-btn">Credits</button>
-        <button id="btn-options" class="menu-btn">Options</button>
-      </div>
+  <div id="menu-overlay" class="overlay" aria-label="Main menu">
+    <div class="menu-backdrop" aria-hidden="true"></div>
+    <div class="menu-mist" aria-hidden="true"></div>
+    <div class="main-menu-shell">
+      <header class="menu-masthead">
+        <span class="menu-wordmark">Thesis of the Dead</span>
+        <span class="menu-genre">A survival horror experience</span>
+      </header>
+      <main class="main-menu-content">
+        <p class="menu-kicker"><span aria-hidden="true"></span> The final draft</p>
+        <h1 class="game-title"><span>Thesis</span><span class="title-connector">of the</span><span class="title-dead">Dead</span></h1>
+        <p class="game-subtitle">Some knowledge should stay buried.</p>
+        <nav class="menu-buttons" aria-label="Game menu">
+          <button id="btn-start" class="menu-btn menu-start"><span>Start Game</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
+          <button id="btn-options" class="menu-btn"><span>Options</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
+          <button id="btn-credits" class="menu-btn"><span>Credits</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
+        </nav>
+      </main>
+      <footer class="menu-footer">
+        <span class="menu-audio-hint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3M4 13H3v7h4v-7H4Zm16 0h1v7h-4v-7h3Z"/></svg> Headphones recommended</span>
+        <span class="menu-key-hint"><kbd>Tab</kbd> Navigate <span aria-hidden="true">/</span> <kbd>Enter</kbd> Select</span>
+      </footer>
     </div>
   </div>
 
@@ -162,13 +178,17 @@
   </div>
 
   <!-- Pause Overlay -->
-  <div id="pause-overlay" class="overlay hidden">
+  <div id="pause-overlay" class="overlay hidden" aria-labelledby="pause-title">
     <div class="menu-container">
-      <h2>Paused</h2>
-      <button id="btn-pause-resume" class="menu-btn">Resume Game</button>
-      <button id="btn-pause-restart" class="menu-btn">Restart Level</button>
-      <button id="btn-pause-options" class="menu-btn">Settings</button>
-      <button id="btn-pause-menu" class="menu-btn">Main Menu</button>
+      <p class="menu-kicker"><span aria-hidden="true"></span> Thesis of the Dead</p>
+      <h2 id="pause-title">Paused</h2>
+      <p class="pause-subtitle">The nightmare can wait.</p>
+      <div class="menu-buttons">
+        <button id="btn-pause-resume" class="menu-btn">Resume Game</button>
+        <button id="btn-pause-restart" class="menu-btn">Restart Level</button>
+        <button id="btn-pause-options" class="menu-btn">Settings</button>
+        <button id="btn-pause-menu" class="menu-btn">Main Menu</button>
+      </div>
     </div>
   </div>
 

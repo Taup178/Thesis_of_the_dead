@@ -18,6 +18,7 @@ export function getRetractingSpikeState(time, bank) {
 export class RetractingSpikes {
   constructor(level) {
     this.level = level; this.root = new THREE.Group(); this.root.name = 'RetractingSpikeCorridor';
+    this.transform = new THREE.Matrix4();
     level.root.add(this.root); this.time = 0; this.disposed = false;
     const center = (layout.spikeCorridorMinZ + layout.spikeCorridorMaxZ) / 2;
     const halfLength = (layout.spikeCorridorMaxZ - layout.spikeCorridorMinZ) / 2;
@@ -85,11 +86,12 @@ export class RetractingSpikes {
   update(dt) {
     if (this.disposed) return;
     this.time += dt;
-    const matrix = new THREE.Matrix4();
+    const matrix = this.transform;
     this.banks.forEach((bank, index) => {
       const state = getRetractingSpikeState(this.time, index);
-      bank.extension = state.extension;
       bank.collars.material.emissiveIntensity = state.warning ? 0.65 + Math.sin(this.time * 24) * 0.12 : 0;
+      if (bank.initialized && bank.extension === state.extension) return;
+      bank.extension = state.extension; bank.initialized = true;
       bank.slots.forEach((slot, instance) => {
         matrix.makeTranslation(slot.x, state.extension * HEIGHT - 0.035, slot.z);
         bank.spike.setMatrixAt(instance, matrix);

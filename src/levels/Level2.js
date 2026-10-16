@@ -9,6 +9,9 @@ import { createSophomoreRoom, createTileGeometry, createTileFracture } from '../
 import { createSophomoreGauntlet, updateSophomoreGauntlet, getSophomoreBladeX } from './SophomoreGauntlet.js';
 import { RoomExitPortal, PortalPassage, PortalEmergence, PORTAL_TRAVEL_SPEED } from '../props/RoomExitPortal.js';
 import { compileHiddenObjects } from '../core/ShaderWarmup.js';
+import { SawScrapeAudio } from './SawScrapeAudio.js';
+import { TileBreakAudio } from './TileBreakAudio.js';
+import { Level2Music } from './Level2Music.js';
 
 const DIFFICULTY = [
   { jumpDuration: 0.72, pause: 0.24, tileTime: 1.3 },
@@ -47,6 +50,7 @@ export class Level2 {
     this.ambushWasCleared = !!restartState?.ambushCleared;
     this.memoryApproachArmed = true;
     this.isCheckpointRestart = restartState !== null;
+    this.musicCueReached = this.isCheckpointRestart || this.puzzleIndex !== 0;
     this.creditsCollected = this.stageIndex;
     this.zombies = []; // The Dean is a guide, never a combat target.
     this.credits = [];
@@ -112,7 +116,22 @@ export class Level2 {
     onProgress?.(1);
   }
 
-  async prepareShaders(renderer, camera) {
+  async prepareAudio() {
+    this.sawSound ??= new SawScrapeAudio(this.audioContext);
+    this.tileBreakSound ??= new TileBreakAudio(this.sawSound.context);
+    this.music ??= new Level2Music(this.sawSound.context);
+    await Promise.all([this.sawSound.ready, this.tileBreakSound.ready, this.music.ready]);
+  }
+
+  pauseEffects() {
+    this.sawSound?.pause();
+    this.tileBreakSound?.pause();
+    this.music?.pause();
+  }
+
+  async prepareShaders(renderer, camera, player = null) {
+    // Include the player and held weapons, which load after the room itself.
+    this.torches.installLighting(this.scene);
     const groups = this.ambush && !this.ambush.cleared
       ? this.ambush.records.filter(record => record.zombie.alive).map(record => record.zombie.group)
       : [];
@@ -121,6 +140,28 @@ export class Level2 {
     // the menu overlay is gone. Compile the assembled room against the live
     // scene now so driver program queries don't block an active game frame.
     await renderer?.compileAsync?.(this.scene, camera);
+    if (player && this.puzzleIndex === 0 && !this.isCheckpointRestart) {
+      const position = player.group.position.clone(), rotation = player.group.quaternion.clone();
+      const visible = player.group.visible, bodyVisible = player.bodyMesh.visible;
+      player.group.position.copy(this.spawnPoint); player.group.quaternion.identity();
+      player.group.visible = player.bodyMesh.visible = true;
+      this.preparedPlayerArrival = new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+      this.preparedPlayerArrival.duration = Math.max(0.9, this.preparedPlayerArrival.duration);
+      this.preparedPlayerArrival.restore();
+      const warmCamera = camera.clone();
+      warmCamera.position.set(7.5, 4.5, this.spawnPoint.z - 6.5); warmCamera.lookAt(0, 1.5, this.spawnPoint.z - 0.8);
+      try {
+        player.group.position.copy(this.spawnPoint);
+        this.preparedPlayerArrival.activate();
+        for (const entry of this.preparedPlayerArrival.materials) entry.material.opacity = entry.opacity * 0.65;
+        await renderer?.compileAsync?.(this.scene, warmCamera);
+        // Link the transparent skinned-player programs and upload their textures now.
+        renderer?.render?.(this.scene, warmCamera);
+      } finally {
+        this.preparedPlayerArrival.restore(); player.group.position.copy(position); player.group.quaternion.copy(rotation);
+        player.group.visible = visible; player.bodyMesh.visible = bodyVisible;
+      }
+    }
   }
 
   preparePlayer(player) {
@@ -150,6 +191,7 @@ export class Level2 {
 
   _updateLocalLighting(player, dt = 0) {
     this.torches?.update(dt, player.camera.position);
+    this.spikePit?.updateView(player.camera.position);
   }
 
   _beginArrival(player) {
@@ -204,7 +246,8 @@ export class Level2 {
       this.phase = 'player_arrival';
       player.group.visible = true;
       player.mixer?.update(0);
-      this.playerArrival = new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+      this.playerArrival = this.preparedPlayerArrival ?? new PortalEmergence(player.group, this.entrancePortal.center, player.bodyMesh);
+      if (this.preparedPlayerArrival) { this.playerArrival.restart(); this.preparedPlayerArrival = null; }
       this.playerArrival.duration = Math.max(this.playerArrival.duration, 0.9);
     } else if (this.phase === 'player_arrival') {
       this.playerArrival.update(dt);
@@ -262,7 +305,7 @@ export class Level2 {
     createSophomoreRoom(this);
     this.retractingSpikes = new RetractingSpikes(this);
     createSophomoreGauntlet(this);
-    this.torches.removeAtBladeAnchors(this.blades.map(blade => blade.z - 0.38));
+    this.torches.placeBetweenBladeAnchors(this.blades.map(blade => blade.z - 0.38));
     this.exitPortal = new RoomExitPortal(this.root, this.exitPosition);
     this.entrancePortal = new RoomExitPortal(this.root, this.entrancePosition, { red: true, rotationY: Math.PI });
   }
@@ -395,6 +438,7 @@ export class Level2 {
     if (tile.falling) return;
     tile.falling = true;
     tile.timer = null;
+    this.tileBreakSound?.play(this.getEffectsVolume?.() ?? 0.7);
     this._setTileColor(tile, RED);
     tile.mesh.visible = false;
     tile.fragments = this.tileFracture.pieces.map((piece, index) => {
@@ -576,6 +620,7 @@ export class Level2 {
 
   _finishDeanBladeIntro() {
     this.deanBladeIntro = false;
+    if (!this.disposed) this.musicCueReached = true;
     if (!this.deanIntroPlayer) return;
     const player = this.deanIntroPlayer;
     player.scriptedMovement = this.deanIntroWasScripted;
@@ -685,6 +730,7 @@ export class Level2 {
     this.exitPortal?.update(dt, this.phase === 'entering' || this.phase === 'dean_exit');
     this.entrancePortal?.update(dt, !!this.arrivalPlayer);
     if (this.blades) updateSophomoreGauntlet(this, dt, player);
+    this.sawSound?.update(dt, player.group.position, this.blades, this.puzzleIndex === 0, this.getEffectsVolume?.() ?? 0.7);
     if (this.earlyMemoryHop) this._updateEarlyMemoryHop(dt);
     if (this.arrivalPlayer) {
       this._updateArrival(dt, player);
@@ -761,15 +807,33 @@ export class Level2 {
     } else if (player.alive && this.spikeHitCooldown === 0 && this.retractingSpikes?.hitsPlayer(player)) {
       // Retracting floor spikes use combat damage, with time between injuries.
       player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0;
-      player.takeDamage(SPIKE_DAMAGE);
+      player.takeDamage(SPIKE_DAMAGE, { type: 'spike' });
       this.spikeHitCooldown = SPIKE_HIT_INTERVAL;
       if (!player.alive) this._fail(player, 'The spikes drained your health. Retry from your last checkpoint.');
     }
     if (this.dean?.mixer) this.dean.mixer.update(dt);
     this.degreeGrip?.();
+    this._updateMusic(player);
     events.levelComplete = this.levelComplete;
     events.autoAdvance = this.levelComplete;
     return events;
+  }
+
+  updateDeathEffects(dt, player) {
+    updateSophomoreGauntlet(this, dt, player);
+    this.sawSound?.update(dt, player.group.position, this.blades, this.puzzleIndex === 0, this.getEffectsVolume?.() ?? 0.7);
+    this._updateMusic(player);
+  }
+
+  _updateMusic(player) {
+    if (!this.musicCueReached || !this.music) return;
+    const masterVolume = this.getEffectsVolume?.() ?? 0.7;
+    const sawDucking = masterVolume > 0 ? (this.sawSound?.targetVolume ?? 0) / masterVolume * 0.7 : 0;
+    const impactDucking = this.tileBreakSound?.voices.size > 0 ? 0.85 : 0;
+    const combatDucking = player.shotTime > 0 || player.bashTime > 0 || player.damageFlashTime > 0 ? 0.7 : 0;
+    const distressDucking = !player.alive ? 1 : THREE.MathUtils.clamp((0.4 - player.health / player.maxHealth) / 0.4, 0, 1);
+    const demonstrationDucking = this.phase === 'watch' ? 0.25 : 0;
+    this.music.update(masterVolume, Math.max(sawDucking, impactDucking, combatDucking, distressDucking, demonstrationDucking));
   }
 
   getChallengeStatus() {
@@ -824,6 +888,9 @@ export class Level2 {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.tileBreakSound?.dispose();
+    this.music?.dispose();
+    this.sawSound?.dispose();
     this.walls?.dispose();
     this.torches?.dispose();
     this.floors?.dispose();

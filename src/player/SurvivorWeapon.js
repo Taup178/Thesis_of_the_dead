@@ -1,38 +1,7 @@
 import * as THREE from 'three';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
 import { SWORD_ATTACKS, getSwordViewPose, getSwordBodyTurn, getSwordThrustWeight, getSwordSpinLevelWeight } from './SwordSwings.js';
-
-const steel = new THREE.MeshStandardMaterial({ color: 0xdce9ef, metalness: 0.35, roughness: 0.25, emissive: 0x242b30 });
-const darkMetal = new THREE.MeshStandardMaterial({ color: 0x30353a, metalness: 0.75, roughness: 0.38 });
-const gripMaterial = new THREE.MeshStandardMaterial({ color: 0x262324, roughness: 0.78 });
-
-function part(group, geometry, material, position) {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position); mesh.castShadow = true; group.add(mesh);
-  return mesh;
-}
-
-function makePistol() {
-  const group = new THREE.Group();
-  part(group, new THREE.BoxGeometry(0.105, 0.09, 0.38), darkMetal, [0, 0.035, -0.13]);
-  part(group, new THREE.BoxGeometry(0.11, 0.045, 0.32), steel, [0, 0.085, -0.14]);
-  part(group, new THREE.BoxGeometry(0.09, 0.22, 0.1), gripMaterial, [0, -0.12, 0.015]).rotation.x = -0.22;
-  part(group, new THREE.CylinderGeometry(0.023, 0.023, 0.12, 10), darkMetal, [0, 0.04, -0.36]).rotation.x = Math.PI / 2;
-  const muzzle = new THREE.Object3D(); muzzle.name = 'PistolMuzzle'; muzzle.position.set(0, 0.04, -0.43); group.add(muzzle);
-  return group;
-}
-
-function makeBlade(length) {
-  const group = new THREE.Group();
-  part(group, new THREE.CylinderGeometry(0.035, 0.039, 0.27, 8), gripMaterial, [0, 0, 0.08]).rotation.x = Math.PI / 2;
-  part(group, new THREE.BoxGeometry(0.26, 0.05, 0.055), darkMetal, [0, 0, -0.08]);
-  part(group, new THREE.BoxGeometry(length > 0.7 ? 0.095 : 0.07, 0.022, length * 0.8), steel,
-    [0, 0, -0.12 - length * 0.4]);
-  part(group, new THREE.ConeGeometry(length > 0.7 ? 0.055 : 0.04, length * 0.2, 4), steel,
-    [0, 0, -0.12 - length * 0.9]).rotation.x = -Math.PI / 2;
-  const tip = new THREE.Object3D(); tip.name = 'BladeTip'; tip.position.z = -0.12 - length; group.add(tip);
-  return group;
-}
+import { createKatana, createDagger, createPistol } from './WeaponModels.js';
 
 function mountWeapons(model, barrelAxis) {
   const smg = model.getObjectByName('SMG');
@@ -51,10 +20,10 @@ function mountWeapons(model, barrelAxis) {
   };
   return {
     smg,
-    pistolRight: add('PistolRight', makePistol(), smg.parent),
-    pistolLeft: add('PistolLeft', makePistol(), offHand, true),
-    sword: add('Sword', makeBlade(1.05), smg.parent),
-    dagger: add('Dagger', makeBlade(0.49), smg.parent),
+    pistolRight: add('PistolRight', createPistol(), smg.parent),
+    pistolLeft: add('PistolLeft', createPistol(), offHand, true),
+    sword: add('Sword', createKatana(), smg.parent),
+    dagger: add('Dagger', createDagger(), smg.parent),
   };
 }
 
@@ -182,7 +151,7 @@ export class SurvivorWeapon {
 
   update(dt) {
     const p = this.player;
-    this.viewRoot.visible = p.isFirstPerson && !p.scriptedMovement && p.group.visible;
+    this.viewRoot.visible = p.alive && p.isFirstPerson && !p.scriptedMovement && p.group.visible;
     if (p.bashTime <= 0 || p.isDodging || p.scriptedMovement) this.bashing = false;
     if (!this.bashing) this.swordTransition = null;
     const aiming = p.isAiming && !p.isDodging;
@@ -197,6 +166,12 @@ export class SurvivorWeapon {
     poseSecondArm(this.viewModel, this.dualAimBlend);
     this.viewRoot.position.copy(p.camera.position); this.viewRoot.quaternion.copy(p.camera.quaternion);
     const recoil = Math.sin(Math.max(0, p.shotTime) / 0.14 * Math.PI);
+    for (const weapons of [this.worldWeapons, this.viewWeapons]) {
+      for (const hand of ['pistolRight', 'pistolLeft']) {
+        const slide = weapons[hand].getObjectByName('PistolSlide');
+        if (slide) slide.position.z = recoil * 0.028 * (p.weapon === 'dual' || (p.weapon === 'pistol' && hand === 'pistolRight') ? 1 : 0);
+      }
+    }
     this.aimBlend = THREE.MathUtils.damp(this.aimBlend ?? 0, aiming ? 1 : 0, 12, dt);
     this.viewModel.position.set(0, 0, 0);
     this.viewModel.rotation.copy(this.viewBaseRotation);

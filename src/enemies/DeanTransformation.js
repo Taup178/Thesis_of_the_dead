@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { TransformationDust } from '../props/TransformationDust.js';
+import { TransformationDegreeCatch } from '../props/TransformationDegreeCatch.js';
+import { createDeanRevivalClip } from './DeanRevivalMotion.js';
 
 const smooth = THREE.MathUtils.smoothstep;
 
@@ -9,15 +11,27 @@ export class DeanTransformation {
     this.dean = dean; this.monster = monster; this.scroll = scroll;
     const death = dean.actions?.Death;
     const fallEnd = (death?.getClip().duration ?? 1.3) + 0.55;
-    this.timing = { fallEnd, wakeEnd: fallEnd + 1.9, swellStart: fallEnd + 2.05,
-      burst: fallEnd + 4.2, swap: fallEnd + 4.65, clearStart: fallEnd + 6.4,
-      clearEnd: fallEnd + 12.9, end: fallEnd + 14.4 };
+    const wakeEnd = fallEnd + 3.2, swellStart = wakeEnd + 0.45, burst = swellStart + 3;
+    this.timing = { fallEnd, wakeEnd, swellStart, burst, swap: burst + 0.45, clearStart: burst + 2.2,
+      scrollLaunch: burst + 2.8, scrollCatch: burst + 4.9,
+      clearEnd: burst + 8.7, end: burst + 10.2 };
+    this.revivalClip = createDeanRevivalClip(dean, wakeEnd - fallEnd);
+    if (this.revivalClip) {
+      this.revivalAction = dean.mixer.clipAction(this.revivalClip).setLoop(THREE.LoopOnce, 1);
+      this.revivalAction.clampWhenFinished = true;
+    }
     this.time = 0; this.started = false; this.done = false; this.swapped = false; this.disposed = false;
     this.dust = new TransformationDust(root, dustColor, monster.height);
+    this.degreeCatch = scroll ? new TransformationDegreeCatch(root, monster, scroll, this.timing) : null;
+    this.scrollFocus = new THREE.Vector3();
     this.scale = dean.group.scale.clone();
     this.bones = ['Torso', 'Abdomen', 'Neck', 'Head'].map(name => {
       const node = dean.group.getObjectByName(name);
       return node && { node, scale: node.scale.clone() };
+    }).filter(Boolean);
+    this.strainPose = ['Torso', 'Abdomen', 'Neck', 'Head', 'Shoulder.L', 'Shoulder.R'].map(name => {
+      const node = dean.group.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name));
+      return node && { node, rotation: node.quaternion.clone() };
     }).filter(Boolean);
     this.origin = new THREE.Vector3(); this.cameraPosition = new THREE.Vector3();
     this.monsterObstacle = { x: 0, z: 0, radius: 1.2 };
@@ -68,6 +82,7 @@ export class DeanTransformation {
     this.origin.copy(this.dean.group.position); this.origin.y = 0;
     this.dean.group.position.copy(this.origin);
     this.monster.group.position.copy(this.origin); this.monster.group.quaternion.copy(this.dean.group.quaternion);
+    this.degreeCatch?.start(this.origin);
     this.monsterObstacle.x = this.origin.x; this.monsterObstacle.z = this.origin.z;
     if (camera) { this.startPosition.copy(camera.position); this.startRotation.copy(camera.quaternion); }
     const yaw = this.dean.group.rotation.y;
@@ -77,13 +92,27 @@ export class DeanTransformation {
 
   update(dt, camera, volume = 0.7) {
     if (!this.started || this.disposed) return;
-    if (this.done) { this.monster.mixer?.update(dt); return; } // Hold the reveal with breathing, without starting another encounter.
+    if (this.done) {
+      if (this.degreeCatch) this.degreeCatch.update(this.timing.end, dt);
+      else this.monster.mixer?.update(dt);
+      return;
+    } // Hold the reveal and the caught degree while the creature breathes.
     this.time = Math.min(this.timing.end, this.time + dt);
+    if (this.straining) for (const saved of this.strainPose) saved.node.quaternion.copy(saved.rotation);
+    this.straining = false;
     const t = this.time, timing = this.timing, death = this.dean.actions?.Death;
     if (t < timing.fallEnd) {
       this.dean.mixer?.update(dt);
     } else if (t < timing.wakeEnd) {
-      if (death) {
+      if (this.revivalAction) {
+        if (!this.waking) {
+          this.dean.mixer.stopAllAction(); this.revivalAction.reset().play();
+          this.dean.currentAction = this.revivalAction; this.waking = true;
+        }
+        this.revivalAction.paused = true;
+        this.revivalAction.time = t - timing.fallEnd;
+        this.dean.mixer.update(0);
+      } else if (death) {
         if (!this.waking) { this.dean._playAction?.('Death', 0, true); this.waking = true; }
         // Reverse the complete native fall with eased motion, preserving the grounded pose.
         death.paused = true; death.enabled = true;
@@ -95,30 +124,50 @@ export class DeanTransformation {
       for (const saved of this.bones) saved.node.scale.copy(saved.scale);
       this.dean.mixer?.update(dt);
       const swelling = smooth(t, timing.swellStart, timing.burst);
-      const breath = Math.sin((t - timing.swellStart) * 7) * 0.018 * swelling * (1 - swelling);
-      this.swellScale.set(1 + swelling * 0.3 + breath, 1 + swelling * 0.08, 1 + swelling * 0.32 + breath);
+      const phase = Math.max(0, t - timing.swellStart);
+      const breath = (Math.sin(phase * 4.6) + Math.sin(phase * 8.3 + 0.7) * 0.28)
+        * 0.014 * swelling * (1 - swelling);
+      this.swellScale.set(1 + swelling * 0.16 + breath, 1 + swelling * 0.035, 1 + swelling * 0.2 + breath);
       this.dean.group.scale.copy(this.scale).multiply(this.swellScale);
       for (const saved of this.bones) {
         const belly = saved.node.name === 'Abdomen';
         if (saved.node.name === 'Head') continue;
         if (saved.node.name === 'Neck') {
           // Keep the face recognizable while the belly and chest distend around it.
-          saved.node.scale.copy(saved.scale).divide(this.swellScale.set((1 + swelling * 0.32) * (1 + swelling * 0.18), 1,
-            (1 + swelling * 0.38) * (1 + swelling * 0.2)));
+          saved.node.scale.copy(saved.scale).divide(this.swellScale.set((1 + swelling * 0.16) * (1 + swelling * 0.1), 1,
+            (1 + swelling * 0.2) * (1 + swelling * 0.12)));
         } else {
-          saved.node.scale.copy(saved.scale).multiply(this.swellScale.set(1 + swelling * (belly ? 0.32 : 0.18), 1,
-            1 + swelling * (belly ? 0.38 : 0.2)));
+          saved.node.scale.copy(saved.scale).multiply(this.swellScale.set(1 + swelling * (belly ? 0.16 : 0.1), 1,
+            1 + swelling * (belly ? 0.2 : 0.12)));
         }
       }
+      const effort = smooth(t, timing.swellStart, timing.swellStart + 0.8)
+        * (1 - smooth(t, timing.burst - 0.6, timing.burst));
+      for (const saved of this.strainPose) {
+        saved.rotation.copy(saved.node.quaternion);
+        if (saved.node.name === 'Torso') { saved.node.rotation.x += effort * 0.13 - swelling * 0.06; saved.node.rotation.z += Math.sin(phase * 2.8) * swelling * 0.025; }
+        if (saved.node.name === 'Abdomen') saved.node.rotation.x += effort * 0.06 + breath;
+        if (saved.node.name === 'Head') saved.node.rotation.x += effort * 0.1 - smooth(t, timing.burst - 0.5, timing.burst) * 0.14;
+        if (saved.node.name === 'ShoulderL') saved.node.rotation.z += swelling * 0.08;
+        if (saved.node.name === 'ShoulderR') saved.node.rotation.z -= smooth(t, timing.swellStart + 0.22, timing.burst) * 0.07;
+      }
+      this.straining = true;
     }
     // Keep the camera's planned movement independent of breathing or dust particles.
     if (camera) {
       const pullback = smooth(t, timing.swellStart, timing.burst) * 1.25;
       this.cameraAim.copy(this.origin); this.cameraAim.y += THREE.MathUtils.lerp(1.35, 2.4, smooth(t, timing.swellStart, timing.clearStart));
+      const scrollFraming = this.degreeCatch ? smooth(t, timing.scrollLaunch - 0.25, timing.scrollLaunch + 0.45)
+        * (1 - smooth(t, timing.scrollCatch + 0.15, timing.scrollCatch + 1.2)) : 0;
+      if (scrollFraming > 0) {
+        this.degreeCatch.getFlightPosition(t, this.scrollFocus);
+        this.cameraAim.lerp(this.scrollFocus, scrollFraming * 0.42);
+      }
       const blend = smooth(t, 0, 0.8);
       camera.position.lerpVectors(this.startPosition, this.cameraPosition, blend);
       const revealDolly = smooth(t, timing.clearStart + 0.8, timing.end) * 3.3;
       camera.position.addScaledVector(this.cameraDirection, pullback - revealDolly);
+      camera.position.y += scrollFraming * 0.55;
       camera.lookAt(this.cameraAim); this.aimRotation.copy(camera.quaternion);
       camera.quaternion.slerpQuaternions(this.startRotation, this.aimRotation, blend);
       camera.updateMatrixWorld(true);
@@ -137,7 +186,10 @@ export class DeanTransformation {
       saved.material.depthWrite = saved.material.opacity >= 0.99;
     }
     if (this.swapped) for (const mesh of this.monsterMeshes) mesh.castShadow = clearing > 0.6;
-    if (this.swapped) this.monster.mixer?.update(dt);
+    if (this.swapped) {
+      if (this.degreeCatch) this.degreeCatch.update(t, dt);
+      else this.monster.mixer?.update(dt);
+    }
     this.sound?.update(t, volume);
     this.done = t >= timing.end;
     if (this.done) this.sound?.stop();
@@ -146,6 +198,9 @@ export class DeanTransformation {
   dispose() {
     if (this.disposed) return; this.disposed = true;
     this.sound?.stop(); this.dust.dispose();
+    this.degreeCatch?.dispose();
+    if (this.revivalClip) this.dean.mixer.uncacheAction(this.revivalClip);
+    if (this.straining) for (const saved of this.strainPose) saved.node.quaternion.copy(saved.rotation);
     this.dean.group.scale.copy(this.scale);
     for (const saved of this.bones) saved.node.scale.copy(saved.scale);
     for (const saved of this.materials) {

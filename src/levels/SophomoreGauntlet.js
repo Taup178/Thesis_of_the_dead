@@ -1,86 +1,41 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SOPHOMORE_LAYOUT as layout } from './SophomoreLayout.js';
+import { SawFloorSparks } from '../environment/SawFloorSparks.js';
+import { stainSawBlade } from '../environment/BloodSplatter.js';
 
 const STEEL = 0x313b40;
 const WARNING = 0xf0a64b;
-const SPARKS_PER_BLADE = 8;
-
-function createFloorSparks(level) {
-  const count = level.blades.length * SPARKS_PER_BLADE;
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const opacity = new Float32Array(count);
-  const emitters = [];
-  const ember = new THREE.Color();
-
-  for (let bladeIndex = 0; bladeIndex < level.blades.length; bladeIndex++) {
-    for (let sparkIndex = 0; sparkIndex < SPARKS_PER_BLADE; sparkIndex++) {
-      const index = bladeIndex * SPARKS_PER_BLADE + sparkIndex;
-      const phase = (bladeIndex * 0.618 + sparkIndex * 0.381) % 1;
-      const warm = 0.5 + 0.5 * Math.sin(index * 17.31);
-      ember.setRGB(1, 0.22 + warm * 0.58, 0.025 + warm * 0.08);
-      colors.set([ember.r, ember.g, ember.b], index * 3);
-      sizes[index] = 0.48 + warm * 0.36;
-      emitters.push({ bladeIndex, phase, direction: sparkIndex % 2 ? 1 : -1,
-        height: 0.11 + warm * 0.2, zOffset: (warm - 0.5) * 0.34 });
-    }
-  }
-
-  const positionAttribute = new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage);
-  const opacityAttribute = new THREE.BufferAttribute(opacity, 1).setUsage(THREE.DynamicDrawUsage);
-  geometry.setAttribute('position', positionAttribute);
-  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aOpacity', opacityAttribute);
-  const material = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aOpacity;
-      varying vec3 vColor; varying float vOpacity;
-      void main(){ vec4 viewPosition=modelViewMatrix*vec4(position,1.0);
-        gl_Position=projectionMatrix*viewPosition;
-        gl_PointSize=clamp(aSize*300.0/max(1.0,-viewPosition.z),2.0,16.0);
-        vColor=aColor; vOpacity=aOpacity; }`,
-    fragmentShader: `varying vec3 vColor; varying float vOpacity;
-      void main(){ float r=length(gl_PointCoord-vec2(0.5));
-        float core=1.0-smoothstep(0.06,0.28,r); float glow=exp(-r*r*18.0);
-        float alpha=(core*0.78+glow*0.3)*vOpacity;
-        gl_FragColor=vec4(vColor,alpha);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
-  });
-  const points = new THREE.Points(geometry, material);
-  points.name = 'SawFloorSparks'; points.frustumCulled = false; points.renderOrder = 2;
-  level.root.add(points);
-  level.floorSparks = { points, positions, opacity, emitters, time: 0 };
-}
-
-function updateFloorSparks(level, dt) {
-  const sparks = level.floorSparks;
-  if (!sparks) return;
-  sparks.time += dt;
-  for (let i = 0; i < sparks.emitters.length; i++) {
-    const emitter = sparks.emitters[i];
-    const blade = level.blades[emitter.bladeIndex];
-    const age = (sparks.time * 1.65 + emitter.phase) % 1;
-    const flight = Math.min(age / 0.76, 1);
-    const alpha = age < 0.76 ? Math.sin(Math.PI * flight) : 0;
-    const offset = i * 3;
-    sparks.positions[offset] = blade.wheel.position.x + emitter.direction * (0.12 + flight * 1.05);
-    sparks.positions[offset + 1] = 0.06 + Math.sin(Math.PI * flight) * emitter.height;
-    sparks.positions[offset + 2] = blade.z + 0.16 + emitter.zOffset + flight * emitter.direction * 0.18;
-    sparks.opacity[i] = alpha;
-  }
-  sparks.points.geometry.attributes.position.needsUpdate = true;
-  sparks.points.geometry.attributes.aOpacity.needsUpdate = true;
-}
+const SWEEP_SPEED = 3.15;
+const SPIN_SPEED = 20.5;
 
 /** Shared sweep timing lets the Dean predict the same blade positions the player sees. */
 export function getSophomoreBladeX(blade, time) {
-  return Math.sin(time * 2.8 + blade.phase) * 4.25;
+  return Math.sin(time * SWEEP_SPEED + blade.phase) * 4.25;
+}
+
+/** Sweep both movements so sprinting or a slow frame cannot skip the thin disk. */
+export function getSophomoreSawContact(blade, previous, position, oldBladeX) {
+  // Preserve the original first-touch envelope around the visible saw.
+  // The narrower disk-plane check let the blade enter the character before killing.
+  const axes = [
+    [previous.x - oldBladeX, position.x - previous.x - (blade.wheel.position.x - oldBladeX), -1.55, 1.55],
+    [previous.z - blade.z, position.z - previous.z, -0.66, 0.66],
+    [previous.y, position.y - previous.y, -Infinity, 2.7],
+  ];
+  let enter = 0, exit = 1;
+  for (const [start, movement, min, max] of axes) {
+    if (Math.abs(movement) < 1e-8) {
+      if (start < min || start > max) return null;
+      continue;
+    }
+    const a = (min - start) / movement, b = (max - start) / movement;
+    enter = Math.max(enter, Math.min(a, b)); exit = Math.min(exit, Math.max(a, b));
+    if (enter > exit) return null;
+  }
+  const contact = previous.clone().lerp(position, enter);
+  const y = THREE.MathUtils.clamp(blade.wheel.position.y, contact.y + 0.25, contact.y + 1.55);
+  return { position: contact, point: new THREE.Vector3(contact.x, y, blade.z + blade.rotor.position.z) };
 }
 
 /** The two physical chase challenges before the memory room. */
@@ -129,7 +84,7 @@ export function createSophomoreGauntlet(level) {
     mesh(new THREE.BoxGeometry(12.4, 0.035, 0.18), warning, 0, 0.025, z);
     level.blades.push({ wheel, rotor, z, phase: n * 1.8, hitCooldown: 0 });
   }
-  createFloorSparks(level);
+  level.floorSparks = new SawFloorSparks(level);
   // Normalize the transformed kit model to the old blade diameter. The GLTF
   // has an internal root transform, so its accessor dimensions are not its
   // rendered dimensions.
@@ -146,12 +101,16 @@ export function createSophomoreGauntlet(level) {
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
         const scale = 3.25 / Math.max(size.x, size.y);
+        blade.sparkRadius = Math.max(size.x, size.y) * scale / 2;
+        blade.bloodDepth = size.z * scale;
+        blade.model = model;
         model.scale.setScalar(scale);
         model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
         model.traverse(child => {
           if (!child.isMesh) return;
           child.castShadow = child.receiveShadow = true;
-          child.frustumCulled = false;
+          child.frustumCulled = true;
+          child.geometry.computeBoundingSphere();
           for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
             material.side = THREE.DoubleSide;
             if (material.color) material.color.setHex(0xc3c9c9);
@@ -184,10 +143,14 @@ export function createSophomoreGauntlet(level) {
 
 export function updateSophomoreGauntlet(level, dt, player) {
   level.gauntletTime = (level.gauntletTime || 0) + dt;
+  const previous = level.previousGauntletPosition || player.group.position.clone().addScaledVector(player.velocity, -dt);
+  const current = player.group.position.clone();
+  level.previousGauntletPosition = current;
   for (const blade of level.blades || []) {
+    const oldX = blade.wheel.position.x;
     if (level.puzzleIndex === 0) {
       blade.wheel.position.x = getSophomoreBladeX(blade, level.gauntletTime);
-      blade.rotor.rotation.z -= dt * 18;
+      blade.rotor.rotation.z -= dt * SPIN_SPEED;
     } else {
       blade.wheel.position.x = THREE.MathUtils.damp(blade.wheel.position.x, 8.35, 5, dt);
       blade.rotor.rotation.z -= dt * 1.2;
@@ -195,9 +158,19 @@ export function updateSophomoreGauntlet(level, dt, player) {
     blade.hitCooldown = Math.max(0, blade.hitCooldown - dt);
     if (!['chase', 'dean_challenge'].includes(level.phase) || level.puzzleIndex !== 0 || !player.alive) continue;
     const position = player.group.position;
-    if (blade.hitCooldown === 0 && Math.abs(position.z - blade.z) < 0.66 &&
-        Math.abs(position.x - blade.wheel.position.x) < 1.55 && position.y < 2.7 && !player.isDodging) {
-      player.takeDamage(player.health);
+    const contact = blade.hitCooldown === 0 && !player.isDodging
+      ? getSophomoreSawContact(blade, previous, current, oldX) : null;
+    if (contact) {
+      position.copy(contact.position);
+      player.takeDamage(player.health, { type: 'saw', cutNormal: new THREE.Vector3(0, 0, 1),
+        point: contact.point,
+        // Finish the cut through the body when its outer edge first meets the teeth.
+        cutPoint: player.characterModel?.getObjectByName('Torso')?.getWorldPosition(new THREE.Vector3())
+          ?? position.clone().add(new THREE.Vector3(0, 1, 0)),
+        direction: new THREE.Vector3(Math.sign(blade.wheel.position.x - oldX) || 1, 0, 0),
+        bladeVelocity: dt > 0 ? (blade.wheel.position.x - oldX) / dt : 0 });
+      if (!player.alive) stainSawBlade(blade, contact.point);
+      level.failureReason = 'You were caught by a saw blade. Time your run or roll through the sweep.';
       blade.hitCooldown = 1;
       if (player.alive) {
         position.z = blade.z + 1.65;
@@ -205,14 +178,14 @@ export function updateSophomoreGauntlet(level, dt, player) {
       }
     }
   }
-  updateFloorSparks(level, dt);
+  level.floorSparks?.update(dt);
   for (const bridge of level.bridgePlatforms || []) {
     const oldX = bridge.platform.position.x;
     const x = Math.sin(level.gauntletTime * 1.5 + bridge.phase) * 2.6;
     bridge.platform.position.x = x;
     bridge.surface.minX = x - 2.75;
     bridge.surface.maxX = x + 2.75;
-    if (player.platformSupport === bridge.surface && player.grounded) {
+    if (player.alive && player.platformSupport === bridge.surface && player.grounded) {
       player.group.position.x += x - oldX;
       player._updateCamera();
     }

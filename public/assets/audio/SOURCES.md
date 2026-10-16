@@ -1,10 +1,10 @@
 # Dean laugh
 
-`dean-laugh.mp3` was removed from this branch before publication. It was a byte-for-byte
-copy of the user-supplied `Zombie_Kit/Sounds/Cod zombies _ evil laugh [qfidRRBhFb4].mp3`,
-but no redistributable source license was established. The Level 3 failure cinematic now
-uses its existing fixed-duration, animation-only fallback; its timing and gameplay flow
-are unchanged and it makes no request for the removed recording.
+`dean-laugh.mp3` is an optional, Git-ignored local copy of the user-supplied
+`Zombie_Kit/Sounds/Cod zombies _ evil laugh [qfidRRBhFb4].mp3`.
+Local playback uses the full recording and its waveform to synchronize the Dean's
+laugh animation. Checkouts without this private recording use the existing
+fixed-duration animation fallback. No redistribution license has been established.
 
 # Audio correction assets
 
@@ -97,3 +97,59 @@ currently used.
 | `sfx/player/footstep-01.ogg` | `313472dba31fd0c855376069fa368bb5a198c27251cc8398ef464578b7047a4c` | Compared against GaryBran 75266 after resampling: best normalized waveform correlation -0.310 at 3.515 s. | HOLD — not an identity match. |
 | `sfx/weapon/swish-1.wav` | `9a15c881345c1ce1c39cc31f52f081c8c4dc81fa41111e0079400f39d3ba0e45` | Compared against the Artninja 768408 source: best normalized waveform correlation -0.380 at 0.105 s. | HOLD — no source identity match. |
 | `sfx/weapon/swish-2.wav` | `1ce7752cce3d43f16fc222ad7f7ffb69d9a5fc01e64b93d205765fc37b8e9b0d` | Compared against the Artninja 768408 source: best normalized waveform correlation -0.370 at 7.285 s. | HOLD — no source identity match. |
+# Main menu music
+
+`red-moon.mp3` is a byte-for-byte copy of the user-supplied
+`Zombie_Kit/Red Moon [uvgIA_KBNf8].mp3`.
+
+The original recording loops at its original speed and pitch on the main menu,
+including its Options and Credits screens. It follows Master Volume, stops when
+a level starts, and pauses while the browser tab is hidden. If autoplay is blocked,
+the first pointer or keyboard interaction starts playback.
+
+For automatic sound on this Windows development machine, keep `npm run dev`
+running and use `npm run open:game`. This opens a separate Chrome/Edge game
+profile with sound autoplay enabled, starting at the Level 2 menu. Normal browser
+profiles and hosted copies still follow the browser's autoplay permissions.
+See [Chrome's autoplay developer switch](https://developer.chrome.com/blog/autoplay/#developer-switches).
+
+# Level 2 saws
+
+`concrete-scrape-loop.mp3` is a byte-for-byte copy of the user-supplied
+`Zombie_Kit/Concrete scrape loop [7cAnlZ1U1Mg].mp3`.
+
+The recording is decoded once, quiet padding is trimmed, and a 220ms equal-power
+overlap blends the tail into the head. A Web Audio buffer repeats at its original
+speed and pitch without media-element restart gaps. Volume follows the saw bank
+as one continuous sound bed and gradually fades as the player advances from the
+first blade toward the corridor's exit. Gain changes run smoothly on the audio
+clock; individual blade sweeps do not pulse the volume. The sound follows Master
+Volume, pauses with the game, resumes its loop position, and is released when the
+level is unloaded.
+
+# Memory tile breaks
+
+`brick-wall-impact.mp3` is a byte-for-byte copy of the user-supplied
+`Zombie_Kit/BRICK WALL IMPACT SOUND EFFECT [ondpUC0oNwE].mp3`.
+
+Only the recording's first two seconds are copied into the playback buffer, at
+original speed and pitch. A 3ms entrance and 120ms ending fade smooth the edges.
+Every tile collapse triggers its own impact, including wrong landings and expired
+tile timers. Overlapping breaks can finish independently, with gentle compression
+to control combined peaks. Playback follows Master Volume and pauses with the game.
+
+# Level 2 score
+
+`fangs.mp3` is a byte-for-byte copy of the user-supplied
+`Zombie_Kit/Fangs [EqWdLiVxDGQ].mp3`.
+
+The score begins when the Dean clears the final saw and the player regains control.
+Checkpoint retries resume this part of the score without waiting for the skipped
+intro. Its first entrance fades in over 2.4 seconds. The complete opening plays
+on the first pass; a 1.5-second equal-power tail/head overlap smooths later loops
+without changing speed or pitch. Music loudness is normalized with peak headroom,
+and a gentle presence dip leaves space for effects. Audio-clock gain ramps duck
+the score under saws, breaking tiles, combat, and low-health feedback, then recover
+gradually. Master Volume applies to both music and effects. Pausing or hiding the
+tab fades the score out, preserves its position, and fades it back in on resume.
+Unloading the level releases playback and its audio resources.

@@ -10,6 +10,7 @@ import { compileHiddenObjects } from './ShaderWarmup.js';
 import { PAD, stepFocusIndex } from './Gamepad.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { getGlobalAudioManager } from './AudioManager.js';
+import { MenuMusic } from './MenuMusic.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 
 const NO_OBSTACLES = [];
@@ -138,6 +139,8 @@ export class Game {
 
     // ---- Bind UI buttons ----
     this._bindUI();
+    this.menuMusic = new MenuMusic(document.getElementById('menu-music'), document.getElementById('volume-slider'));
+    this.menuMusic.setActive(true);
 
     // ---- Start render loop ----
     this._animate();
@@ -210,6 +213,7 @@ export class Game {
   }
 
   _showOverlay(id) {
+    this.menuMusic?.setActive(this.state === this.STATE.MENU && ['menu-overlay', 'credits-overlay', 'options-overlay'].includes(id));
     if (id) this._closeWeaponWheel();
     this.motionBlur.reset();
     if (id) this.heartbeat.stop();
@@ -296,7 +300,7 @@ export class Game {
     this._applyMouseSensitivity();
     await this.player.loadCharacter();
     this.player.group.position.copy(level.spawnPoint);
-    await level.prepareShaders?.(this.renderer, this.camera);
+    await level.prepareShaders?.(this.renderer, this.camera, this.player);
     level.preparePlayer?.(this.player);
     await this._warmLoadedView?.();
 
@@ -338,7 +342,7 @@ export class Game {
       level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
       await level.prepareAudio?.();
       await level.prepareCinematics?.(this.renderer, this.camera);
-    await level.prepareShaders?.(this.renderer, this.camera);
+      await level.prepareShaders?.(this.renderer, this.camera, this.player);
       this.player.reset(level.spawnPoint);
       level.preparePlayer?.(this.player);
       await this._warmLoadedView?.();
@@ -386,7 +390,7 @@ export class Game {
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
     await level.prepareCinematics?.(this.renderer, this.camera);
-    await level.prepareShaders?.(this.renderer, this.camera);
+    await level.prepareShaders?.(this.renderer, this.camera, this.player);
     level.preparePlayer?.(this.player);
     await this._warmLoadedView?.();
 
@@ -437,6 +441,7 @@ export class Game {
   }
 
   gameOver() {
+    this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.GAMEOVER;
     this._showOverlay('gameover-overlay');
     document.getElementById('gameover-text').textContent = this.currentLevel?.failureReason || 'Your stamina ran out. The zombies got your degree.';
@@ -450,6 +455,7 @@ export class Game {
   }
 
   levelComplete() {
+    this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.LEVELCOMPLETE;
     const overlay = document.getElementById('levelcomplete-overlay');
     document.getElementById('levelcomplete-title').textContent = 'Level Complete!';
@@ -468,7 +474,7 @@ export class Game {
   }
 
   _openWeaponWheel() {
-    if (!this.player || this.player.scriptedMovement || this.currentLevel?.allowsShooting === false) return;
+    if (!this.player?.alive || this.player.scriptedMovement || this.currentLevel?.allowsShooting === false) return;
     this.combat.cancelMelee();
     this.input.consumeMousePresses?.(0);
     this.weaponWheelOpen = true;
@@ -794,7 +800,7 @@ export class Game {
 
     // ---- Handle one-shot key presses ----
     let inventoryFrame = this.weaponWheelOpen;
-    if (this.state === this.STATE.PLAYING && this.player && !this.player.scriptedMovement
+    if (this.state === this.STATE.PLAYING && this.player?.alive && !this.player.scriptedMovement
       && this.currentLevel?.allowsShooting !== false) {
       if (this.input.consumeKeyPress('Digit1')) {
         if (this.weaponWheelOpen) this._closeWeaponWheel();
@@ -828,46 +834,53 @@ export class Game {
 
     // ---- Update logic ----
     if (this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse) && this.player && this.currentLevel && !inventoryFrame) {
-      this.player.update(
-        dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
-        this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
-      );
-      this.audio?.setListenerPosition?.(this.player.group.position);
-      this._handleShooting(dt);
-
-      // The escape follows elapsed time, so a slow frame cannot stretch the film.
-      const levelDt = this.currentLevel.bossCutscene?.usesElapsedTime ? Math.min(frameDt, 0.25) : dt;
-      const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
-
-      if (events.creditCollected) {
-        const finalCredit = events.finalCreditCollected === true;
-        this.audio?.playSfx?.('./assets/audio/sfx/collect/credit-chime.ogg', {
-          volume: finalCredit ? 0.92 : 0.66, pitch: finalCredit ? 0.88 : 1,
-          category: 'sfx', group: 'pickup', maxVoices: 3, position: this.player.group.position,
-        });
-        if (finalCredit) this.audio?.playFinalCreditMilestone?.();
-      }
-      if (events.deanReveal) this.audio?.playDeanReveal?.();
-      if (events.portalActivated) {
-        this.audio?.playPortalActivation?.();
-        this.audio?.startPortalHum?.(this.currentLevel.portalRoot?.position);
-      }
-      if (this.currentLevel.portalActive) this.audio?.updatePortalHum?.(this.currentLevel.portalRoot?.position);
-      if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
-      if (this.currentLevel.title?.toLowerCase().includes('final')) {
-        this.audio?.setFinalEncounterPhase?.(this.currentLevel.bossFight?.phase === 'combat' ? 'boss' : 'arena');
-      }
-
-      if (events.levelComplete) {
-        if (events.autoAdvance) { this.loadNextLevel(); return; }
-        this.levelComplete();
-      }
-
       if (!this.player.alive) {
-        this.gameOver();
-      }
+        this._updatePlayerDeath(dt);
+      } else {
+        this.player.update(
+          dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
+          this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
+        );
+        this.audio?.setListenerPosition?.(this.player.group.position);
+        this._handleShooting(dt);
 
-      if (!this.currentLevel.bossCutscene) this._updateHUD();
+        // The escape follows elapsed time, so a slow frame cannot stretch the film.
+        const cinematicClock = this.currentLevel.bossCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive;
+        const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
+        const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
+
+        if (events.creditCollected) {
+          const finalCredit = events.finalCreditCollected === true;
+          this.audio?.playSfx?.('./assets/audio/sfx/collect/credit-chime.ogg', {
+            volume: finalCredit ? 0.92 : 0.66, pitch: finalCredit ? 0.88 : 1,
+            category: 'sfx', group: 'pickup', maxVoices: 3, position: this.player.group.position,
+          });
+          if (finalCredit) this.audio?.playFinalCreditMilestone?.();
+        }
+        if (events.deanReveal) this.audio?.playDeanReveal?.();
+        if (events.portalActivated) {
+          this.audio?.playPortalActivation?.();
+          this.audio?.startPortalHum?.(this.currentLevel.portalRoot?.position);
+        }
+        if (this.currentLevel.portalActive) this.audio?.updatePortalHum?.(this.currentLevel.portalRoot?.position);
+        if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
+        if (this.currentLevel.title?.toLowerCase().includes('final')) {
+          this.audio?.setFinalEncounterPhase?.(this.currentLevel.bossFight?.phase === 'combat' ? 'boss' : 'arena');
+        }
+
+        if (events.levelComplete) {
+          if (events.autoAdvance) { this.loadNextLevel(); return; }
+          this.levelComplete();
+        }
+
+        if (!this.player.alive) {
+          this.combat.cancelMelee();
+          // Direct scripted fatalities keep their existing timing; combat deaths finish visibly.
+          if (!this.player.deathSequence) this.gameOver();
+        }
+
+        if (!this.currentLevel.bossCutscene) this._updateHUD();
+      }
     }
 
     // ---- Render ----
@@ -884,6 +897,13 @@ export class Game {
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
     this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0);
+  }
+
+  _updatePlayerDeath(dt) {
+    this.currentLevel.updateDeathEffects?.(dt, this.player);
+    const finished = this.player.updateDeath(dt);
+    this._updateHUD();
+    if (finished) this.gameOver();
   }
 
   _updateCinematicPresentation() {

@@ -126,7 +126,7 @@ export class SophomoreAmbush {
         position.z = THREE.MathUtils.clamp(position.z, edgeZ, farEdgeZ);
         position.y = 0; // Spikes do not interrupt the zombies' movement.
         if (result.hit && player.group.position.y >= -0.6 && player.group.position.y < 1.8) {
-          player.takeDamage(result.damage);
+          player.takeDamage(result.damage, { type: 'blunt', source: zombie.group.position });
           if (!player.alive) this.level._fail(player, 'The zombies overwhelmed you. Retry from your spike checkpoint.');
         }
       }

@@ -741,7 +741,7 @@ export class Level1 {
       if (zombie.portalExit) { this._updatePortalExit(zombie, dt); continue; }
       const result = zombie.update(dt, player.group.position);
       if (result.hit) {
-        player.takeDamage(result.damage);
+        player.takeDamage(result.damage, { type: 'blunt', source: zombie.group.position });
       }
       if (zombie.alive) this._resolveObstacles(zombie.group.position, 0.4);
     }

@@ -9,6 +9,7 @@ export class SpikeTrapPit {
   constructor(parent, backZ, frontZ) {
     this.root = new THREE.Group(); this.root.name = 'SpikePit'; parent.add(this.root);
     this.backZ = backZ; this.frontZ = frontZ; this.disposed = false;
+    this.batches = [];
     this.columns = Math.ceil(WIDTH / PANEL_SIZE);
     this.rows = Math.ceil((frontZ - backZ) / PANEL_SIZE);
     this.count = this.columns * this.rows;
@@ -59,7 +60,17 @@ export class SpikeTrapPit {
         transform.updateMatrix(); mesh.setMatrixAt(row * this.columns + column, transform.matrix);
       }
       mesh.computeBoundingSphere(); this.root.add(mesh);
+      this.batches.push({ mesh, minZ: this.backZ + startRow * panelDepth,
+        maxZ: this.backZ + (startRow + rowCount) * panelDepth });
     }
+  }
+
+  updateView(cameraPosition) {
+    // Most of the long pit is hidden under opaque decks. Keep nearby detail
+    // for jumps and falls instead of drawing the entire pit through the floor.
+    const range = cameraPosition.y < 0 ? 120 : 80;
+    for (const batch of this.batches) batch.mesh.visible =
+      cameraPosition.z >= batch.minZ - range && cameraPosition.z <= batch.maxZ + range;
   }
 
   dispose() { this.disposed = true; }
