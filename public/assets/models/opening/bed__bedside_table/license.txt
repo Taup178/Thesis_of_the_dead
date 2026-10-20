@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bed & Bedside Table
+* source:	https://sketchfab.com/3d-models/bed-bedside-table-aaecea3567824779b46ef59007772d80
+* author:	HamedPhixer (https://sketchfab.com/hamedphixer)
+
+Model License:
+* license type:	CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)
+* requirements:	Author must be credited. Modified versions must have the same license. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bed & Bedside Table" (https://sketchfab.com/3d-models/bed-bedside-table-aaecea3567824779b46ef59007772d80) by HamedPhixer (https://sketchfab.com/hamedphixer) licensed under CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)

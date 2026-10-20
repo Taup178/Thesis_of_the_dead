@@ -1,0 +1,179 @@
+{
+  "quotedCredits": 1.6,
+  "packs": [
+    {
+      "identity": "protector",
+      "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+      "lines": [
+        {
+          "id": "l1_protector_orb1",
+          "text": "One credit, Shaun. Keep going."
+        },
+        {
+          "id": "l1_protector_orb5",
+          "text": "Five. You are making progress."
+        },
+        {
+          "id": "l1_protector_orb8",
+          "text": "Eight. You earned your way here."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "One credit, Shaun. Keep going.\n\nFive. You are making progress.\n\nEight. You earned your way here.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 0,
+      "job_id": "92a0039b-3064-4edc-bb25-874c3341c894",
+      "status": "completed",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_160213_92a0039b-3064-4edc-bb25-874c3341c894.wav"
+    },
+    {
+      "identity": "manipulator",
+      "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+      "lines": [
+        {
+          "id": "l1_manipulator_orb3",
+          "text": "Three already. Surely that is enough."
+        },
+        {
+          "id": "l1_manipulator_orb7",
+          "text": "One more. Then perhaps he will let you rest."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Three already. Surely that is enough.\n\nOne more. Then perhaps he will let you rest.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 1,
+      "job_id": "8a76eaa3-c5da-4b6d-b51e-329d6d26550d",
+      "status": "completed",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_160213_8a76eaa3-c5da-4b6d-b51e-329d6d26550d.wav"
+    },
+    {
+      "identity": "anxious",
+      "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+      "lines": [
+        {
+          "id": "l1_anxious_boss",
+          "text": "Shaun. The portal. He is coming through."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. The portal. He is coming through.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 2,
+      "job_id": "05881e51-8236-43b5-86d9-f38d3e9afa9b",
+      "status": "completed",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_160214_05881e51-8236-43b5-86d9-f38d3e9afa9b.wav"
+    }
+  ],
+  "manifestClips": {
+    "l1_protector_orb1": {
+      "file": "protector/l1_protector_orb1.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.75
+    },
+    "l1_protector_orb5": {
+      "file": "protector/l1_protector_orb5.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.38
+    },
+    "l1_protector_orb8": {
+      "file": "protector/l1_protector_orb8.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.34
+    },
+    "l1_manipulator_orb3": {
+      "file": "manipulator/l1_manipulator_orb3.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.48
+    },
+    "l1_manipulator_orb7": {
+      "file": "manipulator/l1_manipulator_orb7.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.86
+    },
+    "l1_anxious_boss": {
+      "file": "anxious/l1_anxious_boss.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.46
+    }
+  },
+  "clips": [
+    {
+      "id": "l1_protector_orb1",
+      "identity": "protector",
+      "text": "One credit, Shaun. Keep going.",
+      "masterStart": 0,
+      "masterEnd": 3.75,
+      "sha256": "aab4233fc515d65375f48c1444f7e469579edc26362fab43901fbda875724454",
+      "masterSha256": "cb7544e38ccbeb895fea05bed6a9b2538e15b5e670b74189f89fac4e0ae91e38"
+    },
+    {
+      "id": "l1_protector_orb5",
+      "identity": "protector",
+      "text": "Five. You are making progress.",
+      "masterStart": 4.32,
+      "masterEnd": 7.7,
+      "sha256": "9448602d6c9d6f0fd3746fd10e1497f02ed4562ca3e19e42439a6a2300ad8463",
+      "masterSha256": "cb7544e38ccbeb895fea05bed6a9b2538e15b5e670b74189f89fac4e0ae91e38"
+    },
+    {
+      "id": "l1_protector_orb8",
+      "identity": "protector",
+      "text": "Eight. You earned your way here.",
+      "masterStart": 8.34,
+      "masterEnd": 11.68,
+      "sha256": "64aaa8c2b170aa324f5862e4e45070a83df45e9020babed38d6d6c2bbd157a00",
+      "masterSha256": "cb7544e38ccbeb895fea05bed6a9b2538e15b5e670b74189f89fac4e0ae91e38"
+    },
+    {
+      "id": "l1_manipulator_orb3",
+      "identity": "manipulator",
+      "text": "Three already. Surely that is enough.",
+      "masterStart": 0,
+      "masterEnd": 3.48,
+      "sha256": "365278e6dce04f6197aad657953a06ab26978012a9e85472979762388f4bae2f",
+      "masterSha256": "5dfe09607354d58b1f49828341226290ee707bcc2af1b221d2c3d804e7e7d941"
+    },
+    {
+      "id": "l1_manipulator_orb7",
+      "identity": "manipulator",
+      "text": "One more. Then perhaps he will let you rest.",
+      "masterStart": 3.94,
+      "masterEnd": 7.8,
+      "sha256": "5fe9d9f12b7f11124217e2acddc38250e516eaaf2d7cd63fdd5e11d15397b2b4",
+      "masterSha256": "5dfe09607354d58b1f49828341226290ee707bcc2af1b221d2c3d804e7e7d941"
+    },
+    {
+      "id": "l1_anxious_boss",
+      "identity": "anxious",
+      "text": "Shaun. The portal. He is coming through.",
+      "masterStart": 0,
+      "masterEnd": 5.3,
+      "sha256": "a016481f921a4f246a0ea30e51540afb27e8e2db74f3398a4702d478de0cc6c4",
+      "masterSha256": "df629d262f1e08badeb7354dfc2d39dedb45cede8c88723a47e85be0dd24b9ec"
+    }
+  ],
+  "processing": "Fading filtered cross-ear echoes; earwax; -18 LUFS / -3 dBTP mastering; edge fades",
+  "alignment": "Offline tiny.en word timestamps; boss sentence gaps compacted"
+}

@@ -12,6 +12,9 @@ import { ForestAtmosphere } from '../environment/ForestAtmosphere.js';
 import { getPortalTravelDuration } from '../props/RoomExitPortal.js';
 import { WoodsBossCutscene } from './WoodsBossCutscene.js';
 import { OrbPortalCutscene } from './OrbPortalCutscene.js';
+import { OpeningCutscene } from '../player/OpeningCutscene.js';
+import { createPortalObstacles } from '../props/PortalObstacles.js';
+import { CheckpointMarker } from '../props/CheckpointMarker.js';
 
 /**
  * Level 1 - "The Freshman Woods"
@@ -21,8 +24,11 @@ import { OrbPortalCutscene } from './OrbPortalCutscene.js';
  * Visual Identity: Starry sky, cool moonlight, soft tree shadows.
  */
 export class Level1 {
-  constructor(scene) {
+  constructor(scene, options = null) {
     this.scene = scene;
+    this.skipOpening = options?.skipOpening === true;
+    this.openingIntro = null;
+    this.forestRevealTime = 1;
     this.previousBackground = scene.background;
     this.worldBounds = { minX: -60, maxX: 60, minZ: -60, maxZ: 60 };
     this.nightSky = null;
@@ -83,6 +89,9 @@ export class Level1 {
     await this._createBossMarker();
     await this._loadPortalModel();
     this._createRedPortal();
+    this.obstacles = [...this.obstacles, ...createPortalObstacles(this.portalRoot),
+      ...createPortalObstacles(this.redPortalRoot)];
+    this.exitCheckpoint = new CheckpointMarker(this.scene);
     await this._createZombies(this.credits.length * 2);
     onProgress && onProgress(1.0);
   }
@@ -112,7 +121,17 @@ export class Level1 {
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true;
     player.yaw = 0; player.pitch = -0.12; player.group.rotation.y = 0;
     player.cameraGroundY = 0; player.cameraObstacles = this.getObstacles();
-    this.wakeUpIntro = new WakeUpIntro(player);
+    if (this.openingAssets && !this.skipOpening && player.characterModel) {
+      this.openingIntro = new OpeningCutscene(player, this.openingAssets, this.audioManager);
+    } else this.wakeUpIntro = new WakeUpIntro(player);
+  }
+
+  get openingCinematicActive() { return !!this.openingIntro && !this.openingIntro.done; }
+  getRestartState() { return { skipOpening: true }; }
+
+  async prepareCinematics(renderer, camera) {
+    if (this.skipOpening) return;
+    this.openingAssets = await OpeningCutscene.loadAssets();
   }
 
   _createLighting() {
@@ -594,6 +613,7 @@ export class Level1 {
   }
 
   _beginPlayerAbsorption(player) {
+    this.exitCheckpoint?.hide();
     player.scriptedMovement = true;
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.isDodging = false;
     this.allowsShooting = false;
@@ -650,6 +670,7 @@ export class Level1 {
   }
 
   getChallengeStatus() {
+    if (this.openingCinematicActive) return { title: '', detail: '', timer: '', progress: 0, tone: 'watch' };
     if (this.wakeUpIntro && !this.wakeUpIntro.done) return { title: 'Waking in the woods',
       detail: 'Find your feet. Your thesis is still out there.', timer: 'A strange dream begins',
       progress: this.wakeUpIntro.time / this.wakeUpIntro.duration, tone: 'watch' };
@@ -665,8 +686,20 @@ export class Level1 {
 
   /** Per-frame update, including audio-relevant story events. */
   update(dt, player, time) {
+    this.exitCheckpoint?.update(dt, player.alive && this.bluePortalUnlocked
+      && !this.portalCinematicActive && !this.levelComplete, this.portalApproachPoint);
     const events = { creditCollected: false, firstCreditCollected: false, finalCreditCollected: false, deanReveal: false,
       bossReached: false, portalActivated: false, portalEntry: false, levelComplete: false };
+    if (this.openingCinematicActive) {
+      this.openingIntro.update(dt);
+      if (this.openingIntro.done) {
+        this.openingIntro.dispose(); this.openingAssets = null;
+        this.forestRevealTime = 0;
+        this.wakeUpIntro = new WakeUpIntro(player);
+      }
+      return events;
+    }
+    this.forestRevealTime = Math.min(1, this.forestRevealTime + dt);
     if (this.nightSky) this.nightSky.update(player.group.position);
     if (this.atmosphere) this.atmosphere.update(dt);
     if (this.wakeUpIntro && !this.wakeUpIntro.done) {
@@ -793,6 +826,10 @@ export class Level1 {
 
   /** Clean up EVERYTHING this level created. Critical for LAMP memory. */
   dispose() {
+    this.exitCheckpoint?.dispose(); this.exitCheckpoint = null;
+    if (this.openingIntro && !this.openingIntro.disposed) {
+      this.openingIntro.dispose(); this.openingIntro.disposed = true;
+    }
     // Restore cloned vegetation materials before the woods release their originals.
     this.atmosphere?.dispose();
     this.atmosphere = null;

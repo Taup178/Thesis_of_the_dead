@@ -29,7 +29,7 @@ function musicNormalization(buffer) {
 
 /** The score shares the effects' audio clock, with smooth ducking and resumable loops. */
 export class Level2Music {
-  constructor(context) {
+  constructor(context, destination = context?.destination) {
     this.context = context;
     this.enabled = false; this.disposed = false; this.resuming = false;
     this.offset = 0; this.targetVolume = 0; this.voices = new Set();
@@ -45,7 +45,7 @@ export class Level2Music {
       this.presence.Q.value = 0.8; this.presence.gain.value = -2.5;
       this.output = context.createGain(); this.output.gain.value = 0;
       this.normalization.connect(this.presence); this.presence.connect(this.output);
-      this.output.connect(context.destination);
+      this.output.connect(destination);
     }
     this.ready = this._prepare().catch(error => {
       if (!this.disposed) console.warn('[Level 2 music] Could not prepare Fangs:', error);

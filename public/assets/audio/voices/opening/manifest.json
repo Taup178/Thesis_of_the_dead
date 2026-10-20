@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "clips": {
+    "opening_manipulator_01": {
+      "file": "manipulator/opening_manipulator_01.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.33
+    },
+    "opening_manipulator_02": {
+      "file": "manipulator/opening_manipulator_02.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.37
+    },
+    "opening_anxious_01": {
+      "file": "anxious/opening_anxious_01.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.82
+    },
+    "opening_anxious_02": {
+      "file": "anxious/opening_anxious_02.ogg",
+      "effectsBaked": true,
+      "speechDuration": 1.52
+    },
+    "opening_tormentor_01": {
+      "file": "tormentor/opening_tormentor_01.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.74
+    },
+    "opening_protector_01": {
+      "file": "protector/opening_protector_01.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.9
+    }
+  }
+}

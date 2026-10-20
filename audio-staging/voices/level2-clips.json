@@ -1,0 +1,450 @@
+{
+  "processing": "Higgsfield sandbox FFmpeg; stereo placement, dark cross-ear echoes, earwax stereo enhancement, limiting and edge fades",
+  "format": "48 kHz stereo Ogg Vorbis, quality 4",
+  "spatialNote": "Stereo headphone enhancement; not personalized measured binaural capture",
+  "alignment": "Authored cuts checked against offline ASR word timestamps and silence intervals",
+  "excluded": "Unsolicited fragment at 2.1-4.5 seconds in the manipulator master",
+  "listeningReview": "Subjective in-game headphone acceptance pending",
+  "clips": [
+    {
+      "id": "l2_tormentor_01",
+      "identity": "tormentor",
+      "text": "Even the ground won't commit to you.",
+      "file": "tormentor/l2_tormentor_01.ogg",
+      "duration": 2.86,
+      "speechDuration": 2.3000000000000003,
+      "masterStart": 0.38,
+      "masterEnd": 2.68,
+      "masterSha256": "e75208e039c6c25f8e22dc6a2425c75a8c00a3821b328da3697db086536217db",
+      "sha256": "2a46099157e5dca55c83dfd8176984fa8182346e7f5b259fddfc1dbe0b3077ea",
+      "profile": {
+        "pan": -0.5,
+        "delay": 0.28,
+        "wet": 0.2,
+        "decay": 0.28,
+        "cutoff": 1700
+      },
+      "packGain": 1.0749333661376963
+    },
+    {
+      "id": "l2_tormentor_02",
+      "identity": "tormentor",
+      "text": "There's always another demand.",
+      "file": "tormentor/l2_tormentor_02.ogg",
+      "duration": 2.59,
+      "speechDuration": 2.03,
+      "masterStart": 3.22,
+      "masterEnd": 5.25,
+      "masterSha256": "e75208e039c6c25f8e22dc6a2425c75a8c00a3821b328da3697db086536217db",
+      "sha256": "fb0dae2aa4cf31cfc23b80d1656a9ad9df6ed87b7ae9e67f48ae68c1c4ee1984",
+      "profile": {
+        "pan": -0.5,
+        "delay": 0.28,
+        "wet": 0.2,
+        "decay": 0.28,
+        "cutoff": 1700
+      },
+      "packGain": 1.0749333661376963
+    },
+    {
+      "id": "l2_tormentor_03",
+      "identity": "tormentor",
+      "text": "And he still won't wait for you.",
+      "file": "tormentor/l2_tormentor_03.ogg",
+      "duration": 2.61,
+      "speechDuration": 2.05,
+      "masterStart": 5.9,
+      "masterEnd": 7.95,
+      "masterSha256": "e75208e039c6c25f8e22dc6a2425c75a8c00a3821b328da3697db086536217db",
+      "sha256": "7192af6d95eaa3bd1c0756556992882ae4bb6568fbe7d611c972fd9830165652",
+      "profile": {
+        "pan": -0.5,
+        "delay": 0.28,
+        "wet": 0.2,
+        "decay": 0.28,
+        "cutoff": 1700
+      },
+      "packGain": 1.0749333661376963
+    },
+    {
+      "id": "l2_tormentor_04",
+      "identity": "tormentor",
+      "text": "Still trying to keep up?",
+      "file": "tormentor/l2_tormentor_04.ogg",
+      "duration": 2.03,
+      "speechDuration": 1.4700000000000006,
+      "masterStart": 11.85,
+      "masterEnd": 13.32,
+      "masterSha256": "e75208e039c6c25f8e22dc6a2425c75a8c00a3821b328da3697db086536217db",
+      "sha256": "af125dfe822d758fbaf98a6c0d285b628688ba1567f409e627423ddd83358a20",
+      "profile": {
+        "pan": -0.5,
+        "delay": 0.28,
+        "wet": 0.2,
+        "decay": 0.28,
+        "cutoff": 1700
+      },
+      "packGain": 1.0749333661376963
+    },
+    {
+      "id": "l2_anxious_01",
+      "identity": "anxious",
+      "text": "Past them. We're past them.",
+      "file": "anxious/l2_anxious_01.ogg",
+      "duration": 2.84,
+      "speechDuration": 2.5,
+      "masterStart": 0.0,
+      "masterEnd": 2.5,
+      "masterSha256": "13343051e67fe4ca5b7027c491141dde3621f700a92aed493fb554cc352d4065",
+      "sha256": "3b83b5678ea353b8d768419ff8c643c9fbf344a3bac7301fe24bab44e2e6aab5",
+      "profile": {
+        "pan": 0.55,
+        "delay": 0.17,
+        "wet": 0.13,
+        "decay": 0.25,
+        "cutoff": 2100
+      },
+      "packGain": 0.9241610786088122
+    },
+    {
+      "id": "l2_anxious_02",
+      "identity": "anxious",
+      "text": "The floor keeps moving. Even here.",
+      "file": "anxious/l2_anxious_02.ogg",
+      "duration": 3.3,
+      "speechDuration": 2.96,
+      "masterStart": 4.24,
+      "masterEnd": 7.2,
+      "masterSha256": "13343051e67fe4ca5b7027c491141dde3621f700a92aed493fb554cc352d4065",
+      "sha256": "75b7efcc1a69a7e6676fb49d919f0f3ecfd1196c40ff441c386989f81b893495",
+      "profile": {
+        "pan": 0.55,
+        "delay": 0.17,
+        "wet": 0.13,
+        "decay": 0.25,
+        "cutoff": 2100
+      },
+      "packGain": 0.9241610786088122
+    },
+    {
+      "id": "l2_anxious_03",
+      "identity": "anxious",
+      "text": "They're climbing out!",
+      "file": "anxious/l2_anxious_03.ogg",
+      "duration": 1.71,
+      "speechDuration": 1.3699999999999992,
+      "masterStart": 8.17,
+      "masterEnd": 9.54,
+      "masterSha256": "13343051e67fe4ca5b7027c491141dde3621f700a92aed493fb554cc352d4065",
+      "sha256": "aa2dd325a802f7af8eb7904873b01aa9838674b9d962fad88d1994e8c403bd84",
+      "profile": {
+        "pan": 0.55,
+        "delay": 0.17,
+        "wet": 0.13,
+        "decay": 0.25,
+        "cutoff": 2100
+      },
+      "packGain": 0.9241610786088122
+    },
+    {
+      "id": "l2_anxious_04",
+      "identity": "anxious",
+      "text": "Nothing else is climbing.",
+      "file": "anxious/l2_anxious_04.ogg",
+      "duration": 1.99,
+      "speechDuration": 1.6500000000000004,
+      "masterStart": 10.2,
+      "masterEnd": 11.85,
+      "masterSha256": "13343051e67fe4ca5b7027c491141dde3621f700a92aed493fb554cc352d4065",
+      "sha256": "2de33e9b07b2b7d8a2358ff1aa3754cd34f5e6dceac9a3167fa12fb0981fc8fa",
+      "profile": {
+        "pan": 0.55,
+        "delay": 0.17,
+        "wet": 0.13,
+        "decay": 0.25,
+        "cutoff": 2100
+      },
+      "packGain": 0.9241610786088122
+    },
+    {
+      "id": "l2_manipulator_01",
+      "identity": "manipulator",
+      "text": "I did say perhaps.",
+      "file": "manipulator/l2_manipulator_01.ogg",
+      "duration": 2.42,
+      "speechDuration": 1.74,
+      "masterStart": 0.3,
+      "masterEnd": 2.04,
+      "masterSha256": "9454743d359a3abea0109e056e7ea6a85835c722ef855f08b1f1afe83d790e2c",
+      "sha256": "af16b67319fa6e91d71050688a694a5b4fd9210d9a2707f71b306cf326e961e9",
+      "profile": {
+        "pan": 0.25,
+        "delay": 0.34,
+        "wet": 0.23,
+        "decay": 0.3,
+        "cutoff": 1400
+      },
+      "packGain": 0.9988413551119737
+    },
+    {
+      "id": "l2_manipulator_02",
+      "identity": "manipulator",
+      "text": "You don't have to prove anything to him.",
+      "file": "manipulator/l2_manipulator_02.ogg",
+      "duration": 3.52,
+      "speechDuration": 2.84,
+      "masterStart": 4.53,
+      "masterEnd": 7.37,
+      "masterSha256": "9454743d359a3abea0109e056e7ea6a85835c722ef855f08b1f1afe83d790e2c",
+      "sha256": "3912adfb794f7a6c8765798f3635e7cca9f335141d06477184b1f787834f9d98",
+      "profile": {
+        "pan": 0.25,
+        "delay": 0.34,
+        "wet": 0.23,
+        "decay": 0.3,
+        "cutoff": 1400
+      },
+      "packGain": 0.9988413551119737
+    },
+    {
+      "id": "l2_manipulator_03",
+      "identity": "manipulator",
+      "text": "They call it progress. It still feels like a chase.",
+      "file": "manipulator/l2_manipulator_03.ogg",
+      "duration": 5.03,
+      "speechDuration": 4.35,
+      "masterStart": 8.15,
+      "masterEnd": 12.5,
+      "masterSha256": "9454743d359a3abea0109e056e7ea6a85835c722ef855f08b1f1afe83d790e2c",
+      "sha256": "57b9df1957f6ebec8b7e77f9fe3f3836c3e8240797eb4c497c45ff528782b3dc",
+      "profile": {
+        "pan": 0.25,
+        "delay": 0.34,
+        "wet": 0.23,
+        "decay": 0.3,
+        "cutoff": 1400
+      },
+      "packGain": 0.9988413551119737
+    },
+    {
+      "id": "l2_protector_01",
+      "identity": "protector",
+      "text": "His pace isn't yours. Watch the sweep.",
+      "file": "protector/l2_protector_01.ogg",
+      "duration": 3.47,
+      "speechDuration": 2.9899999999999998,
+      "masterStart": 0.16,
+      "masterEnd": 3.15,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "ac3cd0c5b730d52d8f101db4d0242c44a09394158a2af982dfa28144954bde04",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_02",
+      "identity": "protector",
+      "text": "Let your eyes settle before your feet move.",
+      "file": "protector/l2_protector_02.ogg",
+      "duration": 3.23,
+      "speechDuration": 2.75,
+      "masterStart": 3.8,
+      "masterEnd": 6.55,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "84fc85f96ed68f84cb28991b5cca0f558a2291bcc694cd448b28edc0ecb16dd9",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_03",
+      "identity": "protector",
+      "text": "Solid ground. Look ahead before you leave it.",
+      "file": "protector/l2_protector_03.ogg",
+      "duration": 4.63,
+      "speechDuration": 4.1499999999999995,
+      "masterStart": 7.45,
+      "masterEnd": 11.6,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "568076aea621474ea07e81dcca5cb74eb43f91698735b2cc453dad073e533fb0",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_04",
+      "identity": "protector",
+      "text": "You're hurt. Give yourself a breath.",
+      "file": "protector/l2_protector_04.ogg",
+      "duration": 3.26,
+      "speechDuration": 2.7799999999999994,
+      "masterStart": 12.3,
+      "masterEnd": 15.08,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "54e15756d65f44e1cbdf9a814343ca1e43c47077c3ec5ecedcfcefda2e7a26df",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_05",
+      "identity": "protector",
+      "text": "Stay with me, Shaun. Just this moment.",
+      "file": "protector/l2_protector_05.ogg",
+      "duration": 3.92,
+      "speechDuration": 3.4399999999999977,
+      "masterStart": 16.12,
+      "masterEnd": 19.56,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "1586a80e8045f62f850ee013f9222466bb7599b03a255660e25650c0aec477bd",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_06",
+      "identity": "protector",
+      "text": "You held your ground.",
+      "file": "protector/l2_protector_06.ogg",
+      "duration": 1.98,
+      "speechDuration": 1.5,
+      "masterStart": 20.0,
+      "masterEnd": 21.5,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "d3ff0aa55c26ac07c941b6a70055ba12c9411f10bcf0e2bfc46b4ba0758e7e98",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_07",
+      "identity": "protector",
+      "text": "Then do this for yourself.",
+      "file": "protector/l2_protector_07.ogg",
+      "duration": 2.21,
+      "speechDuration": 1.7300000000000004,
+      "masterStart": 22.29,
+      "masterEnd": 24.02,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "bf3ba34784012fa57819e0cdd836435dcae89cb14e69c1e5b32c88f36cb6ae54",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_08",
+      "identity": "protector",
+      "text": "One step back. Meet him at the entrance.",
+      "file": "protector/l2_protector_08.ogg",
+      "duration": 3.94,
+      "speechDuration": 3.4599999999999973,
+      "masterStart": 24.62,
+      "masterEnd": 28.08,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "29a0b317a0da3529e412df6e53057c07eab90f4c67ef535623cf409088c702dd",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_09",
+      "identity": "protector",
+      "text": "Fresh eyes.",
+      "file": "protector/l2_protector_09.ogg",
+      "duration": 1.62,
+      "speechDuration": 1.1400000000000006,
+      "masterStart": 28.52,
+      "masterEnd": 29.66,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "1a1376651281ea256f5a6ac24641fe6663864d38b1eb21de57b46b006910625c",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_10",
+      "identity": "protector",
+      "text": "You remembered. That was yours.",
+      "file": "protector/l2_protector_10.ogg",
+      "duration": 3.28,
+      "speechDuration": 2.799999999999997,
+      "masterStart": 30.61,
+      "masterEnd": 33.41,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "542b8f41a3b8135d960f34091a44852f459f54359b5deebc9dc3fbce37ef3c80",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    },
+    {
+      "id": "l2_protector_11",
+      "identity": "protector",
+      "text": "You can begin again without rushing.",
+      "file": "protector/l2_protector_11.ogg",
+      "duration": 2.6,
+      "speechDuration": 2.1199999999999974,
+      "masterStart": 34.28,
+      "masterEnd": 36.4,
+      "masterSha256": "d7f058df83e3a650a9227f6948f2a699f0c52ce9f0838f7be9a25b93d6221860",
+      "sha256": "75b8e048d72ee5b90e4f329e757f086baedb7314246d217f8c410d85246a4e3b",
+      "profile": {
+        "pan": 0.05,
+        "delay": 0.24,
+        "wet": 0.06,
+        "decay": 0.2,
+        "cutoff": 2300
+      },
+      "packGain": 1.5142329020332719
+    }
+  ]
+}

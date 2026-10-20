@@ -1,6 +1,7 @@
 import { Level1 } from './Level1.js';
 import { Level2 } from './Level2.js';
 import { Level3 } from './Level3.js';
+import { LevelProgress } from '../core/LevelProgress.js';
 
 /**
  * LevelManager - Orchestrates level transitions with proper asset disposal.
@@ -12,6 +13,7 @@ export class LevelManager {
     this.currentLevel = null;
     this.currentLevelIndex = 0;
     this.totalLevels = 3;
+    this.progress = new LevelProgress();
   }
 
   /** Returns the level class for a given index. */
@@ -47,6 +49,7 @@ export class LevelManager {
 
     this.currentLevel = level;
     this.currentLevelIndex = index;
+    this.progress.reach(index);
     return level;
   }
 

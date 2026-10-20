@@ -61,7 +61,7 @@ test('Level 2 pit death uses shared fatal damage once, even during a roll', () =
   const player = makePlayer({ isDodging: true });
   let damageCalls = 0;
   const takeDamage = player.takeDamage.bind(player);
-  player.takeDamage = amount => { damageCalls++; return takeDamage(amount); };
+  player.takeDamage = (...args) => { damageCalls++; return takeDamage(...args); };
 
   Level2.prototype.update.call(level, 1 / 60, player);
   Level2.prototype.update.call(level, 1 / 60, player);
@@ -71,6 +71,9 @@ test('Level 2 pit death uses shared fatal damage once, even during a roll', () =
   assert.equal(player.alive, false);
   assert.equal(player.isDodging, false, 'pit lethality overrides dodge immunity');
   assert.equal(level.phase, 'failed');
+  assert.equal(player.deathSequence.type, 'pit');
+  assert.equal(player.deathSequence.floorY, level.spikeTipY);
+  assert.ok(player.deathSequence.cameraEnd.y < 0, 'the death camera stays in the pit');
   assert.equal(calls.filter(([kind, path]) => kind === 'sfx' && /shaun-death/.test(path)).length, 1);
 }));
 

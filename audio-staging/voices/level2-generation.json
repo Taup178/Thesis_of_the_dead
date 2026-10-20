@@ -1,0 +1,76 @@
+{
+  "level": 2,
+  "quotedCredits": 5.1,
+  "model": "seed_audio",
+  "processing": "Higgsfield sandbox: baked quiet cross-ear filtered repetitions; no runtime double echo",
+  "packs": [
+    {
+      "identity": "tormentor",
+      "voiceName": "Ainsley",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Even the ground won't commit to you.\n\nThere's always another demand.\n\nAnd he still won't wait for you.\n\nStill trying to keep up?",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 0,
+      "job_id": "b3452048-b3b8-444d-a20d-4c32c083fb21",
+      "status": "pending"
+    },
+    {
+      "identity": "anxious",
+      "voiceName": "Brielle",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Past them. We're past them.\n\nThe floor keeps moving. Even here.\n\nThey're climbing out!\n\nNothing else is climbing.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 1,
+      "job_id": "7ef238bb-7e81-42a7-bb0d-4570ba962bcb",
+      "status": "pending"
+    },
+    {
+      "identity": "manipulator",
+      "voiceName": "Faye",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "I did say perhaps.\n\nYou don't have to prove anything to him.\n\nThey call it progress. It still feels like a chase.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 2,
+      "job_id": "35ae2fd8-9a69-405d-ba9b-5f67735a7c39",
+      "status": "pending"
+    },
+    {
+      "identity": "protector",
+      "voiceName": "Delia",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "His pace isn't yours. Watch the sweep.\n\nLet your eyes settle before your feet move.\n\nSolid ground. Look ahead before you leave it.\n\nYou're hurt. Give yourself a breath.\n\nStay with me, Shaun. Just this moment.\n\nYou held your ground.\n\nThen do this for yourself.\n\nOne step back. Meet him at the entrance.\n\nFresh eyes.\n\nYou remembered. That was yours.\n\nYou can begin again without rushing.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 3,
+      "job_id": "4c0fcb41-d61a-49bd-9bfb-28bf9bdafc6b",
+      "status": "pending"
+    }
+  ]
+}

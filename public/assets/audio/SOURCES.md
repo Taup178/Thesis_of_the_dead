@@ -1,4 +1,21 @@
-# Level 1 internal voices
+# Psychological internal voices
+
+## Level 2 internal voices
+
+`voices/level2/` contains 22 new original Seed Audio lines with the same four
+female preset IDs. Four packs cost 5.1 credits; no retakes were purchased.
+Higgsfield's media sandbox baked stereo placement, filtered fading repetitions,
+headphone stereo enhancement and edge fades into each Ogg Vorbis game asset.
+The game preserves the baked stereo and avoids adding its runtime echo again.
+
+Original 48 kHz WAV packs remain locally under `audio-staging/voices/masters/level2/`.
+Generation settings/jobs and preparation hashes, timing and processing profiles
+are in `audio-staging/voices/level2-results.json` and `level2-clips.json`.
+`scripts/prepare-level2-voices.py` reproduces processing without generation.
+This is original dialogue and processing; no Hellblade recordings or performer
+references were supplied. Subjective in-game listening approval is pending.
+
+## Level 1 source details
 
 `voices/level1/` contains 22 original dialogue clips generated through Higgsfield
 Seed Audio with the user's explicit approval. Recurring female preset identities:
@@ -10,7 +27,8 @@ Four packs cost 5.5 credits total. Unaltered 48 kHz WAV masters remain local und
 Generation jobs/settings and preparation hashes/split positions are recorded in
 `audio-staging/voices/level1-results.json` and `level1-clips.json`.
 The scripts are in `src/audio/level1VoiceCatalog.js`; the chapter manifest maps
-their IDs to actual files. No Level 2 or Level 3 recordings were generated.
+their IDs to actual files. Level 2 additions are documented above; no Level 3
+recordings were generated.
 
 # Dean laugh
 
@@ -165,3 +183,9 @@ the score under saws, breaking tiles, combat, and low-health feedback, then reco
 gradually. Master Volume applies to both music and effects. Pausing or hiding the
 tab fades the score out, preserves its position, and fades it back in on resume.
 Unloading the level releases playback and its audio resources.
+# Level 1 orb and boss additions
+
+Opening cinematic: six original lines generated with Higgsfield Seed Audio using the established Faye, Brielle, Ainsley and Delia preset identities. Provenance, hashes and mastering levels: `audio-staging/voices/opening-results.json`. Served as stereo 48 kHz Ogg Vorbis with baked filtered cross-ear repetitions and balanced loudness. Original WAV masters remain local. No Hellblade recordings or identifiable performances were copied.
+
+Six original lines generated with Higgsfield Seed Audio using the same established female preset identities. Provenance and hashes: `audio-staging/voices/level1-orbs-results.json`. Editable WAV masters are retained locally. Stereo Ogg exports include filtered fading cross-ear echoes, earwax processing, loudness mastering and fades; no source recordings or performances from Hellblade are used.
+

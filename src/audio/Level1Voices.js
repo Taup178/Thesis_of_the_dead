@@ -1,32 +1,45 @@
 import { LEVEL1_VOICE_CUES } from './level1VoiceCatalog.js';
+import { OPENING_VOICE_CUES } from './openingVoiceCatalog.js';
 
-const CUES = new Map(LEVEL1_VOICE_CUES.map(cue => [cue.id, cue]));
 const MANIFEST_URL = './assets/audio/voices/level1/manifest.json';
 
 /** Only explicitly registered chapter recordings can be requested. No guessed asset URLs. */
 export async function loadLevel1VoiceAssets() {
+  const [chapter, opening] = await Promise.all([
+    loadVoiceAssets(MANIFEST_URL, LEVEL1_VOICE_CUES),
+    loadVoiceAssets('./assets/audio/voices/opening/manifest.json', OPENING_VOICE_CUES),
+  ]);
+  return { ...chapter, ...opening };
+}
+
+export async function loadVoiceAssets(manifestUrl, catalog) {
   try {
-    const base = new URL(MANIFEST_URL, globalThis.location.href);
+    const base = new URL(manifestUrl, globalThis.location.href);
     const response = await fetch(base);
     if (!response.ok) return {};
     const manifest = await response.json();
     if (manifest.version !== 1) return {};
-    const known = new Set(LEVEL1_VOICE_CUES.flatMap(cue => cue.lines.map(line => line.id)));
+    const known = new Set(catalog.flatMap(cue => cue.lines.map(line => line.id)));
     const assets = {};
-    for (const [id, file] of Object.entries(manifest.clips || {})) {
+    for (const [id, entry] of Object.entries(manifest.clips || {})) {
+      const file = typeof entry === 'string' ? entry : entry?.file;
       if (!known.has(id) || typeof file !== 'string') continue;
       const url = new URL(file, base);
       if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname.slice(0, base.pathname.lastIndexOf('/') + 1))) continue;
-      assets[id] = url.href;
+      assets[id] = typeof entry === 'string' ? url.href : {
+        url: url.href, effectsBaked: entry.effectsBaked === true,
+        speechDuration: Number.isFinite(entry.speechDuration) ? entry.speechDuration : undefined,
+      };
     }
     return assets;
   } catch { return {}; }
 }
 
 export class Level1Voices {
-  constructor(playback, { assets = {}, onCaptions = () => {} } = {}) {
+  constructor(playback, { assets = {}, onCaptions = () => {}, catalog = LEVEL1_VOICE_CUES } = {}) {
     this.playback = playback;
     this.assets = assets;
+    this.cues = new Map(catalog.map(cue => [cue.id, cue]));
     this.onCaptions = onCaptions;
     this.clock = 0;
     this.heard = new Set();
@@ -38,6 +51,7 @@ export class Level1Voices {
     this.captions = new Map();
     this.running = null;
     this.pending = null;
+    this.storyQueue = [];
     this.level = null;
   }
 
@@ -56,6 +70,7 @@ export class Level1Voices {
   cancel() {
     this.epoch++;
     this.pending = null;
+    this.storyQueue = [];
     this.running = null;
     this.playback.stop();
     this.captions.clear(); this._showCaptions();
@@ -75,19 +90,34 @@ export class Level1Voices {
     this.idle = 0; this.hits = []; this.injuryReadyAt = 0;
     this.wakeSeen = false; this.wakeAt = null; this.firstPairPending = false;
     this.lastIdentity = null; this.identityRun = 0;
+    this.openingCueIndex = 0;
     // Empty manifests do no preloading and never start subtitle-only phantom speech.
     for (const url of new Set(Object.values(this.assets))) this.playback.load(url);
   }
 
-  _offer(id, { delay = 0, ttl = 5, valid = () => true } = {}) {
-    const cue = CUES.get(id);
+  _offer(id, { delay = 0, ttl = 5, valid = () => true, continueWhile, replay = false } = {}) {
+    const cue = this.cues.get(id);
     if (!cue) return;
-    const available = cue.lines.filter(line => this.assets[line.id] && !this.heard.has(line.id));
+    const available = cue.lines.filter(line => this.assets[line.id] && (replay || !this.heard.has(line.id)));
     const lines = cue.alternatives ? available.slice(0, 1) : available;
     if (!lines.length || (!cue.alternatives && lines.length !== cue.lines.length)) return;
     if (this.running?.cue.id === id || this.pending?.cue.id === id) return;
     if (this.pending && this.pending.cue.priority > cue.priority) return;
-    this.pending = { cue, lines, at: this.clock + delay, expires: this.clock + delay + ttl, valid };
+    const level = this.level;
+    this.pending = { cue, lines, at: this.clock + delay, expires: this.clock + delay + ttl, valid,
+      continueWhile: continueWhile || (() => this.level === level && this.player.alive) };
+  }
+
+  _queueStory(id, front = false, { trackHistory = true } = {}) {
+    const cue = this.cues.get(id);
+    if (!cue || !cue.lines.every(line => this.assets[line.id])) return;
+    const level = this.level;
+    const valid = () => this.level === level && this.player.alive;
+    const entry = { cue, lines: cue.lines, at: this.clock, expires: Infinity,
+      valid, continueWhile: valid, mandatory: true, trackHistory };
+    if (front) this.storyQueue.unshift(entry);
+    else this.storyQueue.push(entry);
+    this.pending = null;
   }
 
   update(dt, level, player, { active = true, blocked = false, events = {} } = {}) {
@@ -105,6 +135,18 @@ export class Level1Voices {
     this.clock += Math.max(0, Math.min(0.15, dt));
     if (this.wasBlocked) { this.readyAt = Math.max(this.readyAt, this.clock + 3); this.wasBlocked = false; }
     const now = this.clock, last = this.last, position = player.group.position;
+    if (level.openingCinematicActive) {
+      const opening = level.openingIntro;
+      if (!opening.skipped) {
+        while (this.openingCueIndex < OPENING_VOICE_CUES.length && OPENING_VOICE_CUES[this.openingCueIndex].at <= opening.time) {
+          const cue = OPENING_VOICE_CUES[this.openingCueIndex++];
+          this._queueStory(cue.id, false, { trackHistory: false });
+        }
+        this._advance();
+      }
+      opening.dialoguePending = !!this.running || this.storyQueue.length > 0;
+      return;
+    }
     const enemies = (level.zombies || []).filter(z => z.alive && z.group.visible && !z.portalExit);
     const nearest = enemies.reduce((d, z) => Math.min(d, Math.hypot(z.group.position.x - position.x, z.group.position.z - position.z)), Infinity);
     const quiet = nearest > 10;
@@ -117,15 +159,18 @@ export class Level1Voices {
     this.idle = !moving && quiet && normal() && !intro ? this.idle + dt : 0;
 
     if (events.firstCreditCollected) this.firstPairPending = true;
+    for (let collected = last.credits + 1; collected <= level.creditsCollected; collected++) {
+      this._queueStory(`orb_${collected}`);
+    }
+    if (events.deanReveal || (boss && !last.boss)) this._queueStory('boss_portal', true);
     if (intro || orb || level.portalCinematicActive) {
-      if (this.running || this.pending) this.cancel();
+      // Camera changes must not cut an audible sentence or erase pickup responses.
+      this.pending = null;
     } else {
       if (!this.wakeSeen) {
         this.wakeSeen = true; this.wakeAt = now;
         this._offer(this.deaths >= 2 ? 'repeat_retry' : this.deaths === 1 ? 'retry' : 'wake', { delay: 1.5, ttl: 5, valid: normal });
       }
-      if (boss && !last.boss && (this.running || this.pending)) this.cancel();
-      if (events.deanReveal) this._offer('dean_reveal', { delay: 0.8, ttl: 4, valid: () => !!level.bossCutscene });
       if (!boss) {
         if (this.firstPairPending && last.orb) {
           this.firstPairPending = false;
@@ -133,10 +178,6 @@ export class Level1Voices {
         }
         if (level.creditsCollected === 0 && now - this.wakeAt > 14) this._offer('first_doubt', { valid: safe });
         const count = level.creditsCollected;
-        if (count !== last.credits && count !== 8) {
-          const cue = { 2: 'credit_cost', 4: 'progress', 6: 'late_doubt' }[count];
-          if (cue) this._offer(cue, { delay: 1, ttl: 8, valid: safe });
-        }
         if (count >= 2 && this.idle >= 25) this._offer('rest_exchange', { ttl: 2, valid: () => safe() && this.idle >= 25 });
         if (nearest <= 6 && (this.previousNearest ?? Infinity) > 6) this._offer('near_threat', { ttl: 1, valid: () => normal() && this.nearest <= 6 });
 
@@ -172,7 +213,7 @@ export class Level1Voices {
   _advance() {
     if (this.running) {
       const run = this.running;
-      if (!run.valid()) { this.cancel(); return; }
+      if (!run.continueWhile()) { this.cancel(); return; }
       const next = run.lines[run.index];
       const audioNow = this.playback.audio?.context?.currentTime ?? this.clock;
       if (!run.loading && next && audioNow >= run.nextAt) this._playLine(run, next);
@@ -181,12 +222,12 @@ export class Level1Voices {
       }
       return;
     }
+    if (this.storyQueue.length) this.pending = this.storyQueue.shift();
     const pending = this.pending;
     if (!pending) return;
     if (pending.expires < this.clock || !pending.valid()) { this.pending = null; return; }
     this.recent = this.recent.filter(t => this.clock - t < 60);
-    if (this.clock < pending.at || this.clock < this.readyAt || this.recent.length >= 3) return;
-    if (pending.lines[0].identity === this.lastIdentity && this.identityRun >= 2) { this.pending = null; return; }
+    if (this.clock < pending.at || (!pending.mandatory && (this.clock < this.readyAt || this.recent.length >= 3))) return;
     this.pending = null;
     this.running = { ...pending, index: 0, nextAt: this.clock, handles: new Set(), loading: false, started: false };
     this._playLine(this.running, pending.lines[0]);
@@ -197,7 +238,7 @@ export class Level1Voices {
     run.loading = true;
     const handle = await this.playback.play(this.assets[line.id], {
       pan: line.pan, volume: run.cue.overlap ? 0.7 : 1, identity: line.identity,
-      isCurrent: () => this.epoch === epoch && this.running === run && run.valid(),
+      isCurrent: () => this.epoch === epoch && this.running === run && run.continueWhile(),
       onStart: playing => {
         if (!run.started) {
           run.started = true; this.recent.push(this.clock);
@@ -205,7 +246,8 @@ export class Level1Voices {
           else { this.lastIdentity = line.identity; this.identityRun = 1; }
           if (['hurt', 'repeated_hurt', 'low_health'].includes(run.cue.id)) this.injuryReadyAt = this.clock + 35;
         }
-        this.heard.add(line.id); run.handles.add(playing);
+        if (run.trackHistory !== false) this.heard.add(line.id);
+        run.handles.add(playing);
         this.captions.set(playing, { identity: line.identity, label: line.label, text: line.text }); this._showCaptions();
         run.index++;
         run.nextAt = (this.playback.audio?.context?.currentTime ?? this.clock) + Math.max(0, playing.duration - run.cue.overlap);

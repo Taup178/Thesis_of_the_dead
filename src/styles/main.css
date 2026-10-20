@@ -51,6 +51,8 @@ html, body {
   cursor: none;
 }
 
+#game-container.loading canvas { visibility: hidden; }
+
 /* ---- Overlays (menus, pause, gameover) ---- */
 .overlay {
   position: fixed;
@@ -168,6 +170,16 @@ html, body {
 }
 .menu-container .menu-btn::after { content: '\2192'; opacity: 0; font-family: Georgia, serif; }
 .menu-container .menu-btn:is(:first-of-type, :hover, :focus-visible, .gamepad-focus)::after { opacity: 0.8; }
+.level-select-hint { margin: -8px 0 24px; color: #b99f7e; font: 15px / 1.6 Georgia, serif; }
+.level-select-buttons { margin-bottom: 20px; }
+.level-select-btn { gap: 12px; flex-wrap: wrap; }
+.level-select-btn small { color: #b99f7e; font: 12px / 1.5 Georgia, serif; text-transform: none; letter-spacing: 0; }
+.level-select-btn::after { display: none; }
+.menu-btn:disabled, .menu-btn:disabled:hover {
+  color: #897763; border-color: rgba(137, 119, 99, 0.15);
+  background: rgba(0, 0, 0, 0.12); cursor: not-allowed;
+}
+.menu-btn:disabled small { color: #897763; }
 .pause-subtitle {
   margin: -8px 0 28px;
   font: italic 16px / 1.6 Georgia, serif;
@@ -464,6 +476,11 @@ html, body {
 }
 
 /* ---- Loading ---- */
+#loading-overlay {
+  background: #0c0704;
+  backdrop-filter: none;
+}
+
 .progress-bar-container {
   width: 100%;
   height: 8px;
@@ -854,7 +871,7 @@ html, body {
 
 #voice-subtitles {
   position: fixed;
-  z-index: 25;
+  z-index: 75;
   bottom: max(13vh, 85px);
   left: 50%;
   transform: translateX(-50%);
@@ -867,6 +884,18 @@ html, body {
   text-shadow: 0 2px 4px #000;
 }
 
+#opening-presentation { position: fixed; inset: 0; z-index: 74; visibility: hidden; pointer-events: none; }
+#opening-presentation.active { visibility: visible; }
+#opening-card { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; padding: 32px; text-align: center;
+  color: #d0d2d0; font-family: Georgia, serif; font-size: clamp(19px, 2.1vw, 28px); line-height: 1.8;
+  letter-spacing: 0.045em; font-weight: normal; }
+#skip-opening { position: absolute; right: max(24px, env(safe-area-inset-right)); bottom: 28px; pointer-events: auto;
+  border: 1px solid #ffffff30; background: #080909cc; border-radius: 2px; padding: 10px 14px; color: #d4d6d3;
+  font: 12px system-ui, sans-serif; letter-spacing: 0.04em; cursor: pointer; }
+#skip-opening span { margin-left: 12px; color: #929791; }
+#skip-opening:hover, #skip-opening:focus-visible { border-color: #bfc9bf; outline: 1px solid #bfc9bf; }
+.opening-hidden { visibility: hidden !important; }
+
 #voice-subtitles p {
   margin: 5px 0;
   padding: 7px 12px;
@@ -874,4 +903,3 @@ html, body {
   border-radius: 4px;
 }
 
-#voice-subtitles strong { color: #ddc8a2; }

@@ -59,7 +59,7 @@ export function createSeamlessScrapeBuffer(context, buffer) {
 
 /** A sample-accurate loop; gain ramps run on the audio clock, independently of frames. */
 export class SawScrapeAudio {
-  constructor(context = null) {
+  constructor(context = null, destination = context?.destination) {
     const AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
     this.context = context || (AudioContext ? new AudioContext() : null);
     this.ownsContext = !context;
@@ -76,7 +76,7 @@ export class SawScrapeAudio {
     if (this.context) {
       this.output = this.context.createGain();
       this.output.gain.value = 0;
-      this.output.connect(this.context.destination);
+      this.output.connect(destination || this.context.destination);
     }
     this.ready = this._prepare().catch(error => {
       if (!this.disposed) console.warn('[Saw audio] Could not prepare the scrape loop:', error);

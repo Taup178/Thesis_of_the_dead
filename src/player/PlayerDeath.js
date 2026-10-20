@@ -13,7 +13,10 @@ export class PlayerDeath {
     this.bodyPosition = player.bodyMesh.position.clone();
     this.bodyRotation = player.bodyMesh.quaternion.clone();
     this.origin = player.group.position.clone();
-    this.floorY = Number.isFinite(player.cameraGroundY) ? player.cameraGroundY : (player.platformSupport?.y ?? 0);
+    // Fatal hazards can be below the last walkable deck (the Level 2 pit).
+    // Use their contact surface for the body, equipment, blood and camera alike.
+    this.floorY = Number.isFinite(impact.floorY) ? impact.floorY
+      : Number.isFinite(player.cameraGroundY) ? player.cameraGroundY : (player.platformSupport?.y ?? 0);
     this.direction = impact.direction?.clone() || new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
     this.direction.y = 0;
     if (this.direction.lengthSq() < 0.001) this.direction.set(0, 0, 1);

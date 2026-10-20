@@ -1,0 +1,253 @@
+{
+  "quotedCredits": 1.4,
+  "packs": [
+    {
+      "identity": "manipulator",
+      "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+      "lines": [
+        {
+          "id": "opening_manipulator_01",
+          "text": "You have to reach it. Before he does."
+        },
+        {
+          "id": "opening_manipulator_02",
+          "text": "Stay here, and it all slips away."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "You have to reach it. Before he does.\n\nStay here, and it all slips away.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 0,
+      "job_id": "f84b999d-116f-4273-befd-c7f1957dba9c",
+      "status": "completed",
+      "type": "audio",
+      "model": "seed_audio",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_165534_f84b999d-116f-4273-befd-c7f1957dba9c.wav"
+    },
+    {
+      "identity": "anxious",
+      "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+      "lines": [
+        {
+          "id": "opening_anxious_01",
+          "text": "He's leaving. Shaun, don't let him get away."
+        },
+        {
+          "id": "opening_anxious_02",
+          "text": "Go. Now."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "He's leaving. Shaun, don't let him get away.\n\nGo. Now.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 1,
+      "job_id": "6a80914f-e688-4c54-a71f-17c273b40191",
+      "status": "completed",
+      "type": "audio",
+      "model": "seed_audio",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_165534_6a80914f-e688-4c54-a71f-17c273b40191.wav"
+    },
+    {
+      "identity": "tormentor",
+      "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+      "lines": [
+        {
+          "id": "opening_tormentor_01",
+          "text": "This is your last chance. Do you understand?"
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "This is your last chance. Do you understand?",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 2,
+      "job_id": "1e85abe0-b7fb-4e7f-832d-cd9d678466dc",
+      "status": "completed",
+      "type": "audio",
+      "model": "seed_audio",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_165534_1e85abe0-b7fb-4e7f-832d-cd9d678466dc.wav"
+    },
+    {
+      "identity": "protector",
+      "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+      "lines": [
+        {
+          "id": "opening_protector_01",
+          "text": "Shaun. Listen to me. Get up."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. Listen to me. Get up.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 3,
+      "job_id": "f4a01dd9-9c08-4e08-9f4c-2a3dcd37bc90",
+      "status": "completed",
+      "type": "audio",
+      "model": "seed_audio",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/hf_20261020_165534_f4a01dd9-9c08-4e08-9f4c-2a3dcd37bc90.wav"
+    }
+  ],
+  "status": "completed",
+  "chargedCredits": 1.4,
+  "balanceAfter": 86.1,
+  "processing": "Original approved voices; edited long silent gaps; stereo placement; dark fading cross-ear repetitions; earwax; -18 LUFS / -3 dBTP mastering; edge fades",
+  "alignment": "Offline tiny.en word timestamps plus FFmpeg silence detection",
+  "listeningReview": "In-game subjective headphone acceptance remains with the user",
+  "clips": [
+    {
+      "id": "opening_manipulator_01",
+      "identity": "manipulator",
+      "text": "You have to reach it. Before he does.",
+      "sourceRanges": [
+        [
+          0.35,
+          1.9
+        ],
+        [
+          3.34,
+          5.12
+        ]
+      ],
+      "speechDuration": 3.33,
+      "fileDuration": 4.01,
+      "sha256": "ee33940dd75ad82a596b2e1e9c89256be1156b5c3d3390c0331a34e74232f2ec",
+      "masterSha256": "7850f51ad4235305b901d420345c8360676c09d00434cda11aa9e8a22ead3fcf",
+      "shortClipGain": 1,
+      "meanDb": -21.8,
+      "peakDb": -3.5
+    },
+    {
+      "id": "opening_manipulator_02",
+      "identity": "manipulator",
+      "text": "Stay here, and it all slips away.",
+      "sourceRanges": [
+        [
+          5.88,
+          7.03
+        ],
+        [
+          7.6,
+          9.82
+        ]
+      ],
+      "speechDuration": 3.37,
+      "fileDuration": 4.05,
+      "sha256": "c1a9d4c3222aa7adfb6c572e6250ffb0795ac3a647b0e8d0de25351f8b5e10cf",
+      "masterSha256": "7850f51ad4235305b901d420345c8360676c09d00434cda11aa9e8a22ead3fcf",
+      "shortClipGain": 1,
+      "meanDb": -22.3,
+      "peakDb": -3.1
+    },
+    {
+      "id": "opening_anxious_01",
+      "identity": "anxious",
+      "text": "He's leaving. Shaun, don't let him get away.",
+      "sourceRanges": [
+        [
+          0.38,
+          1.43
+        ],
+        [
+          1.81,
+          3.58
+        ]
+      ],
+      "speechDuration": 2.82,
+      "fileDuration": 3.16,
+      "sha256": "ae313a6ba79ace1165b3e2c8249636c0149f9c578b391684944e8244e898c640",
+      "masterSha256": "78aa4f24061f95145dffa4c69e75dc1a3c34935874a761ab82763a7c3362c496",
+      "shortClipGain": 1,
+      "meanDb": -21.1,
+      "peakDb": -3.4
+    },
+    {
+      "id": "opening_anxious_02",
+      "identity": "anxious",
+      "text": "Go. Now.",
+      "sourceRanges": [
+        [
+          4.08,
+          5.6
+        ]
+      ],
+      "speechDuration": 1.52,
+      "fileDuration": 1.86,
+      "sha256": "263c4c2ea64b8731b878f92ce336980063ed865cde0942aa87e62612cc873c94",
+      "masterSha256": "78aa4f24061f95145dffa4c69e75dc1a3c34935874a761ab82763a7c3362c496",
+      "shortClipGain": 6.918309709189366,
+      "meanDb": -24.9,
+      "peakDb": -3.6
+    },
+    {
+      "id": "opening_tormentor_01",
+      "identity": "tormentor",
+      "text": "This is your last chance. Do you understand?",
+      "sourceRanges": [
+        [
+          0.26,
+          3.0
+        ]
+      ],
+      "speechDuration": 2.74,
+      "fileDuration": 3.3,
+      "sha256": "2957d206a4991b59c9621e827a71e230708ad17c3bd462d44ba628e4718e596d",
+      "masterSha256": "71b4f9322b041cc264503ae061cb0235a4f9df75843cd494c5783de7e20f718c",
+      "shortClipGain": 1,
+      "meanDb": -22.0,
+      "peakDb": -3.3
+    },
+    {
+      "id": "opening_protector_01",
+      "identity": "protector",
+      "text": "Shaun. Listen to me. Get up.",
+      "sourceRanges": [
+        [
+          0.2,
+          1.06
+        ],
+        [
+          1.6,
+          2.7
+        ],
+        [
+          3.48,
+          4.42
+        ]
+      ],
+      "speechDuration": 2.9,
+      "fileDuration": 3.38,
+      "sha256": "a0cfb55b3c8077baeb2f2b0a5a126dfa402b5aef5130e0851959fa5b7adbaf36",
+      "masterSha256": "569d5a3dbcd5656972cc79e8cfc07f614ac0744e7d8934dd6e72993868b4aae8",
+      "shortClipGain": 1,
+      "meanDb": -22.1,
+      "peakDb": -2.9
+    }
+  ]
+}

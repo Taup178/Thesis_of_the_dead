@@ -1,0 +1,86 @@
+{
+  "quotedCredits": 1.6,
+  "packs": [
+    {
+      "identity": "protector",
+      "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+      "lines": [
+        {
+          "id": "l1_protector_orb1",
+          "text": "One credit, Shaun. Keep going."
+        },
+        {
+          "id": "l1_protector_orb5",
+          "text": "Five. You are making progress."
+        },
+        {
+          "id": "l1_protector_orb8",
+          "text": "Eight. You earned your way here."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "One credit, Shaun. Keep going.\n\nFive. You are making progress.\n\nEight. You earned your way here.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 0,
+      "job_id": "92a0039b-3064-4edc-bb25-874c3341c894",
+      "status": "pending"
+    },
+    {
+      "identity": "manipulator",
+      "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+      "lines": [
+        {
+          "id": "l1_manipulator_orb3",
+          "text": "Three already. Surely that is enough."
+        },
+        {
+          "id": "l1_manipulator_orb7",
+          "text": "One more. Then perhaps he will let you rest."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Three already. Surely that is enough.\n\nOne more. Then perhaps he will let you rest.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 1,
+      "job_id": "8a76eaa3-c5da-4b6d-b51e-329d6d26550d",
+      "status": "pending"
+    },
+    {
+      "identity": "anxious",
+      "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+      "lines": [
+        {
+          "id": "l1_anxious_boss",
+          "text": "Shaun. The portal. He is coming through."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. The portal. He is coming through.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 2,
+      "job_id": "05881e51-8236-43b5-86d9-f38d3e9afa9b",
+      "status": "pending"
+    }
+  ]
+}

@@ -22,6 +22,36 @@
     "l1_protector_06": "protector/l1_protector_06.wav",
     "l1_protector_07": "protector/l1_protector_07.wav",
     "l1_protector_08": "protector/l1_protector_08.wav",
-    "l1_protector_09": "protector/l1_protector_09.wav"
+    "l1_protector_09": "protector/l1_protector_09.wav",
+    "l1_protector_orb1": {
+      "file": "protector/l1_protector_orb1.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.75
+    },
+    "l1_protector_orb5": {
+      "file": "protector/l1_protector_orb5.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.38
+    },
+    "l1_protector_orb8": {
+      "file": "protector/l1_protector_orb8.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.34
+    },
+    "l1_manipulator_orb3": {
+      "file": "manipulator/l1_manipulator_orb3.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.48
+    },
+    "l1_manipulator_orb7": {
+      "file": "manipulator/l1_manipulator_orb7.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.86
+    },
+    "l1_anxious_boss": {
+      "file": "anxious/l1_anxious_boss.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.46
+    }
   }
 }

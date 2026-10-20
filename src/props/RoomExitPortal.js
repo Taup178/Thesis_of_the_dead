@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createPortalObstacles } from './PortalObstacles.js';
 
 // Portal travel uses the same world-space pace as the Dean's blade run.
 export const PORTAL_TRAVEL_SPEED = 12;
@@ -18,6 +19,7 @@ export class RoomExitPortal {
     const stone = new THREE.MeshStandardMaterial({ color: 0x46504a, metalness: 0.3, roughness: 0.7 });
     this.fallback = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.23, 12, 48), stone);
     this.fallback.position.y = 2.2; this.root.add(this.fallback);
+    this.obstacles = createPortalObstacles(this.root);
     this.time = 0;
   }
 
@@ -72,6 +74,7 @@ export class RoomExitPortal {
     }));
     this.root.updateMatrixWorld(true);
     this.surface.position.copy(this.root.worldToLocal(this.center.clone())); this.surface.position.z -= 0.1; this.root.add(this.surface);
+    this.obstacles = createPortalObstacles(this.root);
   }
 
   update(dt, entering = false) {

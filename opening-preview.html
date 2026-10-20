@@ -1,0 +1,4 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Opening cutscene review</title>
+<style>body{margin:0;background:#000;color:#ccc;font:13px system-ui}canvas{display:block}#fade{position:fixed;inset:0;background:#000;pointer-events:none}#card{position:fixed;inset:0;display:grid;place-content:center;text-align:center;font:24px/1.8 Georgia;pointer-events:none}#review{position:fixed;bottom:12px;left:20px;display:flex;align-items:center;gap:14px;z-index:2}input{width:260px}button{background:#151818;color:#ccc;border:1px solid #555;padding:7px 12px}</style></head>
+<body><div id="fade"></div><p id="card"></p><div id="review"><button id="play">Pause</button><input id="seek" aria-label="Cutscene time" type="range" min="0" max="33" step="0.01" value="0"/><span id="time">0</span></div><script type="module" src="/src/player/openingPreview.js"></script></body></html>

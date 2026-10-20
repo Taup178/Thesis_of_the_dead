@@ -141,6 +141,43 @@ test('the shipped rig collapses, sliced pieces settle, and checkpoint reset rele
   player.dispose();
 });
 
+test('pit deaths keep the shipped body, dropped weapon, blood and both camera modes at the spikes', async () => {
+  const floorY = -11;
+  for (const firstPerson of [false, true]) {
+    const player = makePlayer(); await loadRig(player);
+    try {
+      player.isFirstPerson = firstPerson;
+      player.bodyMesh.visible = !firstPerson;
+      player.group.position.set(0, floorY, 95);
+      player.cameraGroundY = -Infinity;
+      player.platformSupport = null;
+      player.pitch = -0.85;
+      player._updateCamera();
+      player.takeDamage(100, { type: 'pit', floorY });
+      const death = player.deathSequence;
+      assert.ok(death.droppedWeapons.length > 0, 'the real rig releases its weapon');
+      for (let i = 0; i < 50; i++) {
+        player.updateDeath(0.05);
+        assert.ok(player.camera.position.y < -4, 'the camera never returns to the upper deck');
+        for (const stain of death.stains) assert.ok(Math.abs(stain.mesh.position.y - floorY) < 0.02);
+        for (const { mesh } of death.droppedWeapons) {
+          assert.ok(new THREE.Box3().setFromObject(mesh, true).max.y < -8, 'the weapon stays below the deck');
+        }
+      }
+      const body = getVisibleBodyBounds(player.bodyMesh);
+      assert.ok(body.min.y >= floorY - 0.001 && body.max.y < floorY + 1.5,
+        `the body settles at the spikes: ${body.min.y} to ${body.max.y}, firstPerson=${firstPerson}`);
+      for (const { mesh } of death.droppedWeapons) {
+        assert.ok(Math.abs(new THREE.Box3().setFromObject(mesh, true).min.y - floorY) < 0.04);
+      }
+      const screen = body.getCenter(new THREE.Vector3()).project(player.camera);
+      assert.ok(Math.abs(screen.x) < 1 && Math.abs(screen.y) < 1 && Math.abs(screen.z) < 1,
+        'the settled body is inside the death camera frame');
+      assert.equal(death.done, true);
+    } finally { player.dispose(); }
+  }
+});
+
 test('a zombie punch deals damage at contact and misses if the player backs away', () => {
   const zombie = new Zombie(new THREE.Scene(), new THREE.Vector3());
   // Test combat timing without starting an asset fetch.

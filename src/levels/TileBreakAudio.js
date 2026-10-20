@@ -16,7 +16,7 @@ export function createTileBreakBuffer(context, decoded) {
 
 /** Preloaded impacts can overlap, so a new tile never cuts off an earlier break. */
 export class TileBreakAudio {
-  constructor(context) {
+  constructor(context, destination = context?.destination) {
     this.context = context;
     this.voices = new Set();
     this.disposed = false;
@@ -27,7 +27,7 @@ export class TileBreakAudio {
       this.output.ratio.value = 6;
       this.output.attack.value = 0.003;
       this.output.release.value = 0.12;
-      this.output.connect(context.destination);
+      this.output.connect(destination);
     }
     this.ready = this._prepare().catch(error => {
       if (!this.disposed) console.warn('[Tile audio] Could not prepare the brick impact:', error);

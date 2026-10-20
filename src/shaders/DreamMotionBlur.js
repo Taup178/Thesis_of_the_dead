@@ -25,7 +25,10 @@ export class DreamMotionBlur {
 
   reset() { this.fresh = true; }
 
-  render(dt, strength = 0) {
+  render(dt, strength = 0, scene = this.scene) {
+    if (scene !== this.scene) {
+      this.reset(); this.renderer.render(scene, this.camera); return;
+    }
     if (strength <= 0) {
       this.reset();
       this.renderer.render(this.scene, this.camera);

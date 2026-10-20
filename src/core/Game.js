@@ -12,7 +12,7 @@ import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { getGlobalAudioManager } from './AudioManager.js';
 import { MenuMusic } from './MenuMusic.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
-import { Level1Voices, loadLevel1VoiceAssets } from '../audio/Level1Voices.js';
+import { ChapterVoices } from '../audio/ChapterVoices.js';
 
 const NO_OBSTACLES = [];
 const LEVEL_AUDIO_ASSETS = Object.freeze([
@@ -53,7 +53,7 @@ export class Game {
     this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
     this.heartbeat = new Heartbeat();
     this.audio = getGlobalAudioManager();
-    this.psychologicalVoices = new Level1Voices(this.audio.internalVoices, {
+    this.psychologicalVoices = new ChapterVoices(this.audio.internalVoices, {
       onCaptions: lines => this._renderVoiceCaptions(lines),
     });
     this.audio?.unlock?.();
@@ -87,6 +87,7 @@ export class Game {
     this.hudEl = document.getElementById('hud');
     this.hitFlashEl = document.getElementById('hit-flash');
     this.bossCinematic = document.getElementById('boss-cinematic');
+    document.getElementById('skip-opening')?.addEventListener('click', () => this._skipOpening());
     this.healthBarFill = document.getElementById('health-bar-fill');
     this.scoreDisplay = document.getElementById('score-display');
     this.levelTitleDisplay = document.getElementById('level-title-display');
@@ -186,7 +187,16 @@ export class Game {
     });
 
     // Main menu
-    document.getElementById('btn-start').addEventListener('click', () => { this._playUiConfirm?.(); this.startGame(); });
+    document.getElementById('btn-start').addEventListener('click', () => { this._playUiConfirm?.(); this.startGame(0); });
+    document.getElementById('btn-levels').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('levels-overlay'); });
+    document.getElementById('btn-levels-back').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('menu-overlay'); });
+    document.querySelectorAll?.('[data-level-index]')?.forEach(button => {
+      button.addEventListener('click', () => {
+        const index = Number(button.dataset.levelIndex);
+        if (!this.levelManager.progress.canPlay(index)) return;
+        this._playUiConfirm?.(); this.startGame(index);
+      });
+    });
     document.getElementById('btn-credits').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('credits-overlay'); });
     document.getElementById('btn-options').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('options-overlay'); });
     document.getElementById('btn-credits-back').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('menu-overlay'); });
@@ -233,14 +243,26 @@ export class Game {
   }
 
   _showOverlay(id) {
-    this.menuMusic?.setActive(this.state === this.STATE.MENU && ['menu-overlay', 'credits-overlay', 'options-overlay'].includes(id));
+    if (id === 'loading-overlay') this.container.classList.add('loading');
+    else if (id) this.container.classList.remove('loading');
+    if (id === 'levels-overlay') this._refreshLevelMenu();
+    this.menuMusic?.setActive(this.state === this.STATE.MENU && ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay'].includes(id));
     if (id) this._closeWeaponWheel();
     this.motionBlur.reset();
     if (id) this.heartbeat.stop();
-    const overlays = ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
+    const overlays = ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
     overlays.forEach(o => document.getElementById(o).classList.add('hidden'));
     if (id) document.getElementById(id).classList.remove('hidden');
     this.container.classList.toggle('playing', !id && this.state === this.STATE.PLAYING);
+  }
+
+  _refreshLevelMenu() {
+    for (const button of document.querySelectorAll('[data-level-index]')) {
+      const index = Number(button.dataset.levelIndex);
+      const unlocked = this.levelManager.progress.canPlay(index);
+      button.disabled = !unlocked;
+      button.querySelector('[data-level-status]').textContent = unlocked ? 'Available' : `Locked · Reach Level ${index + 1}`;
+    }
   }
 
   _bindInternalVoiceSettings() {
@@ -266,8 +288,7 @@ export class Game {
     if (!container) return;
     container.replaceChildren(...lines.map(line => {
       const row = document.createElement('p');
-      const speaker = document.createElement('strong'); speaker.textContent = `${line.label}: `;
-      row.append(speaker, document.createTextNode(line.text));
+      row.textContent = line.text;
       return row;
     }));
     container.hidden = lines.length === 0;
@@ -310,7 +331,8 @@ export class Game {
   // =====================================================================
   // State Transitions
   // =====================================================================
-  async startGame() {
+  async startGame(levelIndex = null) {
+    if (levelIndex !== null && !this.levelManager.progress.canPlay(levelIndex)) return;
     this.psychologicalVoices?.resetSession();
     this.combat.reset();
     this.firstLevelTutorialSeen.clear();
@@ -332,23 +354,22 @@ export class Game {
     progressBar.style.width = '0%';
 
     const launch = new URLSearchParams(window.location.search);
-    const directFinal = launch.get('level') === '3';
-    const directSophomore = launch.get('level') === '2';
+    const directFinal = levelIndex === null && launch.get('level') === '3';
+    const directSophomore = levelIndex === null && launch.get('level') === '2';
     const directSophomoreSection = launch.get('section');
-    const level = await this.levelManager.loadLevel(directFinal ? 2 : directSophomore ? 1 : 0, (p) => {
+    const level = await this.levelManager.loadLevel(levelIndex ?? (directFinal ? 2 : directSophomore ? 1 : 0), (p) => {
       progressBar.style.width = `${p * 100}%`;
     }, directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
       directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
     this.currentLevel = level;
-    if (this.psychologicalVoices && level.title?.includes('Freshman Woods')) {
-      this.psychologicalVoices.assets = await loadLevel1VoiceAssets();
-    }
+    await this.psychologicalVoices?.loadForLevel?.(level);
     applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
     this.audio?.setLevelTheme?.(level.title);
     this.audio?.preload?.(LEVEL_AUDIO_ASSETS);
 
+    level.audioManager = this.audio;
     level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
@@ -396,8 +417,10 @@ export class Game {
     this.currentLevel = level;
     applyQuality(this.renderer, this.scene, this.quality);
     this.audio?.restartLevelTheme?.(level.title);
+    await this.psychologicalVoices?.loadForLevel?.(level);
 
     if (this.player) {
+      level.audioManager = this.audio;
       level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
       level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
       await level.prepareAudio?.();
@@ -447,6 +470,8 @@ export class Game {
     applyQuality(this.renderer, this.scene, this.quality);
     this.audio?.setLevelTheme?.(level.title);
     this.player.reset(level.spawnPoint);
+    await this.psychologicalVoices?.loadForLevel?.(level);
+    level.audioManager = this.audio;
     level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;
     level.getEffectsVolume = () => Number(document.getElementById('volume-slider').value) / 100;
     await level.prepareAudio?.();
@@ -610,7 +635,7 @@ export class Game {
   // Gamepad menu navigation (any overlay: stick/d-pad move, A confirms)
   // =====================================================================
   _activeOverlayId() {
-    for (const id of ['menu-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay',
+    for (const id of ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay',
       'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay']) {
       if (!document.getElementById(id).classList.contains('hidden')) return id;
     }
@@ -631,7 +656,7 @@ export class Game {
     if (overlayId === 'loading-overlay') return;
 
     const buttons = [...document.getElementById(overlayId).querySelectorAll('.menu-btn')]
-      .filter(button => button.offsetParent !== null);
+      .filter(button => button.offsetParent !== null && !button.disabled);
     if (buttons.length === 0) {
       this._clearMenuFocus();
       return;
@@ -859,6 +884,17 @@ export class Game {
       }
     }
 
+    const checkpoint = this.currentLevel.exitCheckpoint?.root || this.currentLevel.bossFight?.centerMarker;
+    if (checkpoint?.visible) {
+      const position = checkpoint.getWorldPosition(new THREE.Vector3());
+      const x = (position.x - px) * scale + w / 2, y = (position.z - pz) * scale + h / 2;
+      if (x > 5 && x < w - 5 && y > 5 && y < h - 5) {
+        ctx.fillStyle = '#e4c48b'; ctx.strokeStyle = '#21170e'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y);
+        ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+    }
+
     // Draw boss marker
     if (this.currentLevel.bossMarker?.visible) {
       ctx.fillStyle = '#9c27b0';
@@ -949,7 +985,10 @@ export class Game {
 
         // The escape follows elapsed time, so a slow frame cannot stretch the film.
         const cinematicClock = this.currentLevel.bossCutscene?.usesElapsedTime
-          || this.currentLevel.orbPortalCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive;
+          || this.currentLevel.orbPortalCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive
+          || this.currentLevel.openingCinematicActive;
+        if (this.currentLevel.openingCinematicActive
+          && (this.input.consumeKeyPress('Enter') || this.input.consumeGamepadPress?.(PAD.ROLL))) this._skipOpening();
         const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
         const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
         voiceEvents = events;
@@ -989,7 +1028,7 @@ export class Game {
           if (!this.player.deathSequence) this.gameOver();
         }
 
-        if (!this.currentLevel.bossCutscene && !this.currentLevel.orbPortalCutscene) this._updateHUD();
+        if (!this.currentLevel.bossCutscene && !this.currentLevel.orbPortalCutscene && !this.currentLevel.openingCinematicActive) this._updateHUD();
       }
     }
 
@@ -1011,11 +1050,18 @@ export class Game {
     const effects = getDistressEffects(this.player, this.currentLevel?.wakeUpIntro, active);
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime
-      || this.currentLevel?.orbPortalCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive);
-    this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0);
+      || this.currentLevel?.orbPortalCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive
+      || this.currentLevel?.openingCinematicActive);
+    // Warm-up passes may render temporary poses. Keep them behind the loading cover.
+    if (this.state === this.STATE.LOADING) return;
+    this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0,
+      this.currentLevel?.openingCinematicActive ? this.currentLevel.openingIntro.scene : this.scene);
+    // Reveal only after the live frame and its cinematic fade have been prepared.
+    this.container.classList.remove('loading');
   }
 
   _updatePlayerDeath(dt) {
+    this.currentLevel.exitCheckpoint?.hide();
     this.currentLevel.updateDeathEffects?.(dt, this.player);
     const finished = this.player.updateDeath(dt);
     this._updateHUD();
@@ -1067,7 +1113,7 @@ export class Game {
       return;
     }
     if (this.state !== this.STATE.PLAYING) return;
-    if (level.bossCutscene || level.orbPortalCutscene || level.portalCinematicActive) return;
+    if (level.bossCutscene || level.orbPortalCutscene || level.portalCinematicActive || level.openingCinematicActive) return;
 
     if (this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause) return;
     if (this.firstLevelHintQueue.length) {
@@ -1085,15 +1131,32 @@ export class Game {
   }
 
   _updateCinematicPresentation() {
-    const playing = this.state === this.STATE.PLAYING && this.input.pointerLocked;
+    const playing = this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse);
+    // The opening's black card screen must already cover its warm-up frame,
+    // even while an automatic pointer-lock request is still pending.
+    const opening = this.state === this.STATE.PLAYING && this.currentLevel?.openingCinematicActive;
     const bossIntro = !!this.currentLevel?.bossCutscene;
-    const cinematic = playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
+    const cinematic = !!opening || playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
       || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
-      || !!this.currentLevel?.transformationCinematicActive);
+      || !!this.currentLevel?.transformationCinematicActive || opening || this.currentLevel?.forestRevealTime < 0.8);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
-    this.bossCinematic?.style?.setProperty('--cutscene-fade', String(bossIntro ? this.currentLevel.bossCutscene.fade || 0 : 0));
+    const fade = opening ? this.currentLevel.openingIntro.fade : this.currentLevel?.forestRevealTime < 0.8
+      ? 1 - THREE.MathUtils.smoothstep(this.currentLevel.forestRevealTime, 0, 0.8) : bossIntro ? this.currentLevel.bossCutscene.fade || 0 : 0;
+    this.bossCinematic?.style?.setProperty('--cutscene-fade', String(fade));
+    const openingUI = document.getElementById('opening-presentation');
+    openingUI?.classList.toggle('active', !!opening);
+    openingUI?.setAttribute('aria-hidden', String(!opening));
+    document.getElementById('opening-card')?.style.setProperty('opacity', String(opening ? this.currentLevel.openingIntro.cardOpacity : 0));
+    if (opening) document.getElementById('opening-card').textContent = this.currentLevel.openingIntro.cardText;
+    this.levelTitleDisplay?.classList.toggle('opening-hidden', !!opening);
     this.hudEl?.classList.toggle('cinematic', cinematic);
+  }
+
+  _skipOpening() {
+    if (!this.currentLevel?.openingCinematicActive) return;
+    this.psychologicalVoices?.cancel();
+    this.currentLevel.openingIntro.skip();
   }
 
   _onResize() {
@@ -1104,7 +1167,8 @@ export class Game {
   }
 
   async _warmLoadedView() {
-    await compileHiddenObjects(this.renderer, this.scene, this.camera, [this.player?.group]);
+    await compileHiddenObjects(this.renderer, this.scene, this.camera, [this.player?.group,
+      this.currentLevel?.exitCheckpoint?.root, this.currentLevel?.bossFight?.centerMarker]);
     await this.renderer.compileAsync(this.scene, this.camera);
     if (!this.player) return;
     // Force the actual lighting, shadows and skinned-player variants to link
@@ -1114,5 +1178,9 @@ export class Game {
     this.player.group.visible = true;
     try { this.renderer.render(this.scene, this.camera); }
     finally { this.player.group.visible = wasVisible; }
+    if (this.currentLevel?.openingCinematicActive) {
+      await this.renderer.compileAsync(this.currentLevel.openingIntro.scene, this.camera);
+      this.renderer.render(this.currentLevel.openingIntro.scene, this.camera);
+    }
   }
 }

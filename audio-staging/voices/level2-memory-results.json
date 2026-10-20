@@ -1,0 +1,36 @@
+{
+  "job_id": "e7aaf727-bf40-4988-8665-e4eb10613535",
+  "credits": 0.3,
+  "voice": "Faye",
+  "masterSha256": "1a3ef5984aba74308e44215d3eecaeee0563084c0383d4f5af9b7bf637fd0fb3",
+  "processing": "stereo placement; dark cross-ear fading repetitions; earwax; -18 LUFS / -3 dBTP loudnorm; edge fades",
+  "alignment": "tiny.en offline word timestamps",
+  "clips": [
+    {
+      "id": "l2_manipulator_left",
+      "text": "Go left. Trust me.",
+      "start": 0,
+      "end": 3.12,
+      "sha256": "e14a6b0be18ed6628910e6bd94c8a18bbbc1b08a543665f1e16c26158d31f218"
+    },
+    {
+      "id": "l2_manipulator_right",
+      "text": "Go right. Trust me.",
+      "start": 3.28,
+      "end": 5.5,
+      "sha256": "5329dbe507e1f7f5684b89493b70fb11eb3fc8d998c43935985e4d715181bbad"
+    }
+  ],
+  "manifestClips": {
+    "l2_manipulator_left": {
+      "file": "manipulator/l2_manipulator_left.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.12
+    },
+    "l2_manipulator_right": {
+      "file": "manipulator/l2_manipulator_right.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.22
+    }
+  }
+}

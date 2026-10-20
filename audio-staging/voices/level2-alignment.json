@@ -1,0 +1,680 @@
+{
+  "tormentor": [
+    {
+      "text": " even",
+      "start": 0.08,
+      "end": 0.76
+    },
+    {
+      "text": " the",
+      "start": 0.76,
+      "end": 1.04
+    },
+    {
+      "text": " ground",
+      "start": 1.04,
+      "end": 1.36
+    },
+    {
+      "text": " won't",
+      "start": 1.36,
+      "end": 1.76
+    },
+    {
+      "text": " commit",
+      "start": 1.76,
+      "end": 2.02
+    },
+    {
+      "text": " to",
+      "start": 2.02,
+      "end": 2.24
+    },
+    {
+      "text": " you.",
+      "start": 2.24,
+      "end": 3.02
+    },
+    {
+      "text": " There's",
+      "start": 3.32,
+      "end": 3.74
+    },
+    {
+      "text": " always",
+      "start": 3.74,
+      "end": 4.12
+    },
+    {
+      "text": " another",
+      "start": 4.12,
+      "end": 4.52
+    },
+    {
+      "text": " demand.",
+      "start": 4.52,
+      "end": 5.12
+    },
+    {
+      "text": " And",
+      "start": 6.06,
+      "end": 6.24
+    },
+    {
+      "text": " he",
+      "start": 6.24,
+      "end": 6.52
+    },
+    {
+      "text": " still",
+      "start": 6.52,
+      "end": 6.86
+    },
+    {
+      "text": " won't",
+      "start": 6.86,
+      "end": 7.12
+    },
+    {
+      "text": " wait",
+      "start": 7.12,
+      "end": 7.38
+    },
+    {
+      "text": " for",
+      "start": 7.38,
+      "end": 7.58
+    },
+    {
+      "text": " you.",
+      "start": 7.58,
+      "end": 8.4
+    },
+    {
+      "text": " Still",
+      "start": 12.11,
+      "end": 12.33
+    },
+    {
+      "text": " trying",
+      "start": 12.33,
+      "end": 12.55
+    },
+    {
+      "text": " to",
+      "start": 12.55,
+      "end": 12.69
+    },
+    {
+      "text": " keep",
+      "start": 12.69,
+      "end": 12.83
+    },
+    {
+      "text": " up?",
+      "start": 12.83,
+      "end": 13.13
+    }
+  ],
+  "anxious": [
+    {
+      "text": " past",
+      "start": 0.0,
+      "end": 0.5
+    },
+    {
+      "text": " them.",
+      "start": 0.5,
+      "end": 1.06
+    },
+    {
+      "text": " We're",
+      "start": 1.4,
+      "end": 1.68
+    },
+    {
+      "text": " past",
+      "start": 1.68,
+      "end": 2.06
+    },
+    {
+      "text": " them.",
+      "start": 2.06,
+      "end": 2.6
+    },
+    {
+      "text": " The",
+      "start": 4.41,
+      "end": 4.55
+    },
+    {
+      "text": " floor",
+      "start": 4.55,
+      "end": 4.77
+    },
+    {
+      "text": " keeps",
+      "start": 4.77,
+      "end": 5.11
+    },
+    {
+      "text": " moving.",
+      "start": 5.11,
+      "end": 5.75
+    },
+    {
+      "text": " Even",
+      "start": 6.41,
+      "end": 6.69
+    },
+    {
+      "text": " here.",
+      "start": 6.69,
+      "end": 7.37
+    },
+    {
+      "text": " They're",
+      "start": 8.27,
+      "end": 8.85
+    },
+    {
+      "text": " climbing",
+      "start": 8.85,
+      "end": 8.89
+    },
+    {
+      "text": " out!",
+      "start": 8.89,
+      "end": 9.51
+    },
+    {
+      "text": " Nothing",
+      "start": 10.43,
+      "end": 10.73
+    },
+    {
+      "text": " else",
+      "start": 10.73,
+      "end": 11.03
+    },
+    {
+      "text": " is",
+      "start": 11.03,
+      "end": 11.23
+    },
+    {
+      "text": " climbing.",
+      "start": 11.23,
+      "end": 11.55
+    }
+  ],
+  "manipulator": [
+    {
+      "text": " I",
+      "start": 0.08,
+      "end": 0.66
+    },
+    {
+      "text": " did",
+      "start": 0.66,
+      "end": 0.96
+    },
+    {
+      "text": " say",
+      "start": 0.96,
+      "end": 1.28
+    },
+    {
+      "text": " perhaps,",
+      "start": 1.28,
+      "end": 1.96
+    },
+    {
+      "text": " said",
+      "start": 2.36,
+      "end": 2.58
+    },
+    {
+      "text": " the",
+      "start": 2.58,
+      "end": 2.84
+    },
+    {
+      "text": " ground",
+      "start": 2.84,
+      "end": 3.12
+    },
+    {
+      "text": " for",
+      "start": 3.12,
+      "end": 3.36
+    },
+    {
+      "text": " mingling.",
+      "start": 3.36,
+      "end": 3.8
+    },
+    {
+      "text": " You",
+      "start": 4.7,
+      "end": 4.9
+    },
+    {
+      "text": " don't",
+      "start": 4.9,
+      "end": 5.34
+    },
+    {
+      "text": " have",
+      "start": 5.34,
+      "end": 5.64
+    },
+    {
+      "text": " to",
+      "start": 5.64,
+      "end": 5.92
+    },
+    {
+      "text": " prove",
+      "start": 5.92,
+      "end": 6.3
+    },
+    {
+      "text": " anything",
+      "start": 6.3,
+      "end": 6.76
+    },
+    {
+      "text": " to",
+      "start": 6.76,
+      "end": 7.06
+    },
+    {
+      "text": " him.",
+      "start": 7.06,
+      "end": 7.72
+    },
+    {
+      "text": " They",
+      "start": 8.3,
+      "end": 8.58
+    },
+    {
+      "text": " call",
+      "start": 8.58,
+      "end": 8.8
+    },
+    {
+      "text": " it",
+      "start": 8.8,
+      "end": 9.06
+    },
+    {
+      "text": " progress.",
+      "start": 9.06,
+      "end": 9.6
+    },
+    {
+      "text": " It",
+      "start": 10.36,
+      "end": 10.68
+    },
+    {
+      "text": " still",
+      "start": 10.68,
+      "end": 11.1
+    },
+    {
+      "text": " feels",
+      "start": 11.1,
+      "end": 11.44
+    },
+    {
+      "text": " like",
+      "start": 11.44,
+      "end": 11.74
+    },
+    {
+      "text": " a",
+      "start": 11.74,
+      "end": 12.02
+    },
+    {
+      "text": " chase.",
+      "start": 12.02,
+      "end": 12.48
+    }
+  ],
+  "protector": [
+    {
+      "text": " His",
+      "start": 0.0,
+      "end": 0.48
+    },
+    {
+      "text": " pace",
+      "start": 0.48,
+      "end": 0.86
+    },
+    {
+      "text": " isn't",
+      "start": 0.86,
+      "end": 1.18
+    },
+    {
+      "text": " yours.",
+      "start": 1.18,
+      "end": 1.68
+    },
+    {
+      "text": " Watch",
+      "start": 2.08,
+      "end": 2.36
+    },
+    {
+      "text": " the",
+      "start": 2.36,
+      "end": 2.72
+    },
+    {
+      "text": " sweep.",
+      "start": 2.72,
+      "end": 3.1
+    },
+    {
+      "text": " Let",
+      "start": 3.94,
+      "end": 4.1
+    },
+    {
+      "text": " your",
+      "start": 4.1,
+      "end": 4.38
+    },
+    {
+      "text": " eyes",
+      "start": 4.38,
+      "end": 4.78
+    },
+    {
+      "text": " settle",
+      "start": 4.78,
+      "end": 5.06
+    },
+    {
+      "text": " before",
+      "start": 5.06,
+      "end": 5.44
+    },
+    {
+      "text": " your",
+      "start": 5.44,
+      "end": 5.68
+    },
+    {
+      "text": " feet",
+      "start": 5.68,
+      "end": 5.96
+    },
+    {
+      "text": " move.",
+      "start": 5.96,
+      "end": 6.68
+    },
+    {
+      "text": " Solid",
+      "start": 7.62,
+      "end": 8.02
+    },
+    {
+      "text": " ground.",
+      "start": 8.02,
+      "end": 8.74
+    },
+    {
+      "text": " Look",
+      "start": 9.84,
+      "end": 9.86
+    },
+    {
+      "text": " ahead",
+      "start": 9.86,
+      "end": 10.34
+    },
+    {
+      "text": " before",
+      "start": 10.34,
+      "end": 10.76
+    },
+    {
+      "text": " you",
+      "start": 10.76,
+      "end": 10.98
+    },
+    {
+      "text": " leave",
+      "start": 10.98,
+      "end": 11.22
+    },
+    {
+      "text": " it.",
+      "start": 11.22,
+      "end": 11.82
+    },
+    {
+      "text": " Your",
+      "start": 12.4,
+      "end": 12.72
+    },
+    {
+      "text": " hurt.",
+      "start": 12.72,
+      "end": 13.16
+    },
+    {
+      "text": " Give",
+      "start": 13.84,
+      "end": 14.04
+    },
+    {
+      "text": " yourself",
+      "start": 14.04,
+      "end": 14.5
+    },
+    {
+      "text": " a",
+      "start": 14.5,
+      "end": 14.76
+    },
+    {
+      "text": " breath.",
+      "start": 14.76,
+      "end": 15.3
+    },
+    {
+      "text": " Stay",
+      "start": 16.34,
+      "end": 16.62
+    },
+    {
+      "text": " with",
+      "start": 16.62,
+      "end": 16.84
+    },
+    {
+      "text": " me,",
+      "start": 16.84,
+      "end": 17.14
+    },
+    {
+      "text": " Sean.",
+      "start": 17.14,
+      "end": 17.44
+    },
+    {
+      "text": " Just",
+      "start": 18.2,
+      "end": 18.6
+    },
+    {
+      "text": " this",
+      "start": 18.6,
+      "end": 18.94
+    },
+    {
+      "text": " moment.",
+      "start": 18.94,
+      "end": 19.44
+    },
+    {
+      "text": " You",
+      "start": 20.1,
+      "end": 20.34
+    },
+    {
+      "text": " held",
+      "start": 20.34,
+      "end": 20.62
+    },
+    {
+      "text": " your",
+      "start": 20.62,
+      "end": 20.88
+    },
+    {
+      "text": " ground.",
+      "start": 20.88,
+      "end": 21.4
+    },
+    {
+      "text": " Then",
+      "start": 22.38,
+      "end": 22.66
+    },
+    {
+      "text": " do",
+      "start": 22.66,
+      "end": 22.84
+    },
+    {
+      "text": " this",
+      "start": 22.84,
+      "end": 23.16
+    },
+    {
+      "text": " for",
+      "start": 23.16,
+      "end": 23.32
+    },
+    {
+      "text": " yourself.",
+      "start": 23.32,
+      "end": 24.06
+    },
+    {
+      "text": " One",
+      "start": 24.82,
+      "end": 25.14
+    },
+    {
+      "text": " step",
+      "start": 25.14,
+      "end": 25.38
+    },
+    {
+      "text": " back.",
+      "start": 25.38,
+      "end": 26.1
+    },
+    {
+      "text": " Meet",
+      "start": 26.64,
+      "end": 26.86
+    },
+    {
+      "text": " him",
+      "start": 26.86,
+      "end": 27.06
+    },
+    {
+      "text": " at",
+      "start": 27.06,
+      "end": 27.22
+    },
+    {
+      "text": " the",
+      "start": 27.22,
+      "end": 27.46
+    },
+    {
+      "text": " entrance.",
+      "start": 27.46,
+      "end": 27.96
+    },
+    {
+      "text": " Fresh",
+      "start": 27.96,
+      "end": 29.0
+    },
+    {
+      "text": " eyes.",
+      "start": 29.0,
+      "end": 29.68
+    },
+    {
+      "text": " You",
+      "start": 30.9,
+      "end": 30.94
+    },
+    {
+      "text": " remembered.",
+      "start": 30.94,
+      "end": 31.48
+    },
+    {
+      "text": " That",
+      "start": 32.28,
+      "end": 32.52
+    },
+    {
+      "text": " was",
+      "start": 32.52,
+      "end": 32.76
+    },
+    {
+      "text": " yours.",
+      "start": 32.76,
+      "end": 33.4
+    },
+    {
+      "text": " You",
+      "start": 34.38,
+      "end": 34.56
+    },
+    {
+      "text": " can",
+      "start": 34.56,
+      "end": 34.76
+    },
+    {
+      "text": " begin",
+      "start": 34.76,
+      "end": 35.12
+    },
+    {
+      "text": " again",
+      "start": 35.12,
+      "end": 35.64
+    },
+    {
+      "text": " without",
+      "start": 35.64,
+      "end": 36.04
+    },
+    {
+      "text": " rushing.",
+      "start": 36.04,
+      "end": 36.38
+    }
+  ]
+}

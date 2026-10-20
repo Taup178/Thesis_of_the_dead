@@ -1,4 +1,4 @@
-import { InternalVoices } from '../audio/InternalVoices.js';
+import { InternalVoices, INTERNAL_VOICE_GAIN } from '../audio/InternalVoices.js';
 
 const DEFAULT_VOLUME = 0.7;
 // Dedicated unity-gain stages preserve the normal mix and the player's master volume.
@@ -45,6 +45,7 @@ export class AudioManager {
     this.internalVoiceGain = null;
     this.dialogueDuckGains = {};
     this.dialogueDuckOwners = new Set();
+    this.externalDialogueOutputs = new Map();
     this.internalVoices = new InternalVoices(this);
     this.limiter = null;
     this.cache = new Map();
@@ -85,7 +86,7 @@ export class AudioManager {
         this.ambienceGain.gain.value = 0.78;
         this.sfxGain.gain.value = 0.78;
         this.voiceGain.gain.value = 0.82;
-        this.internalVoiceGain.gain.value = this.internalVoices.settings.volume * 0.65;
+        this.internalVoiceGain.gain.value = this.internalVoices.settings.volume * INTERNAL_VOICE_GAIN;
         for (const category of ['music', 'ambience', 'sfx']) {
           const duck = this.context.createGain();
           duck.gain.value = 1;
@@ -140,6 +141,25 @@ export class AudioManager {
       node.gain.setTargetAtTime(speaking ? DIALOGUE_DUCK[category] : 1,
         this.context.currentTime, speaking ? 0.035 : 0.45);
     }
+    for (const [node, category] of this.externalDialogueOutputs) {
+      node.gain.setTargetAtTime(speaking ? DIALOGUE_DUCK[category] : 1,
+        this.context.currentTime, speaking ? 0.035 : 0.45);
+    }
+  }
+
+  // Level 2 owns its master-volume scaling, so apply only a unity duck stage here.
+  createDialogueOutput(category) {
+    const context = this.ensureContext();
+    if (!context || !(category in DIALOGUE_DUCK)) return undefined;
+    const node = context.createGain();
+    node.gain.value = this.dialogueDuckOwners.size ? DIALOGUE_DUCK[category] : 1;
+    node.connect(context.destination);
+    this.externalDialogueOutputs.set(node, category);
+    return node;
+  }
+
+  releaseDialogueOutput(node) {
+    if (node && this.externalDialogueOutputs.delete(node)) node.disconnect();
   }
 
   _assetUrl(source) {
@@ -500,6 +520,7 @@ export class AudioManager {
   dispose() {
     this.stopAll();
     this.internalVoices.unload();
+    for (const node of [...this.externalDialogueOutputs.keys()]) this.releaseDialogueOutput(node);
     if (this.context && this.context.state !== 'closed') this.context.close().catch(() => {});
     this.context = null;
     this.master = null;

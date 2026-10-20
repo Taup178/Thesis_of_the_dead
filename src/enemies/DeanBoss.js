@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { installDeanAttackMotion } from './DeanAttackMotion.js';
 import { DeanEarthWave } from './DeanEarthWave.js';
+import { CheckpointMarker } from '../props/CheckpointMarker.js';
 
 const CENTER = new THREE.Vector3(0, 0, -4);
 const MOVES = [
@@ -50,7 +51,6 @@ export class DeanBoss {
     this.effects.name = 'DeanAttackWarnings';
     root.add(this.effects);
     this.warningMaterial = new THREE.MeshBasicMaterial({ color: 0xef552e, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide });
-    this.centerMaterial = new THREE.MeshBasicMaterial({ color: 0xf4ca66, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide });
     this.shadowMaterial = new THREE.MeshBasicMaterial({ color: 0x211715, transparent: true, opacity: 0.64, depthWrite: false });
     this.rockMaterial = new THREE.MeshStandardMaterial({ color: 0x715b46, roughness: 1, flatShading: true });
     this.crackMaterial = new THREE.MeshBasicMaterial({ color: 0x30231c, side: THREE.DoubleSide, depthWrite: false });
@@ -67,12 +67,8 @@ export class DeanBoss {
     this.floorWarning.position.y = 0.055;
     this.floorWarning.visible = false;
     this.effects.add(this.floorWarning);
-    this.centerMarker = new THREE.Mesh(this.ringGeometry, this.centerMaterial);
-    this.centerMarker.rotation.x = -Math.PI / 2;
-    this.centerMarker.position.y = 0.05;
-    this.centerMarker.scale.setScalar(4.5);
-    this.centerMarker.visible = false;
-    this.effects.add(this.centerMarker);
+    this.centerCheckpoint = new CheckpointMarker(this.effects, { radius: 4.5, height: 4.5, color: 0xe9bd79 });
+    this.centerMarker = this.centerCheckpoint.root;
     this.shadow = new THREE.Mesh(this.circleGeometry, this.shadowMaterial);
     this.shadow.rotation.x = -Math.PI / 2;
     this.shadow.position.y = 0.04;
@@ -122,6 +118,7 @@ export class DeanBoss {
   }
 
   update(dt, player) {
+    this.centerCheckpoint.update(dt, this.centerMarker.visible && player.alive !== false);
     if (this.phase === 'waiting' || this.phase === 'defeated') return;
     const boss = this.dean.group.position, target = player.group.position;
     this.enrageNoticeTime = Math.max(0, this.enrageNoticeTime - dt);
@@ -447,6 +444,7 @@ export class DeanBoss {
   }
 
   dispose() {
+    this.centerCheckpoint.dispose();
     this._clearRocks();
     this._setButtPose(0);
     this.enrageLight.removeFromParent();
@@ -458,6 +456,6 @@ export class DeanBoss {
       delete this.dean.actions[clip.name];
     }
     for (const resource of [this.warningMaterial, this.shadowMaterial, this.rockMaterial, this.crackMaterial, this.slideMaterial,
-      this.centerMaterial, this.circleGeometry, this.ringGeometry, this.stripGeometry]) resource.dispose();
+      this.circleGeometry, this.ringGeometry, this.stripGeometry]) resource.dispose();
   }
 }

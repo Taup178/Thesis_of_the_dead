@@ -25,6 +25,7 @@
         <p class="game-subtitle">Some knowledge should stay buried.</p>
         <nav class="menu-buttons" aria-label="Game menu">
           <button id="btn-start" class="menu-btn menu-start"><span>Start Game</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
+          <button id="btn-levels" class="menu-btn"><span>Levels</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
           <button id="btn-options" class="menu-btn"><span>Options</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
           <button id="btn-credits" class="menu-btn"><span>Credits</span><span class="menu-arrow" aria-hidden="true">&#8594;</span></button>
         </nav>
@@ -33,6 +34,26 @@
         <span class="menu-audio-hint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3M4 13H3v7h4v-7H4Zm16 0h1v7h-4v-7h3Z"/></svg> Headphones recommended</span>
         <span class="menu-key-hint"><kbd>Tab</kbd> Navigate <span aria-hidden="true">/</span> <kbd>Enter</kbd> Select</span>
       </footer>
+    </div>
+  </div>
+
+  <div id="levels-overlay" class="overlay hidden" aria-labelledby="levels-title">
+    <div class="menu-container">
+      <p class="menu-kicker"><span aria-hidden="true"></span> Your journey</p>
+      <h2 id="levels-title">Levels</h2>
+      <p class="level-select-hint">Reach a level to unlock it here. Selecting a level starts it from the beginning.</p>
+      <nav class="menu-buttons level-select-buttons" aria-label="Select a level">
+        <button class="menu-btn level-select-btn" data-level-index="0">
+          <span>Level 1</span><small data-level-status>Available</small>
+        </button>
+        <button class="menu-btn level-select-btn" data-level-index="1" disabled>
+          <span>Level 2</span><small data-level-status>Locked · Reach Level 2</small>
+        </button>
+        <button class="menu-btn level-select-btn" data-level-index="2" disabled>
+          <span>Level 3</span><small data-level-status>Locked · Reach Level 3</small>
+        </button>
+      </nav>
+      <button id="btn-levels-back" class="menu-btn">Back</button>
     </div>
   </div>
 
@@ -45,6 +66,7 @@
         A CGV Assignment Project<br /><br />
         Built with Three.js<br />
         Recorded music and sound sources: <a href="./assets/audio/SOURCES.md" target="_blank" rel="noopener">audio credits</a><br />
+        Opening furniture: oisougabo and HamedPhixer · <a href="./assets/models/opening/SOURCES.md" target="_blank" rel="noopener">Credits and licenses</a><br />
         Menu, portal and pickup cues use procedural Web Audio effects.<br />
         Level 1 theme: Rannsaka (supplied in Zombie_Kit; licence details were not included)<br />
         Moon imagery: NASA's Scientific Visualization Studio<br />
@@ -202,6 +224,10 @@
     </div>
   </div>
 
+  <div id="opening-presentation" aria-hidden="true">
+    <p id="opening-card">Use headphones for a better experience.</p>
+    <button id="skip-opening" type="button">Skip cutscene <span>Enter / B</span></button>
+  </div>
   <div id="boss-cinematic" aria-hidden="true">
     <div class="boss-bar boss-bar-top"></div>
     <div class="boss-bar boss-bar-bottom"><span>THE DEAN</span></div>

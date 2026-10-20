@@ -1,0 +1,217 @@
+[
+  {
+    "identity": "manipulator",
+    "words": [
+      {
+        "word": " You",
+        "start": 0.0,
+        "end": 0.68
+      },
+      {
+        "word": " have",
+        "start": 0.68,
+        "end": 0.98
+      },
+      {
+        "word": " to",
+        "start": 0.98,
+        "end": 1.18
+      },
+      {
+        "word": " reach",
+        "start": 1.18,
+        "end": 1.44
+      },
+      {
+        "word": " it.",
+        "start": 1.44,
+        "end": 3.3
+      },
+      {
+        "word": " Before",
+        "start": 3.8,
+        "end": 4.0
+      },
+      {
+        "word": " he",
+        "start": 4.0,
+        "end": 4.42
+      },
+      {
+        "word": " does,",
+        "start": 4.42,
+        "end": 5.08
+      },
+      {
+        "word": " stay",
+        "start": 6.34,
+        "end": 6.48
+      },
+      {
+        "word": " here",
+        "start": 6.48,
+        "end": 7.42
+      },
+      {
+        "word": " and",
+        "start": 7.42,
+        "end": 7.94
+      },
+      {
+        "word": " it",
+        "start": 7.94,
+        "end": 8.26
+      },
+      {
+        "word": " all",
+        "start": 8.26,
+        "end": 8.74
+      },
+      {
+        "word": " slips",
+        "start": 8.74,
+        "end": 9.04
+      },
+      {
+        "word": " away.",
+        "start": 9.04,
+        "end": 9.72
+      }
+    ]
+  },
+  {
+    "identity": "anxious",
+    "words": [
+      {
+        "word": " He's",
+        "start": 0.0,
+        "end": 0.76
+      },
+      {
+        "word": " leaving.",
+        "start": 0.76,
+        "end": 1.36
+      },
+      {
+        "word": " Sean,",
+        "start": 2.14,
+        "end": 2.36
+      },
+      {
+        "word": " don't",
+        "start": 2.6,
+        "end": 2.6
+      },
+      {
+        "word": " let",
+        "start": 2.6,
+        "end": 2.7
+      },
+      {
+        "word": " him",
+        "start": 2.7,
+        "end": 2.88
+      },
+      {
+        "word": " get",
+        "start": 2.88,
+        "end": 3.08
+      },
+      {
+        "word": " away.",
+        "start": 3.08,
+        "end": 3.46
+      },
+      {
+        "word": " Go.",
+        "start": 4.2,
+        "end": 4.66
+      },
+      {
+        "word": " Now.",
+        "start": 5.14,
+        "end": 5.36
+      }
+    ]
+  },
+  {
+    "identity": "tormentor",
+    "words": [
+      {
+        "word": " This",
+        "start": 0.0,
+        "end": 0.6
+      },
+      {
+        "word": " is",
+        "start": 0.6,
+        "end": 0.74
+      },
+      {
+        "word": " your",
+        "start": 0.74,
+        "end": 0.94
+      },
+      {
+        "word": " last",
+        "start": 0.94,
+        "end": 1.22
+      },
+      {
+        "word": " chance.",
+        "start": 1.22,
+        "end": 1.72
+      },
+      {
+        "word": " Do",
+        "start": 2.12,
+        "end": 2.12
+      },
+      {
+        "word": " you",
+        "start": 2.12,
+        "end": 2.38
+      },
+      {
+        "word": " understand?",
+        "start": 2.38,
+        "end": 2.58
+      }
+    ]
+  },
+  {
+    "identity": "protector",
+    "words": [
+      {
+        "word": " Sean,",
+        "start": 0.0,
+        "end": 0.98
+      },
+      {
+        "word": " listen",
+        "start": 2.0,
+        "end": 2.12
+      },
+      {
+        "word": " to",
+        "start": 2.12,
+        "end": 2.42
+      },
+      {
+        "word": " me,",
+        "start": 2.42,
+        "end": 3.54
+      },
+      {
+        "word": " get",
+        "start": 3.8,
+        "end": 3.94
+      },
+      {
+        "word": " up.",
+        "start": 3.94,
+        "end": 4.46
+      }
+    ]
+  }
+]

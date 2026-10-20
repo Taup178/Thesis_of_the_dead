@@ -23,3 +23,8 @@ public/assets/audio/dean-laugh.mp3
 
 # Editable voice masters stay local; served chapter clips and provenance are retained.
 audio-staging/voices/masters/
+/tmp/level2-voices.zip
+/tmp/memory-voices.zip
+/tmp/level1-orbs.zip
+/tmp/opening-*.png
+/tmp/opening-voices.zip

@@ -1,0 +1,96 @@
+{
+  "status": "generated and integrated",
+  "quotedCredits": 1.4,
+  "packs": [
+    {
+      "identity": "manipulator",
+      "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+      "lines": [
+        {
+          "id": "opening_manipulator_01",
+          "text": "You have to reach it. Before he does."
+        },
+        {
+          "id": "opening_manipulator_02",
+          "text": "Stay here, and it all slips away."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "You have to reach it. Before he does.\n\nStay here, and it all slips away.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      }
+    },
+    {
+      "identity": "anxious",
+      "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+      "lines": [
+        {
+          "id": "opening_anxious_01",
+          "text": "He's leaving. Shaun, don't let him get away."
+        },
+        {
+          "id": "opening_anxious_02",
+          "text": "Go. Now."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "He's leaving. Shaun, don't let him get away.\n\nGo. Now.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      }
+    },
+    {
+      "identity": "tormentor",
+      "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+      "lines": [
+        {
+          "id": "opening_tormentor_01",
+          "text": "This is your last chance. Do you understand?"
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "This is your last chance. Do you understand?",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      }
+    },
+    {
+      "identity": "protector",
+      "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+      "lines": [
+        {
+          "id": "opening_protector_01",
+          "text": "Shaun. Listen to me. Get up."
+        }
+      ],
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. Listen to me. Get up.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      }
+    }
+  ],
+  "chargedCredits": 1.4,
+  "balanceAfter": 86.1
+}

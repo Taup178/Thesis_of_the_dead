@@ -1,0 +1,11 @@
+Model Information:
+* title:	Old Couch
+* source:	https://sketchfab.com/3d-models/old-couch-443d9bb95e944afe8ebc4ff489e2886c
+* author:	oisougabo (https://sketchfab.com/oisougabo)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Old Couch" (https://sketchfab.com/3d-models/old-couch-443d9bb95e944afe8ebc4ff489e2886c) by oisougabo (https://sketchfab.com/oisougabo) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

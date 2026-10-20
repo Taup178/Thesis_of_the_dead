@@ -1,0 +1,17 @@
+{
+  "quotedCredits": 0.3,
+  "job_id": "e7aaf727-bf40-4988-8665-e4eb10613535",
+  "identity": "manipulator",
+  "voiceName": "Faye",
+  "params": {
+    "model": "seed_audio",
+    "prompt": "Go left. Trust me.\n\nGo right. Trust me.",
+    "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+    "voice_type": "preset",
+    "format": "wav",
+    "sample_rate": 48000,
+    "count": 1,
+    "use_unlim": false
+  },
+  "status": "submitted"
+}

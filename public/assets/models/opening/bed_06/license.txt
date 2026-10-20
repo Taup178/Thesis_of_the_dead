@@ -1,0 +1,11 @@
+Model Information:
+* title:	Bed 06
+* source:	https://sketchfab.com/3d-models/bed-06-30a491ca2dab4b61adc04bd51d3f45c1
+* author:	Doaa Sheha (https://sketchfab.com/doo7)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Bed 06" (https://sketchfab.com/3d-models/bed-06-30a491ca2dab4b61adc04bd51d3f45c1) by Doaa Sheha (https://sketchfab.com/doo7) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

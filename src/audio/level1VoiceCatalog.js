@@ -1,4 +1,5 @@
 // Original scripts. Recording URLs come only from the chapter's explicit asset manifest.
+import { OPENING_VOICE_CUES } from './openingVoiceCatalog.js';
 export const LEVEL1_VOICE_CUES = [
   {
     "id": "wake",
@@ -299,3 +300,21 @@ export const LEVEL1_VOICE_CUES = [
     ]
   }
 ];
+
+// Responses for orbs 1–7; the final orb is covered by the boss portal reveal.
+for (const [count, source] of [[2, 'credit_cost'], [4, 'progress'], [6, 'late_doubt']]) {
+  const cue = LEVEL1_VOICE_CUES.find(c => c.id === source);
+  LEVEL1_VOICE_CUES.push({ ...cue, id: `orb_${count}`, priority: 100 });
+}
+for (const [id, identity, lineId, text, pan] of [
+  ['orb_1', 'protector', 'l1_protector_orb1', 'One credit, Shaun. Keep going.', 0.05],
+  ['orb_3', 'manipulator', 'l1_manipulator_orb3', 'Three already. Surely that is enough.', 0.25],
+  ['orb_5', 'protector', 'l1_protector_orb5', 'Five. You are making progress.', 0.05],
+  ['orb_7', 'manipulator', 'l1_manipulator_orb7', 'One more. Then perhaps he will let you rest.', 0.25],
+  ['boss_portal', 'anxious', 'l1_anxious_boss', 'Shaun. The portal. He is coming through.', 0.55],
+]) {
+  LEVEL1_VOICE_CUES.push({ id, priority: 100, alternatives: false, overlap: 0,
+    lines: [{ id: lineId, identity, text, pan, label: { protector: 'The Protector',
+      manipulator: 'The Manipulator', anxious: 'The Anxious One' }[identity] }] });
+}
+LEVEL1_VOICE_CUES.push(...OPENING_VOICE_CUES);

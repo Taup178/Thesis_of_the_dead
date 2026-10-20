@@ -12,6 +12,7 @@ import { compileHiddenObjects } from '../core/ShaderWarmup.js';
 import { SawScrapeAudio } from './SawScrapeAudio.js';
 import { TileBreakAudio } from './TileBreakAudio.js';
 import { Level2Music } from './Level2Music.js';
+import { CheckpointMarker } from '../props/CheckpointMarker.js';
 
 const DIFFICULTY = [
   { jumpDuration: 0.72, pause: 0.24, tileTime: 1.3 },
@@ -75,6 +76,7 @@ export class Level2 {
     this.deanFacing = new THREE.Quaternion();
     this.deanFacingTarget = new THREE.Quaternion();
     this.localLights = [];
+    this.obstacles = [];
     this.disposed = false;
     this.extraGeometries = new Set();
   }
@@ -113,6 +115,7 @@ export class Level2 {
     this.bossMarker.scale.setScalar(1.25);
     this.root.add(this.bossMarker);
     await Promise.all([this.dean.ready, this.ambush?.ready, this.sawBladeReady, this.exitPortal.load(), this.entrancePortal?.load(), this.walls.load(), this.torches.load(), this.floors.load(), this.spikePit.load()]);
+    this.obstacles = [...this.exitPortal.obstacles, ...(this.entrancePortal?.obstacles || [])];
     this.spikeTipY = this.spikePit.tipY;
     this._attachDegree();
     this.torches.decorateMaterial(this.tileMaterial);
@@ -123,9 +126,13 @@ export class Level2 {
   }
 
   async prepareAudio() {
-    this.sawSound ??= new SawScrapeAudio(this.audioContext);
-    this.tileBreakSound ??= new TileBreakAudio(this.sawSound.context);
-    this.music ??= new Level2Music(this.sawSound.context);
+    this.dialogueOutputs ??= {
+      music: this.audioManager?.createDialogueOutput?.('music'),
+      effects: this.audioManager?.createDialogueOutput?.('sfx'),
+    };
+    this.sawSound ??= new SawScrapeAudio(this.audioContext, this.dialogueOutputs.effects);
+    this.tileBreakSound ??= new TileBreakAudio(this.sawSound.context, this.dialogueOutputs.effects);
+    this.music ??= new Level2Music(this.sawSound.context, this.dialogueOutputs.music);
     await Promise.all([this.sawSound.ready, this.tileBreakSound.ready, this.music.ready]);
   }
 
@@ -180,7 +187,7 @@ export class Level2 {
     player.platformSupport = this.puzzleIndex < 2 ? this.bladeSurface :
       this.puzzleIndex === SPIKE_CORRIDOR_PUZZLE ? this.bridgeExitSurface :
       this.stageIndex === 0 ? this.startSurface : this.tiles[this.pattern[0][0]][this.pattern[0][1]].surface;
-    player.cameraObstacles = [];
+    player.cameraObstacles = this.getObstacles();
     player.cameraGroundY = 0;
     player.pitch = -0.25;
     player.yaw = 0;
@@ -317,6 +324,7 @@ export class Level2 {
     this.exitPortal = new RoomExitPortal(this.root, this.exitPosition);
     this.portalRoot = this.exitPortal.root;
     this.entrancePortal = new RoomExitPortal(this.root, this.entrancePosition, { red: true, rotationY: Math.PI });
+    this.exitCheckpoint = new CheckpointMarker(this.root, { radius: 1.05, height: 3.2 });
   }
 
   _createTiles() {
@@ -363,6 +371,8 @@ export class Level2 {
       if (node.isMesh && !originalGeometry.has(node.geometry)) this.extraGeometries.add(node.geometry);
     });
   }
+
+  getObstacles() { return this.obstacles; }
 
   getPlatforming() {
     const surfaces = [this.startSurface, this.exitSurface];
@@ -548,6 +558,7 @@ export class Level2 {
       if (this.deanPassage.complete) this.phase = 'exit';
     } else if (this.phase === 'exit') {
       if (player.grounded && player.alive && player.group.position.distanceTo(this.portalApproachPoint) < 1.15) {
+        this.exitCheckpoint?.hide();
         this.phase = 'entering';
         this.portalActive = false;
         this.portalEntryPending = true;
@@ -738,6 +749,7 @@ export class Level2 {
   }
 
   update(dt, player) {
+    this.exitCheckpoint?.update(dt, player.alive && this.phase === 'exit' && !this.levelComplete, this.portalApproachPoint);
     const events = {
       creditCollected: false,
       portalArrival: this.portalArrivalPending,
@@ -826,8 +838,9 @@ export class Level2 {
       player.velocity.set(0, 0, 0);
       // A fall into the pit is immediately fatal, including during a roll or hit cooldown.
       player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0;
-      player.takeDamage(player.health);
+      // Capture the camera at the actual impact before the death presentation owns it.
       player._updateCamera();
+      player.takeDamage(player.health, { type: 'pit', floorY: this.spikeTipY });
     } else if (player.alive && this.spikeHitCooldown === 0 && this.retractingSpikes?.hitsPlayer(player)) {
       // Retracting floor spikes use combat damage, with time between injuries.
       player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0;
@@ -845,6 +858,7 @@ export class Level2 {
 
   updateDeathEffects(dt, player) {
     updateSophomoreGauntlet(this, dt, player);
+    this._updateLocalLighting(player, dt);
     this.sawSound?.update(dt, player.group.position, this.blades, this.puzzleIndex === 0, this.getEffectsVolume?.() ?? 0.7);
     this._updateMusic(player);
   }
@@ -912,9 +926,12 @@ export class Level2 {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.exitCheckpoint?.dispose(); this.exitCheckpoint = null;
     this.tileBreakSound?.dispose();
     this.music?.dispose();
     this.sawSound?.dispose();
+    this.audioManager?.releaseDialogueOutput?.(this.dialogueOutputs?.music);
+    this.audioManager?.releaseDialogueOutput?.(this.dialogueOutputs?.effects);
     this.walls?.dispose();
     this.torches?.dispose();
     this.floors?.dispose();

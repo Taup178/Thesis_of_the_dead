@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AudioManager } from '../src/core/AudioManager.js';
-import { voiceSettings, loadVoiceSettings } from '../src/audio/InternalVoices.js';
+import { voiceSettings, loadVoiceSettings, processedVoiceGain } from '../src/audio/InternalVoices.js';
 import { Level1Voices, loadLevel1VoiceAssets } from '../src/audio/Level1Voices.js';
 import { LEVEL1_VOICE_CUES } from '../src/audio/level1VoiceCatalog.js';
+import { OPENING_VOICE_CUES } from '../src/audio/openingVoiceCatalog.js';
+
+test('processed voice mastering restores quiet recordings with shared stereo gain and peak headroom', () => {
+  const buffer = values => ({ numberOfChannels: values.length, length: values[0].length,
+    getChannelData: channel => Float32Array.from(values[channel]) });
+  const quiet = buffer([[0.01, -0.01], [0.005, -0.005]]);
+  assert.ok(processedVoiceGain(quiet) > 10);
+  assert.ok(processedVoiceGain(quiet) <= 16);
+  const transient = buffer([[0.5, 0, 0, 0], [0.01, 0, 0, 0]]);
+  assert.ok(processedVoiceGain(transient) * 0.5 <= 0.850001);
+  assert.equal(processedVoiceGain(buffer([[0, 0], [0, 0]])), 1);
+});
 
 class Param {
   constructor(value = 1) { this.value = value; this.targets = []; }
@@ -147,6 +159,46 @@ test('fading repetitions retain ducking through the last echo and cancel with sp
   assert.ok(audio.context.sources.slice(3).every(node => node.disconnected));
 }));
 
+test('both chapter formats receive level correction and Level 1 echoes retain their proportions', () => withAudio(async audio => {
+  audio.ensureContext();
+  audio.context.decodeAudioData = async () => ({ duration: 2, length: 4, numberOfChannels: 1,
+    getChannelData: () => Float32Array.from([0.01, -0.01, 0.01, -0.01]) });
+  const plain = await audio.internalVoices.play('quiet-level1.wav', { identity: 'manipulator' });
+  const [dry, echo] = audio.context.sources;
+  const directLevel = dry.connections[0].gain.value;
+  assert.ok(directLevel > 10);
+  assert.ok(Math.abs(echo.connections[0].gain.value / directLevel - 0.23) < 0.000001);
+  plain.stop();
+  const baked = await audio.internalVoices.play({ url: 'quiet-level2.ogg', effectsBaked: true });
+  assert.equal(baked.source.connections[0].gain.value, directLevel);
+}));
+
+test('baked stereo assets retain their recorded effects without runtime double echo', () => withAudio(async audio => {
+  audio.ensureContext();
+  audio.context.createPanner = () => { throw new Error('baked positioning must not be downmixed through HRTF'); };
+  const first = await audio.internalVoices.play({ url: 'baked.ogg', effectsBaked: true, speechDuration: 1.4 }, { identity: 'manipulator' });
+  assert.ok(first);
+  assert.equal(audio.context.sources.length, 1);
+  assert.equal(first.duration, 1.4);
+  assert.ok(Math.abs(first.tailDuration - 0.6) < 0.001);
+  first.stop();
+  audio.internalVoices.configure({ mode: 'centered' });
+  const centered = await audio.internalVoices.play({ url: 'baked.ogg', effectsBaked: true });
+  assert.equal(centered.source.connections[0].channelCount, 1);
+}));
+
+test('Level 2 external outputs duck multiplicatively without changing their original mix', () => withAudio(async audio => {
+  const music = audio.createDialogueOutput('music'), effects = audio.createDialogueOutput('sfx');
+  assert.equal(music.gain.value, 1);
+  const speech = await audio.internalVoices.play('voice.wav');
+  assert.equal(music.gain.value, 0.35);
+  assert.equal(effects.gain.value, 0.65);
+  speech.stop();
+  assert.equal(music.gain.value, 1);
+  audio.releaseDialogueOutput(music); audio.releaseDialogueOutput(effects);
+  assert.equal(audio.externalDialogueOutputs.size, 0);
+}));
+
 test('voice preferences tolerate unavailable or corrupt storage and sanitize values', () => {
   assert.deepEqual(voiceSettings({ volume: 10, mode: 'bad', enabled: false }), { volume: 1, mode: 'headphones', enabled: false, subtitles: true });
   const saved = globalThis.localStorage;
@@ -199,14 +251,41 @@ test('Level 1 wake starts only with assets and controls; tutorial cancellation r
   assert.equal(empty.playback.loads.length, 0, 'empty manifest makes no guessed requests');
 });
 
-test('Dean reveal supersedes pickup commentary; pair warning is discarded if either revealed zombie died', async () => {
+test('opening plays the six dedicated recordings in order and never substitutes gameplay placeholders', async () => {
+  const f = fixture();
+  f.level.openingCinematicActive = true;
+  f.level.openingIntro = { time: 0, skipped: false };
+  await f.tick(0.1);
+  assert.equal(f.playback.played.length, 0, 'text cards remain silent');
+  for (const cue of OPENING_VOICE_CUES) {
+    f.level.openingIntro.time = cue.at;
+    await f.tick(0.2);
+    assert.equal(f.playback.played.at(-1), `${cue.clip}.wav`);
+    assert.equal(f.playback.active.size, 1);
+    assert.equal(f.level.openingIntro.dialoguePending, true);
+    for (const handle of [...f.playback.active]) handle.stop();
+    await f.tick(0.2);
+  }
+  assert.deepEqual(f.playback.played, OPENING_VOICE_CUES.map(cue => `${cue.clip}.wav`));
+  assert.equal(f.director.heard.size, 0, 'opening does not suppress later gameplay responses');
+  assert.equal(f.level.openingIntro.dialoguePending, false);
+  const missing = fixture();
+  for (const cue of OPENING_VOICE_CUES) delete missing.director.assets[cue.clip];
+  missing.level.openingCinematicActive = true;
+  missing.level.openingIntro = { time: 40, skipped: false };
+  await missing.tick(1);
+  assert.equal(missing.playback.played.length, 0, 'no old gameplay recording can be substituted');
+});
+
+test('boss portal warning gets the next slot; first orb speaks even when the pair warning is obsolete', async () => {
   const f = fixture();
   f.director.heard.add('l1_protector_01');
   await f.tick(4);
+  f.director.last.credits = 7;
   f.level.creditsCollected = 8; f.level.bossCutscene = {}; f.level.bossState = 'emerging';
   await f.tick(0.1, { events: { finalCreditCollected: true, deanReveal: true } });
   await f.tick(1);
-  assert.deepEqual(f.playback.played, ['l1_tormentor_05.wav']);
+  assert.deepEqual(f.playback.played, ['l1_anxious_boss.wav']);
   const pair = fixture(); pair.director.heard.add('l1_protector_01');
   await pair.tick(4);
   pair.level.creditsCollected = 1; pair.level.orbPortalCutscene = {};
@@ -214,7 +293,31 @@ test('Dean reveal supersedes pickup commentary; pair warning is discarded if eit
   await pair.tick(0.1, { events: { firstCreditCollected: true } });
   pair.level.orbPortalCutscene = null;
   await pair.tick(3);
-  assert.equal(pair.playback.played.length, 0);
+  assert.deepEqual(pair.playback.played, ['l1_protector_orb1.wav']);
+});
+
+test('orbs 1–7 queue responses and the final orb uses only the boss warning without cutting speech', async () => {
+  const f = fixture(); f.director.heard.add('l1_protector_01');
+  await f.tick(0.1);
+  f.director.readyAt = 999; f.director.recent = [0, 0, 0];
+  f.level.zombies = [{ alive: true, group: { visible: true, position: { x: 1, z: 0 } } }];
+  for (let count = 1; count <= 8; count++) {
+    f.level.creditsCollected = count;
+    if (count === 1) f.level.orbPortalCutscene = {};
+    if (count === 2) f.level.orbPortalCutscene = null;
+    if (count === 8) f.level.bossCutscene = {};
+    await f.tick(0.1, { events: count === 8 ? { deanReveal: true } : {} });
+    assert.equal(f.playback.active.size, 1, 'collection and camera changes do not stop speech');
+  }
+  assert.equal(f.playback.played.length, 1, 'later pickups wait for the current sentence');
+  for (let n = 0; n < 8; n++) {
+    for (const handle of [...f.playback.active]) handle.stop();
+    await f.tick(0.3);
+  }
+  assert.deepEqual(f.playback.played, ['l1_protector_orb1.wav', 'l1_anxious_boss.wav',
+    'l1_tormentor_02.wav', 'l1_manipulator_orb3.wav', 'l1_protector_02.wav',
+    'l1_protector_orb5.wav', 'l1_tormentor_03.wav', 'l1_manipulator_orb7.wav']);
+  f.player.alive = false; await f.tick(); assert.equal(f.playback.active.size, 0);
 });
 
 test('death history survives retry, manual restarts do not count, and other chapters never load voices', async () => {

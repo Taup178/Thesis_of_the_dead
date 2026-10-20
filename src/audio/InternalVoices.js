@@ -1,5 +1,27 @@
 const STORAGE_KEY = 'thesis-internal-voices-v1';
+export const INTERNAL_VOICE_GAIN = 1.3;
 export const DEFAULT_VOICE_SETTINGS = Object.freeze({ enabled: true, volume: 0.7, mode: 'headphones', subtitles: true });
+const masteredLevels = new WeakMap();
+
+/** Balance chapter recordings at playback, using one gain for both ears. */
+export function processedVoiceGain(buffer) {
+  if (masteredLevels.has(buffer)) return masteredLevels.get(buffer);
+  if (!buffer.getChannelData || !buffer.numberOfChannels || !buffer.length) return 1;
+  let sum = 0, peak = 0;
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+    const samples = buffer.getChannelData(channel);
+    for (let i = 0; i < samples.length; i++) {
+      const value = samples[i];
+      sum += value * value;
+      peak = Math.max(peak, Math.abs(value));
+    }
+  }
+  const rms = Math.sqrt(sum / (buffer.length * buffer.numberOfChannels));
+  // Leave silence alone; cap restoration and retain headroom for the mix limiter.
+  const gain = rms > 0.0001 ? Math.min(16, 0.12 / rms, 0.85 / peak) : 1;
+  masteredLevels.set(buffer, gain);
+  return gain;
+}
 // Quiet, increasingly dark reflections create fading internal repetition.
 const ECHO = Object.freeze({
   tormentor: { delay: 0.28, wet: 0.2, decay: 0.28, cutoff: 1700, drift: 0.06 },
@@ -43,11 +65,12 @@ export class InternalVoices {
     if (!this.settings.enabled || this.settings.volume === 0) this.stop();
     const context = this.audio.context;
     if (context && this.audio.internalVoiceGain) {
-      this.audio.internalVoiceGain.gain.setTargetAtTime(this.settings.volume * 0.65, context.currentTime, 0.03);
+      this.audio.internalVoiceGain.gain.setTargetAtTime(this.settings.volume * INTERNAL_VOICE_GAIN, context.currentTime, 0.03);
     }
   }
 
-  async load(url) {
+  async load(asset) {
+    const url = typeof asset === 'string' ? asset : asset?.url;
     if (!url) return null;
     if (!this.buffers.has(url)) {
       const context = this.audio.ensureContext();
@@ -56,15 +79,20 @@ export class InternalVoices {
       this.buffers.set(url, (async () => {
         try {
           const response = await fetch(url);
-          if (!response.ok) return null;
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return await context.decodeAudioData(await response.arrayBuffer());
-        } catch { return null; }
+        } catch (error) {
+          console.warn('[InternalVoices] Could not load voice recording:', url, error);
+          return null;
+        }
       })());
     }
     return this.buffers.get(url);
   }
 
   async play(url, { pan = 0, volume = 1, identity, isCurrent = () => true, onStart = () => {}, onEnd = () => {} } = {}) {
+    const effectsBaked = typeof url === 'object' && url?.effectsBaked === true;
+    const speechDuration = typeof url === 'object' ? url?.speechDuration : undefined;
     const context = this.audio.ensureContext();
     if (!context || context.state !== 'running' || !this.settings.enabled || this.settings.volume === 0
       || this.active.size + this.pending.size >= 2 || !url) return null;
@@ -92,15 +120,20 @@ export class InternalVoices {
         || !this.settings.enabled || this.settings.volume === 0) return null;
       source = context.createBufferSource(); source.buffer = buffer;
       gain = context.createGain();
+      if (effectsBaked && this.settings.mode === 'centered') {
+        gain.channelCount = 1; gain.channelCountMode = 'explicit';
+      }
       const now = context.currentTime;
       const level = Math.max(0, Math.min(1, volume));
       output = context.createGain(); output.connect(this.audio.internalVoiceGain);
-      // Dialogue is mastered separately. Do not boost quiet whispers to the SFX RMS target.
+      // Balance both chapters' recordings before their volume slider and spatial
+      // effects. Apply the same correction to runtime echoes as the direct voice.
+      const masteringGain = processedVoiceGain(buffer);
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(level, now + 0.02);
+      gain.gain.linearRampToValueAtTime(level * masteringGain, now + 0.02);
       source.connect(gain);
       const position = Math.max(-0.8, Math.min(0.8, Number(pan) || 0));
-      if (this.settings.mode === 'headphones' && context.createPanner) {
+      if (!effectsBaked && this.settings.mode === 'headphones' && context.createPanner) {
         panner = context.createPanner(); panner.panningModel = 'HRTF'; panner.rolloffFactor = 0;
         // AudioManager does not move AudioContext.listener: these offsets remain head-relative.
         if (panner.positionX) {
@@ -108,13 +141,13 @@ export class InternalVoices {
           panner.positionY.value = 0;
           panner.positionZ.value = -0.35;
         } else panner.setPosition(position, 0, -0.35);
-      } else if (this.settings.mode !== 'centered' && context.createStereoPanner) {
+      } else if (!effectsBaked && this.settings.mode !== 'centered' && context.createStereoPanner) {
         panner = context.createStereoPanner(); panner.pan.value = position;
       }
       if (panner) { gain.connect(panner); panner.connect(output); }
       else gain.connect(output);
 
-      const echo = ECHO[identity];
+      const echo = effectsBaked ? null : ECHO[identity];
       if (echo?.drift && panner) {
         const lateral = panner.positionX || panner.pan;
         // Small, slow proximity changes; never spin a voice around the listener.
@@ -127,7 +160,7 @@ export class InternalVoices {
         for (let index = 0; index < 2; index++) {
           const repeated = context.createBufferSource(); repeated.buffer = buffer;
           const wet = context.createGain();
-          wet.gain.value = level * echo.wet * echo.decay ** index;
+          wet.gain.value = level * masteringGain * echo.wet * echo.decay ** index;
           repeated.connect(wet); effectNodes.push(wet);
           let tail = wet;
           if (context.createBiquadFilter) {
@@ -146,7 +179,10 @@ export class InternalVoices {
       }
 
       handle = {
-        source, duration: buffer.duration, tailDuration: echo ? echo.delay * 2 : 0, started: false,
+        source,
+        duration: speechDuration > 0 && speechDuration <= buffer.duration ? speechDuration : buffer.duration,
+        tailDuration: effectsBaked && speechDuration > 0 ? Math.max(0, buffer.duration - speechDuration) : echo ? echo.delay * 2 : 0,
+        started: false,
         stop: () => {
           if (finished) return;
           // Release ownership immediately, even if pause suspends the clock before onended.
