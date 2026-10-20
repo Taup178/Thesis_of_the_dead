@@ -1,4 +1,8 @@
+import { InternalVoices } from '../audio/InternalVoices.js';
+
 const DEFAULT_VOLUME = 0.7;
+// Dedicated unity-gain stages preserve the normal mix and the player's master volume.
+const DIALOGUE_DUCK = Object.freeze({ music: 0.35, ambience: 0.4, sfx: 0.65 });
 const MAX_GROUP_VOICES = Object.freeze({ zombie: 4, player: 3, weapon: 5, pickup: 3 });
 const STORY_CUE_SETTINGS = Object.freeze({
   deanReveal: Object.freeze({ duration: 0.9, volume: 0.095, cutoffStart: 1500, cutoffEnd: 190, bodyVolume: 0.075, bodyFrequency: 58, attack: 0.12, cooldown: 2 }),
@@ -38,6 +42,10 @@ export class AudioManager {
     this.ambienceGain = null;
     this.sfxGain = null;
     this.voiceGain = null;
+    this.internalVoiceGain = null;
+    this.dialogueDuckGains = {};
+    this.dialogueDuckOwners = new Set();
+    this.internalVoices = new InternalVoices(this);
     this.limiter = null;
     this.cache = new Map();
     this.bufferLevels = new WeakMap();
@@ -66,6 +74,7 @@ export class AudioManager {
         this.ambienceGain = this.context.createGain();
         this.sfxGain = this.context.createGain();
         this.voiceGain = this.context.createGain();
+        this.internalVoiceGain = this.context.createGain();
         this.limiter = this.context.createDynamicsCompressor();
         this.limiter.threshold.value = -3;
         this.limiter.knee.value = 3;
@@ -76,10 +85,16 @@ export class AudioManager {
         this.ambienceGain.gain.value = 0.78;
         this.sfxGain.gain.value = 0.78;
         this.voiceGain.gain.value = 0.82;
-        this.musicGain.connect(this.master);
-        this.ambienceGain.connect(this.master);
-        this.sfxGain.connect(this.master);
+        this.internalVoiceGain.gain.value = this.internalVoices.settings.volume * 0.65;
+        for (const category of ['music', 'ambience', 'sfx']) {
+          const duck = this.context.createGain();
+          duck.gain.value = 1;
+          this[`${category}Gain`].connect(duck);
+          duck.connect(this.master);
+          this.dialogueDuckGains[category] = duck;
+        }
         this.voiceGain.connect(this.master);
+        this.internalVoiceGain.connect(this.master);
         this.master.connect(this.limiter);
         this.limiter.connect(this.context.destination);
         this.setVolume(this.volume);
@@ -106,6 +121,25 @@ export class AudioManager {
   setListenerPosition(position) {
     if (!position) return;
     this.listenerPosition = { x: position.x || 0, y: position.y || 0, z: position.z || 0 };
+  }
+
+  acquireDialogueDucking() {
+    const owner = {};
+    this.dialogueDuckOwners.add(owner);
+    if (this.dialogueDuckOwners.size === 1) this._updateDialogueDucking(true);
+    return () => {
+      if (!this.dialogueDuckOwners.delete(owner)) return;
+      if (this.dialogueDuckOwners.size === 0) this._updateDialogueDucking(false);
+    };
+  }
+
+  _updateDialogueDucking(speaking) {
+    if (!this.context) return;
+    for (const [category, node] of Object.entries(this.dialogueDuckGains)) {
+      // setTargetAtTime begins at the current rendered value, avoiding jumps on interruption.
+      node.gain.setTargetAtTime(speaking ? DIALOGUE_DUCK[category] : 1,
+        this.context.currentTime, speaking ? 0.035 : 0.45);
+    }
   }
 
   _assetUrl(source) {
@@ -452,6 +486,7 @@ export class AudioManager {
 
   stopEffects() {
     this.sfxGeneration++;
+    this.internalVoices.stop();
     for (const voice of this.activeVoices) {
       try { voice.source.stop(); } catch {}
     }
@@ -464,6 +499,7 @@ export class AudioManager {
 
   dispose() {
     this.stopAll();
+    this.internalVoices.unload();
     if (this.context && this.context.state !== 'closed') this.context.close().catch(() => {});
     this.context = null;
     this.master = null;
@@ -471,6 +507,9 @@ export class AudioManager {
     this.ambienceGain = null;
     this.sfxGain = null;
     this.voiceGain = null;
+    this.internalVoiceGain = null;
+    this.dialogueDuckGains = {};
+    this.dialogueDuckOwners.clear();
     this.limiter = null;
   }
 }

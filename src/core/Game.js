@@ -12,6 +12,7 @@ import { Heartbeat, getDistressEffects } from './Heartbeat.js';
 import { getGlobalAudioManager } from './AudioManager.js';
 import { MenuMusic } from './MenuMusic.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
+import { Level1Voices, loadLevel1VoiceAssets } from '../audio/Level1Voices.js';
 
 const NO_OBSTACLES = [];
 const LEVEL_AUDIO_ASSETS = Object.freeze([
@@ -52,6 +53,9 @@ export class Game {
     this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
     this.heartbeat = new Heartbeat();
     this.audio = getGlobalAudioManager();
+    this.psychologicalVoices = new Level1Voices(this.audio.internalVoices, {
+      onCaptions: lines => this._renderVoiceCaptions(lines),
+    });
     this.audio?.unlock?.();
     const volumeSlider = document.getElementById('volume-slider');
     if (volumeSlider && this.audio?.setVolume) this.audio.setVolume(Number(volumeSlider.value) / 100);
@@ -200,6 +204,7 @@ export class Game {
     gamepadToggle.addEventListener('change', () => this.input.setGamepadEnabled(gamepadToggle.checked));
     const volumeSlider = document.getElementById('volume-slider');
     if (volumeSlider) volumeSlider.addEventListener('input', () => this.audio?.setVolume?.(Number(volumeSlider.value) / 100));
+    this._bindInternalVoiceSettings?.();
 
     // Pause
     document.getElementById('pause-overlay').addEventListener('click', () => this.resume());
@@ -236,6 +241,36 @@ export class Game {
     overlays.forEach(o => document.getElementById(o).classList.add('hidden'));
     if (id) document.getElementById(id).classList.remove('hidden');
     this.container.classList.toggle('playing', !id && this.state === this.STATE.PLAYING);
+  }
+
+  _bindInternalVoiceSettings() {
+    const playback = this.audio.internalVoices;
+    for (const [id, key, type] of [
+      ['internal-voices-toggle', 'enabled', 'checkbox'], ['internal-voice-volume', 'volume', 'range'],
+      ['internal-voice-mode', 'mode', 'select'], ['internal-voice-subtitles', 'subtitles', 'checkbox'],
+    ]) {
+      const control = document.getElementById(id);
+      if (!control) continue;
+      if (type === 'checkbox') control.checked = playback.settings[key];
+      else control.value = type === 'range' ? playback.settings[key] * 100 : playback.settings[key];
+      control.addEventListener(type === 'range' ? 'input' : 'change', () => {
+        const value = type === 'checkbox' ? control.checked : type === 'range' ? Number(control.value) / 100 : control.value;
+        playback.configure({ [key]: value });
+        this.psychologicalVoices.cancel();
+      });
+    }
+  }
+
+  _renderVoiceCaptions(lines) {
+    const container = document.getElementById('voice-subtitles');
+    if (!container) return;
+    container.replaceChildren(...lines.map(line => {
+      const row = document.createElement('p');
+      const speaker = document.createElement('strong'); speaker.textContent = `${line.label}: `;
+      row.append(speaker, document.createTextNode(line.text));
+      return row;
+    }));
+    container.hidden = lines.length === 0;
   }
 
   _playUiConfirm() {
@@ -276,6 +311,7 @@ export class Game {
   // State Transitions
   // =====================================================================
   async startGame() {
+    this.psychologicalVoices?.resetSession();
     this.combat.reset();
     this.firstLevelTutorialSeen.clear();
     this.firstLevelHintQueue.length = 0;
@@ -306,6 +342,9 @@ export class Game {
       directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
       directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
     this.currentLevel = level;
+    if (this.psychologicalVoices && level.title?.includes('Freshman Woods')) {
+      this.psychologicalVoices.assets = await loadLevel1VoiceAssets();
+    }
     applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
     this.audio?.setLevelTheme?.(level.title);
     this.audio?.preload?.(LEVEL_AUDIO_ASSETS);
@@ -340,6 +379,7 @@ export class Game {
   }
 
   async restartLevel({ preserveCheckpoint = true } = {}) {
+    this.psychologicalVoices?.leave();
     this.combat.reset();
     this.audio?.stopAll?.();
     this.state = this.STATE.LOADING;
@@ -378,6 +418,7 @@ export class Game {
   }
 
   async loadNextLevel() {
+    this.psychologicalVoices?.leave();
     this.combat.reset();
     this.audio?.stopAll?.();
     this.state = this.STATE.LOADING;
@@ -425,6 +466,7 @@ export class Game {
 
   pause() {
     if (this.state !== this.STATE.PLAYING) return;
+    this.psychologicalVoices?.cancel();
     this.state = this.STATE.PAUSED;
     this.currentLevel?.pauseEffects?.();
     this.audio?.pause?.();
@@ -443,6 +485,7 @@ export class Game {
   }
 
   returnToMenu() {
+    this.psychologicalVoices?.leave();
     this.combat.reset();
     this.audio?.stopAll?.();
     this.state = this.STATE.MENU;
@@ -461,6 +504,7 @@ export class Game {
   }
 
   gameOver() {
+    this.psychologicalVoices?.cancel();
     this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.GAMEOVER;
     this._showOverlay('gameover-overlay');
@@ -475,6 +519,7 @@ export class Game {
   }
 
   levelComplete() {
+    this.psychologicalVoices?.cancel();
     this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.LEVELCOMPLETE;
     const overlay = document.getElementById('levelcomplete-overlay');
@@ -495,6 +540,7 @@ export class Game {
 
   _openWeaponWheel() {
     if (!this.player?.alive || this.player.scriptedMovement || this.currentLevel?.allowsShooting === false) return;
+    this.psychologicalVoices?.cancel();
     this.combat.cancelMelee();
     this.input.consumeMousePresses?.(0);
     this.weaponWheelOpen = true;
@@ -839,6 +885,7 @@ export class Game {
     requestAnimationFrame(() => this._animate());
 
     const frameDt = this.clock.getDelta();
+    let voiceEvents = {};
     const dt = Math.min(frameDt, 0.05); // cap gameplay physics to avoid spiral of death
     this.elapsedTime += dt;
     this.input.updateGamepad(dt);
@@ -905,6 +952,7 @@ export class Game {
           || this.currentLevel.orbPortalCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive;
         const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
         const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
+        voiceEvents = events;
         this._checkFirstLevelTutorial(events, dt);
 
         if (events.creditCollected) {
@@ -949,6 +997,11 @@ export class Game {
     this._updateCinematicPresentation();
     const active = this.state === this.STATE.PLAYING
       && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
+    this.psychologicalVoices?.update(dt, this.currentLevel, this.player, {
+      active,
+      blocked: this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
+      events: voiceEvents,
+    });
     const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
     if (freezeCinematicShadows !== this.cinematicShadowsFrozen) {
       this.renderer.shadowMap.autoUpdate = !freezeCinematicShadows;

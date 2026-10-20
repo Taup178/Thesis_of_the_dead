@@ -1,0 +1,23 @@
+# Level 1 voice implementation
+
+Level 1's 18 cue groups / 22 recordings are implemented and registered. Level 2 dialogue integration remains deferred; there is no Level 3 voice catalog.
+
+The four approved Seed Audio packs use Ainsley (Tormentor), Brielle (Anxious One), Faye (Manipulator) and Delia (Protector). The completed generation records are in [level1-results.json](../../audio-staging/voices/level1-results.json). The quote was 5.5 credits, and the account balance changed from 100 to 94.5. No extra generation or retakes were submitted. The trial endpoint continued to report its original trial-credit counter separately; the account balance is the useful observed spending measure here.
+
+Original stereo PCM16 WAV masters, 48 kHz, are retained under `audio-staging/voices/masters/level1/` and excluded from Git. The game uses 22 mono PCM16 WAV clips at 24 kHz, approximately 3.3 MB in total. WAV was retained for dependable browser playback without downloading an encoder or using another service. Ogg compression can be done later without regenerating the voices. [Clip provenance](../../audio-staging/voices/level1-clips.json) records split positions, hashes, gain and durations. No human listening approval is claimed by that file.
+
+The offline preparation script is [prepare-level1-voices.mjs](../../scripts/prepare-level1-voices.mjs). Its authored split boundaries lie in the actual pack silences and preserve pauses between sentences within a line. Re-running it performs no network calls or generation.
+
+[Level1Voices](../../src/audio/Level1Voices.js) observes existing events and state changes without altering level mechanics. Its bounded scheduler has a single pending cue, at most two speaking lines, authored overlap, a three-cues-per-minute cap, a 14-second rest after cues, expiry guards and session-level repetition prevention. Death retries and manual restarts are distinguished. Pauses, tutorials, inventory, death, obsolete situations and chapter changes cancel speech, replies and captions.
+
+[InternalVoices](../../src/audio/InternalVoices.js) uses the existing AudioContext, deduplicates decoded recordings, and provides headphone HRTF, stereo and centered playback. Only files listed in the chapter [manifest](../../public/assets/audio/voices/level1/manifest.json) are requested. Missing recordings fail silently without affecting gameplay. Chapter unloading releases dialogue-owned buffers.
+
+Automatic ducking in [AudioManager](../../src/core/AudioManager.js) lowers music to 35%, ambience to 40% and SFX to 65% of their normal mix while speech plays. Unity-gain stages preserve original bus levels and Master Volume. Attack uses a 35 ms time constant; restoration uses 450 ms. Overlapping voices share ownership, so one voice ending cannot restore the background under another. Pending loads do not duck, and cancellation restores the mix even if the audio clock is subsequently suspended. Shaun's hurt and death vocals retain their normal level.
+
+The existing Options/Settings screen now includes Internal Voices, Voice Volume, Voice Positioning and Voice Subtitles. These preferences persist locally where browser storage permits. Captions show speaker labels, support authored overlaps and disappear on cancellation.
+
+The developer-only [local audition page](../../voice-audition.html), served at `/voice-audition.html` by Vite, accepts an existing local recording and plays it against Rannsaka to inspect ducking and positioning. It uploads nothing and generates no speech. The game itself now uses its registered chapter recordings automatically.
+
+Fading repetition now accompanies the internal voices: two quiet, low-pass-filtered reflections cross the stereo field, with the second substantially quieter and darker. Delays and decay differ by identity; the Protector stays almost dry. Lateral drift is limited to 0.04–0.07 units over a sentence, with no rotation around the head or voice pitch changes. The main recording remains clear and dominant. Reflections reuse the decoded buffer, consume no generation credits, and stop with speech on cancellation. Ducking remains active until the last reflection ends. The effect adds spatial texture; it does not replace the need for an acted whisper performance.
+
+Validation before recording integration: all 80 tests passed, including nine new voice/scheduler/mixer cases; the production build passed. Final asset work uses one integrity check and a packaging build rather than repeating the full suite. Interactive headphone listening and subjective performance approval remain outstanding. The preset voices are consistent, but whisper acting and emotional suitability should be judged in the game; no automatic paid retakes are authorized.

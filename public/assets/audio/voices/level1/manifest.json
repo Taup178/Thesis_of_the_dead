@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "clips": {
+    "l1_tormentor_01": "tormentor/l1_tormentor_01.wav",
+    "l1_tormentor_02": "tormentor/l1_tormentor_02.wav",
+    "l1_tormentor_03": "tormentor/l1_tormentor_03.wav",
+    "l1_tormentor_04": "tormentor/l1_tormentor_04.wav",
+    "l1_tormentor_05": "tormentor/l1_tormentor_05.wav",
+    "l1_tormentor_06": "tormentor/l1_tormentor_06.wav",
+    "l1_anxious_01": "anxious/l1_anxious_01.wav",
+    "l1_anxious_02": "anxious/l1_anxious_02.wav",
+    "l1_anxious_03": "anxious/l1_anxious_03.wav",
+    "l1_anxious_04": "anxious/l1_anxious_04.wav",
+    "l1_manipulator_01": "manipulator/l1_manipulator_01.wav",
+    "l1_manipulator_02": "manipulator/l1_manipulator_02.wav",
+    "l1_manipulator_03": "manipulator/l1_manipulator_03.wav",
+    "l1_protector_01": "protector/l1_protector_01.wav",
+    "l1_protector_02": "protector/l1_protector_02.wav",
+    "l1_protector_03": "protector/l1_protector_03.wav",
+    "l1_protector_04": "protector/l1_protector_04.wav",
+    "l1_protector_05": "protector/l1_protector_05.wav",
+    "l1_protector_06": "protector/l1_protector_06.wav",
+    "l1_protector_07": "protector/l1_protector_07.wav",
+    "l1_protector_08": "protector/l1_protector_08.wav",
+    "l1_protector_09": "protector/l1_protector_09.wav"
+  }
+}

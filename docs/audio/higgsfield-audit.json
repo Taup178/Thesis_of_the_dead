@@ -1,0 +1,928 @@
+{
+  "checkedOn": "2026-10-20",
+  "revision": "391a0a37751d9104f1686a5829ba41ce72953b60",
+  "note": "Read-only capability and billing inspection plus get_cost:true quotes. No job submitted, no trial started, no voice created. Presets used for quotes are uncast candidates, not an auditioned recommendation.",
+  "toolsInspected": [
+    "balance",
+    "models_explore",
+    "list_voices",
+    "generate_audio",
+    "generate_audio_batch",
+    "create_voice",
+    "create_voice_from_confirmed_audio",
+    "voice_change"
+  ],
+  "balanceBefore": {
+    "credits": 100,
+    "subscription_plan_type": "plus",
+    "free_trial": {
+      "status": "active",
+      "eligible": false,
+      "offered_kind": null,
+      "kind": "mcp",
+      "trial_credits": 100,
+      "ends_at": "2026-10-23T00:23:40Z",
+      "unlim_available": false,
+      "unlim_remaining": null,
+      "unlim_expires_at": null
+    },
+    "free_gens": [
+      {
+        "job_set_types": [
+          "ai_influencer_motion_control",
+          "ai_influencer_replace_object",
+          "hf_mult_motion_control",
+          "hf_mult_replace_object"
+        ],
+        "remaining": 1,
+        "parameters": {
+          "resolution": [
+            "480p",
+            "720p"
+          ]
+        },
+        "max_duration": 30
+      },
+      {
+        "job_set_types": [
+          "ai_influencer_sheet"
+        ],
+        "remaining": 5,
+        "parameters": {},
+        "max_duration": null
+      }
+    ]
+  },
+  "balanceAfter": {
+    "credits": 100,
+    "subscription_plan_type": "plus",
+    "free_trial": {
+      "status": "active",
+      "eligible": false,
+      "offered_kind": null,
+      "kind": "mcp",
+      "trial_credits": 100,
+      "ends_at": "2026-10-23T00:23:40Z",
+      "unlim_available": false,
+      "unlim_remaining": null,
+      "unlim_expires_at": null
+    },
+    "free_gens": [
+      {
+        "job_set_types": [
+          "ai_influencer_motion_control",
+          "ai_influencer_replace_object",
+          "hf_mult_motion_control",
+          "hf_mult_replace_object"
+        ],
+        "remaining": 1,
+        "parameters": {
+          "resolution": [
+            "480p",
+            "720p"
+          ]
+        },
+        "max_duration": 30
+      },
+      {
+        "job_set_types": [
+          "ai_influencer_sheet"
+        ],
+        "remaining": 5,
+        "parameters": {},
+        "max_duration": null
+      }
+    ]
+  },
+  "audioCatalog": {
+    "items": [
+      {
+        "id": "seed_audio",
+        "name": "Seed Audio 1.0",
+        "provider_name": "ByteDance",
+        "description": "Seed Audio 1.0 — text-to-audio synthesis with optional voice/audio reference or a single image reference.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "format",
+            "required": "optional",
+            "type": "string",
+            "description": "Output audio container format.",
+            "options": [
+              "wav",
+              "mp3",
+              "pcm",
+              "ogg_opus"
+            ],
+            "default": "wav"
+          },
+          {
+            "name": "sample_rate",
+            "required": "optional",
+            "type": "number",
+            "description": "Output sample rate in Hz.",
+            "options": [
+              8000,
+              16000,
+              24000,
+              32000,
+              44100,
+              48000
+            ],
+            "default": 24000
+          },
+          {
+            "name": "speech_rate",
+            "required": "optional",
+            "type": "number",
+            "description": "Speech speed adjustment. 0 keeps the default speed; positive values are faster. Whole number.",
+            "min": -50,
+            "max": 100,
+            "default": 0
+          },
+          {
+            "name": "loudness_rate",
+            "required": "optional",
+            "type": "number",
+            "description": "Loudness adjustment. 0 keeps the default loudness. Whole number.",
+            "min": -50,
+            "max": 100,
+            "default": 0
+          },
+          {
+            "name": "pitch_rate",
+            "required": "optional",
+            "type": "number",
+            "description": "Pitch adjustment in provider units. 0 keeps the default pitch. Whole number.",
+            "min": -12,
+            "max": 12,
+            "default": 0
+          },
+          {
+            "name": "voice_type",
+            "required": "optional",
+            "type": "string",
+            "description": "Optional voice source: 'preset' for a built-in voice id, or 'element' for a workspace voice reference element. Must be sent together with voice_id.",
+            "options": [
+              "preset",
+              "element"
+            ],
+            "nullable": true
+          },
+          {
+            "name": "voice_id",
+            "required": "optional",
+            "type": "string",
+            "description": "Voice id: a preset voice id when voice_type='preset', or a voice reference element id when voice_type='element'. Must be sent together with voice_type.",
+            "nullable": true
+          }
+        ],
+        "medias": [
+          {
+            "name": "medias",
+            "type": "image",
+            "roles": [
+              "image_references",
+              "audio_references"
+            ]
+          }
+        ],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "text-to-speech",
+          "tts",
+          "bytedance",
+          "seed-audio",
+          "unlim"
+        ],
+        "supports_unlim": true
+      },
+      {
+        "id": "qwen_audio_tts",
+        "name": "Qwen Audio 3.0 TTS Flash",
+        "provider_name": "Alibaba Cloud",
+        "description": "Qwen Audio 3.0 TTS Flash with expressive instructions and a selectable system preset or cloned reference-element voice.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "voice_type",
+            "required": "required",
+            "type": "string",
+            "description": "Use 'preset' for a system voice or 'element' for a cloned voice.",
+            "options": [
+              "preset",
+              "element"
+            ]
+          },
+          {
+            "name": "voice_id",
+            "required": "required",
+            "type": "string",
+            "description": "Preset or reference-element voice ID. At least 1 character."
+          },
+          {
+            "name": "instruction",
+            "required": "optional",
+            "type": "string",
+            "description": "Natural-language direction for emotion, dialect, speed, or style. At most 128 characters.",
+            "nullable": true
+          },
+          {
+            "name": "language",
+            "required": "optional",
+            "type": "string",
+            "description": "Optional target-language hint.",
+            "options": [
+              "zh",
+              "en",
+              "fr",
+              "de",
+              "ja",
+              "ko",
+              "ru",
+              "pt",
+              "th",
+              "id",
+              "vi",
+              "it",
+              "ms"
+            ],
+            "nullable": true
+          },
+          {
+            "name": "format",
+            "required": "optional",
+            "type": "string",
+            "description": "Output audio container format.",
+            "options": [
+              "wav",
+              "mp3",
+              "pcm",
+              "ogg_opus"
+            ],
+            "default": "mp3"
+          },
+          {
+            "name": "sample_rate",
+            "required": "optional",
+            "type": "number",
+            "description": "Output sample rate in Hz.",
+            "options": [
+              8000,
+              16000,
+              22050,
+              24000,
+              44100,
+              48000
+            ],
+            "default": 24000
+          },
+          {
+            "name": "volume",
+            "required": "optional",
+            "type": "number",
+            "description": "Whole number.",
+            "min": 0,
+            "max": 100,
+            "default": 50
+          },
+          {
+            "name": "speech_rate",
+            "required": "optional",
+            "type": "number",
+            "min": 0.5,
+            "max": 2,
+            "default": 1
+          },
+          {
+            "name": "pitch_rate",
+            "required": "optional",
+            "type": "number",
+            "min": 0.5,
+            "max": 2,
+            "default": 1
+          },
+          {
+            "name": "seed",
+            "required": "optional",
+            "type": "number",
+            "description": "Whole number.",
+            "min": 0,
+            "max": 65535,
+            "default": 0
+          },
+          {
+            "name": "batch_size",
+            "required": "optional",
+            "type": "number",
+            "description": "Number of independent variations to generate. Whole number.",
+            "min": 1,
+            "max": 4,
+            "default": 1
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "speech",
+          "tts",
+          "text-to-speech",
+          "voice",
+          "voice-cloning",
+          "reference-element",
+          "qwen",
+          "alibaba"
+        ]
+      },
+      {
+        "id": "elevenlabs_v4",
+        "name": "Eleven v4",
+        "provider_name": "ElevenLabs",
+        "description": "Eleven v4 speech generation with up to 10 preset or reference-element voices. Dialogue text is limited to 10,000 characters in total.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "dialogue",
+            "required": "required",
+            "type": "object_array",
+            "description": "Ordered speech turns with a required voice per turn; 10,000 characters in total. Eleven v4 supports up to 10 voices; Turbo supports one voice. Each item is an object {text: string (required), voice_type: preset|element (required), voice_id: string (required)}."
+          },
+          {
+            "name": "stability",
+            "required": "optional",
+            "type": "number",
+            "description": "Voice stability; omit to use the provider default.",
+            "min": 0,
+            "max": 1,
+            "nullable": true
+          },
+          {
+            "name": "similarity_boost",
+            "required": "optional",
+            "type": "number",
+            "description": "Voice similarity; omit to use the provider default.",
+            "min": 0,
+            "max": 1,
+            "nullable": true
+          },
+          {
+            "name": "batch_size",
+            "required": "optional",
+            "type": "number",
+            "description": "Number of independent variations to generate. Whole number.",
+            "min": 1,
+            "max": 4,
+            "default": 1
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "speech",
+          "tts",
+          "text-to-speech",
+          "voice",
+          "dialogue",
+          "elevenlabs"
+        ]
+      },
+      {
+        "id": "elevenlabs_v4_turbo",
+        "name": "Eleven v4 Turbo",
+        "provider_name": "ElevenLabs",
+        "description": "Eleven v4 Turbo speech generation with one preset or reference-element voice. All dialogue turns must use the same voice; text is limited to 10,000 characters in total.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "dialogue",
+            "required": "required",
+            "type": "object_array",
+            "description": "Ordered speech turns with a required voice per turn; 10,000 characters in total. Eleven v4 supports up to 10 voices; Turbo supports one voice. Each item is an object {text: string (required), voice_type: preset|element (required), voice_id: string (required)}."
+          },
+          {
+            "name": "stability",
+            "required": "optional",
+            "type": "number",
+            "description": "Voice stability; omit to use the provider default.",
+            "min": 0,
+            "max": 1,
+            "nullable": true
+          },
+          {
+            "name": "similarity_boost",
+            "required": "optional",
+            "type": "number",
+            "description": "Voice similarity; omit to use the provider default.",
+            "min": 0,
+            "max": 1,
+            "nullable": true
+          },
+          {
+            "name": "batch_size",
+            "required": "optional",
+            "type": "number",
+            "description": "Number of independent variations to generate. Whole number.",
+            "min": 1,
+            "max": 4,
+            "default": 1
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "speech",
+          "tts",
+          "text-to-speech",
+          "voice",
+          "dialogue",
+          "elevenlabs"
+        ]
+      },
+      {
+        "id": "sonilo_music",
+        "name": "Sonilo Music",
+        "provider_name": "FAL",
+        "description": "Text-to-music generation with controllable duration. Game pipeline only.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "duration",
+            "required": "required",
+            "type": "number",
+            "description": "Duration in seconds (e.g. 8)."
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "music",
+          "text-to-music",
+          "fal",
+          "sonilo"
+        ]
+      },
+      {
+        "id": "mirelo_text_to_audio",
+        "name": "Mirelo Text to Audio",
+        "provider_name": "FAL",
+        "description": "Text-to-audio sound effect generation with controllable duration. Game pipeline only.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "duration",
+            "required": "required",
+            "type": "number",
+            "description": "Duration in seconds (e.g. 2)."
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "sfx",
+          "sound-effects",
+          "text-to-audio",
+          "fal",
+          "mirelo",
+          "unlim"
+        ],
+        "supports_unlim": true
+      },
+      {
+        "id": "inworld_text_to_speech",
+        "name": "Inworld Text to Speech",
+        "provider_name": "FAL",
+        "description": "Text-to-speech audio generation. Game pipeline only.",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "voice",
+            "required": "required",
+            "type": "string",
+            "description": "Voice to use for text-to-speech synthesis (language tag in parentheses).",
+            "options": [
+              "Loretta (en)",
+              "Darlene (en)",
+              "Marlene (en)",
+              "Hank (en)",
+              "Evelyn (en)",
+              "Celeste (en)",
+              "Pippa (en)",
+              "Tessa (en)",
+              "Liam (en)",
+              "Callum (en)",
+              "Hamish (en)",
+              "Abby (en)",
+              "Graham (en)",
+              "Rupert (en)",
+              "Mortimer (en)",
+              "Snik (en)",
+              "Anjali (en)",
+              "Saanvi (en)",
+              "Arjun (en)",
+              "Claire (en)",
+              "Oliver (en)",
+              "Simon (en)",
+              "Elliot (en)",
+              "James (en)",
+              "Serena (en)",
+              "Gareth (en)",
+              "Vinny (en)",
+              "Lauren (en)",
+              "Jessica (en)",
+              "Ethan (en)",
+              "Tyler (en)",
+              "Jason (en)",
+              "Chloe (en)",
+              "Veronica (en)",
+              "Victoria (en)",
+              "Miranda (en)",
+              "Sebastian (en)",
+              "Victor (en)",
+              "Malcolm (en)",
+              "Kayla (en)",
+              "Nate (en)",
+              "Jake (en)",
+              "Brian (en)",
+              "Amina (en)",
+              "Kelsey (en)",
+              "Derek (en)",
+              "Grant (en)",
+              "Evan (en)",
+              "Alex (en)",
+              "Ashley (en)",
+              "Craig (en)",
+              "Deborah (en)",
+              "Dennis (en)",
+              "Edward (en)",
+              "Elizabeth (en)",
+              "Hades (en)",
+              "Julia (en)",
+              "Pixie (en)",
+              "Mark (en)",
+              "Olivia (en)",
+              "Priya (en)",
+              "Ronald (en)",
+              "Sarah (en)",
+              "Shaun (en)",
+              "Theodore (en)",
+              "Timothy (en)",
+              "Wendy (en)",
+              "Dominus (en)",
+              "Hana (en)",
+              "Clive (en)",
+              "Carter (en)",
+              "Blake (en)",
+              "Luna (en)",
+              "Yichen (zh)",
+              "Xiaoyin (zh)",
+              "Xinyi (zh)",
+              "Jing (zh)",
+              "Erik (nl)",
+              "Katrien (nl)",
+              "Lennart (nl)",
+              "Lore (nl)",
+              "Alain (fr)",
+              "Hélène (fr)",
+              "Mathieu (fr)",
+              "Étienne (fr)",
+              "Johanna (de)",
+              "Josef (de)",
+              "Gianni (it)",
+              "Orietta (it)",
+              "Asuka (ja)",
+              "Satoshi (ja)",
+              "Hyunwoo (ko)",
+              "Minji (ko)",
+              "Seojun (ko)",
+              "Yoona (ko)",
+              "Szymon (pl)",
+              "Wojciech (pl)",
+              "Heitor (pt)",
+              "Maitê (pt)",
+              "Diego (es)",
+              "Lupita (es)",
+              "Miguel (es)",
+              "Rafael (es)",
+              "Svetlana (ru)",
+              "Elena (ru)",
+              "Dmitry (ru)",
+              "Nikolai (ru)",
+              "Riya (hi)",
+              "Manoj (hi)",
+              "Yael (he)",
+              "Oren (he)",
+              "Nour (ar)",
+              "Omar (ar)"
+            ]
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "speech",
+          "tts",
+          "text-to-speech",
+          "fal",
+          "inworld",
+          "unlim"
+        ],
+        "supports_unlim": true
+      },
+      {
+        "id": "text2speech_v2",
+        "name": "Text to Speech V2",
+        "provider_name": "Higgsfield",
+        "description": "Text-to-speech with a selectable engine (ElevenLabs, MiniMax, Seed Speech, Vibe Voice, Cozy Voice) via the variant param; preset or reference-element voices (voice_type + voice_id).",
+        "output_type": "audio",
+        "parameters": [
+          {
+            "name": "variant",
+            "required": "required",
+            "type": "string",
+            "description": "Text-to-speech engine.",
+            "options": [
+              "elevenlabs",
+              "minimax",
+              "seed_speech",
+              "vibe_voice",
+              "cozy_voice"
+            ]
+          },
+          {
+            "name": "voice_type",
+            "required": "required",
+            "type": "string",
+            "description": "Whether voice_id is a built-in preset voice ('preset') or a workspace reference element ('element').",
+            "options": [
+              "preset",
+              "element"
+            ]
+          },
+          {
+            "name": "voice_id",
+            "required": "required",
+            "type": "string",
+            "description": "Voice id: a preset voice id when voice_type='preset', or a reference element id when voice_type='element'."
+          }
+        ],
+        "medias": [],
+        "aspect_ratios": [],
+        "tags": [
+          "audio",
+          "speech",
+          "tts",
+          "text-to-speech",
+          "voice",
+          "preset",
+          "reference-element",
+          "elevenlabs",
+          "minimax",
+          "seed_speech",
+          "vibe_voice",
+          "cozy_voice",
+          "unlim"
+        ],
+        "supports_unlim": true
+      }
+    ],
+    "has_more": false,
+    "unlim": {
+      "available": false,
+      "remaining": null,
+      "expires_at": null
+    }
+  },
+  "voicesPage": {
+    "hasMore": true,
+    "candidates": [
+      {
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "name": "Ainsley",
+        "gender": "female",
+        "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/preview-37d345ad8f2edf91.mp3",
+        "logo_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/731b4ffe-e95e-59f4-8c00-81608936091f/thumbnail-403df301a7960e0b.webp"
+      },
+      {
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "name": "Brielle",
+        "gender": "female",
+        "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/a00bc7f3-0236-5e76-ac65-90137ce0f5a4/preview-b3150d3b115505cd.mp3",
+        "logo_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/a00bc7f3-0236-5e76-ac65-90137ce0f5a4/thumbnail-462f1d2b4158300e.webp"
+      },
+      {
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "name": "Faye",
+        "gender": "female",
+        "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4/preview-2c0cfabdc015c510.mp3",
+        "logo_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4/thumbnail-0f5a13ee7f743673.webp"
+      },
+      {
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "name": "Delia",
+        "gender": "female",
+        "preview_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/1550321e-7f5b-526e-b001-02328b03e9bc/preview-b15652c223395257.mp3",
+        "logo_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/1550321e-7f5b-526e-b001-02328b03e9bc/thumbnail-d6a6a62b00352a76.webp"
+      }
+    ]
+  },
+  "quotes": [
+    {
+      "level": 1,
+      "identity": "tormentor",
+      "provisionalPresetName": "Ainsley",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "First year. And already you're lost.\n\nEvery credit asks for something back.\n\nStill counting. Will it ever be enough?\n\nThey'll mark every mistake.\n\nAll that work. He still holds the degree.\n\nBack at the beginning, Shaun.",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 1.5,
+          "credits_exact": 1.5
+        }
+      }
+    },
+    {
+      "level": 1,
+      "identity": "anxious",
+      "provisionalPresetName": "Brielle",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Two of them. Shaun, they're out.\n\nToo close. Too close.\n\nThat hurt. Keep breathing.\n\nEmpty. Shaun, it's empty.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 0.8,
+          "credits_exact": 0.8
+        }
+      }
+    },
+    {
+      "level": 1,
+      "identity": "manipulator",
+      "provisionalPresetName": "Faye",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "We could stay here. Let the year go on without us.\n\nHe leaves. You do all the work.\n\nAnother year. Perhaps this one will be kinder.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 0.9,
+          "credits_exact": 0.9
+        }
+      }
+    },
+    {
+      "level": 1,
+      "identity": "protector",
+      "provisionalPresetName": "Delia",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. Feel the ground. You're standing.\n\nHalfway. You earned every one.\n\nRest for a breath. Then choose your next step.\n\nBreathe, Shaun. Find some space.\n\nA mistake isn't the whole of you.\n\nYou're still here. One thing at a time.\n\nThey're gone. You can move on.\n\nStart where you are. I'm still here.\n\nAnd you know more than before.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 2.3,
+          "credits_exact": 2.3
+        }
+      }
+    },
+    {
+      "level": 2,
+      "identity": "tormentor",
+      "provisionalPresetName": "Ainsley",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Even the ground won't commit to you.\n\nThere's always another demand.\n\nAnd he still won't wait for you.\n\nStill trying to keep up?",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 0.9,
+          "credits_exact": 0.9
+        }
+      }
+    },
+    {
+      "level": 2,
+      "identity": "anxious",
+      "provisionalPresetName": "Brielle",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Past them. We're past them.\n\nThe floor keeps moving. Even here.\n\nThey're climbing out!\n\nNothing else is climbing.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 0.8,
+          "credits_exact": 0.8
+        }
+      }
+    },
+    {
+      "level": 2,
+      "identity": "manipulator",
+      "provisionalPresetName": "Faye",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "I did say perhaps.\n\nYou don't have to prove anything to him.\n\nThey call it progress. It still feels like a chase.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 0.8,
+          "credits_exact": 0.8
+        }
+      }
+    },
+    {
+      "level": 2,
+      "identity": "protector",
+      "provisionalPresetName": "Delia",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "His pace isn't yours. Watch the sweep.\n\nLet your eyes settle before your feet move.\n\nSolid ground. Look ahead before you leave it.\n\nYou're hurt. Give yourself a breath.\n\nStay with me, Shaun. Just this moment.\n\nYou held your ground.\n\nThen do this for yourself.\n\nOne step back. Meet him at the entrance.\n\nFresh eyes.\n\nYou remembered. That was yours.\n\nYou can begin again without rushing.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "get_cost": true,
+        "count": 1
+      },
+      "result": {
+        "cost": {
+          "credits": 2.6,
+          "credits_exact": 2.6
+        }
+      }
+    }
+  ],
+  "quoteTotals": [
+    {
+      "level": 1,
+      "credits": 5.5
+    },
+    {
+      "level": 2,
+      "credits": 5.1
+    }
+  ],
+  "productionValidation": {
+    "existingRelevantTests": {
+      "passed": 29,
+      "failed": 0
+    },
+    "build": "passed; existing bundle-size warning",
+    "runtimeListening": "not performed; no browser automation tool available",
+    "gameplaySourceChanges": false
+  }
+}

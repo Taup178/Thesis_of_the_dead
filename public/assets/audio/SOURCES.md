@@ -1,3 +1,17 @@
+# Level 1 internal voices
+
+`voices/level1/` contains 22 original dialogue clips generated through Higgsfield
+Seed Audio with the user's explicit approval. Recurring female preset identities:
+Ainsley (Tormentor), Brielle (Anxious One), Faye (Manipulator), Delia (Protector).
+No identifiable Hellblade performer or recording was supplied as a reference.
+
+Four packs cost 5.5 credits total. Unaltered 48 kHz WAV masters remain local under
+`audio-staging/voices/masters/level1/`; served clips are mono PCM16 WAV at 24 kHz.
+Generation jobs/settings and preparation hashes/split positions are recorded in
+`audio-staging/voices/level1-results.json` and `level1-clips.json`.
+The scripts are in `src/audio/level1VoiceCatalog.js`; the chapter manifest maps
+their IDs to actual files. No Level 2 or Level 3 recordings were generated.
+
 # Dean laugh
 
 `dean-laugh.mp3` is an optional, Git-ignored local copy of the user-supplied

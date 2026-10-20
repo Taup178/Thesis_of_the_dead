@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "status": "proposal-only; not imported by the game; no audio generated",
+  "levels": [1, 2],
+  "identities": {
+    "tormentor": { "label": "The Tormentor", "direction": "Adult female, low register, dry and controlled; precise consonants, restrained contempt, never shouted.", "pan": -0.5, "voiceId": null },
+    "anxious": { "label": "The Anxious One", "direction": "Adult female, lighter register, breath before short phrases; contained urgency, intelligible, never shrill.", "pan": 0.55, "voiceId": null },
+    "manipulator": { "label": "The Manipulator", "direction": "Adult female, soft middle register, intimate and unhurried; welcoming cadence with an unresolved ending.", "pan": 0.25, "voiceId": null },
+    "protector": { "label": "The Protector", "direction": "Adult female, warm middle register, grounded natural speech; short complete thoughts, calm firmness.", "pan": 0.05, "voiceId": null }
+  },
+  "policy": {
+    "maxConcurrentLines": 2,
+    "defaultSilenceAfterCueSeconds": 14,
+    "maxCuesPerRollingMinute": 3,
+    "maxSameIdentityConsecutiveCues": 2,
+    "repeatLineAfterSeconds": 180,
+    "ambientCueCooldownSeconds": 75,
+    "reactionCueCooldownSeconds": 35,
+    "spatialModes": ["headphones", "stereo", "centered"],
+    "missingAssetBehavior": "skip without fetching or blocking gameplay"
+  },
+  "cues": [
+    { "id": "l1_wake", "level": 1, "trigger": "wakeUpIntro.done rising edge", "guard": "wait 1.5 active seconds after control returns; alive; no tutorial or cinematic", "priority": 60, "once": "session", "lines": [
+      { "id": "l1_protector_01", "identity": "protector", "text": "Shaun. Feel the ground. You're standing.", "delivery": "quiet, matter-of-fact reassurance" }
+    ] },
+    { "id": "l1_first_doubt", "level": 1, "trigger": "12 active seconds since wake cue ended", "guard": "still no first credit; no nearby active enemy; no tutorial or cinematic", "priority": 10, "once": "session", "lines": [
+      { "id": "l1_tormentor_01", "identity": "tormentor", "text": "First year. And already you're lost.", "delivery": "close, almost conversational" }
+    ] },
+    { "id": "l1_first_pair", "level": 1, "trigger": "firstCreditCollected followed by orbPortalCutscene completion", "guard": "first pair remains alive and visible; wait 0.5 active seconds after control returns; cancel if obsolete", "priority": 80, "once": "session", "lines": [
+      { "id": "l1_anxious_01", "identity": "anxious", "text": "Two of them. Shaun, they're out.", "delivery": "short held breath, then quick" }
+    ] },
+    { "id": "l1_credit_cost", "level": 1, "trigger": "credit count reaches 2", "guard": "collection effect finished; no cinematic; player not under immediate attack", "priority": 30, "once": "session", "lines": [
+      { "id": "l1_tormentor_02", "identity": "tormentor", "text": "Every credit asks for something back.", "delivery": "cold observation" }
+    ] },
+    { "id": "l1_progress", "level": 1, "trigger": "credit count reaches 4", "guard": "wait for collection effect; quiet interval", "priority": 40, "once": "session", "lines": [
+      { "id": "l1_protector_02", "identity": "protector", "text": "Halfway. You earned every one.", "delivery": "warm without celebration" }
+    ] },
+    { "id": "l1_late_doubt", "level": 1, "trigger": "credit count reaches 6", "guard": "quiet interval; no higher cue pending", "priority": 20, "once": "session", "lines": [
+      { "id": "l1_tormentor_03", "identity": "tormentor", "text": "Still counting. Will it ever be enough?", "delivery": "small pause after counting" }
+    ] },
+    { "id": "l1_rest_exchange", "level": 1, "trigger": "idle for 25 active seconds after at least 2 credits", "guard": "grounded; no nearby enemy; no tutorial, inventory or cinematic; cancel on movement or danger", "priority": 10, "once": "session", "overlap": "protector enters during final 0.25 seconds of manipulator", "lines": [
+      { "id": "l1_manipulator_01", "identity": "manipulator", "text": "We could stay here. Let the year go on without us.", "delivery": "gentle invitation, no threat" },
+      { "id": "l1_protector_03", "identity": "protector", "text": "Rest for a breath. Then choose your next step.", "delivery": "quiet, gives Shaun agency" }
+    ] },
+    { "id": "l1_near_threat", "level": 1, "trigger": "visible active zombie crosses within 6 world units", "guard": "exclude reserves and portal exits; moving toward player; alive; no tutorial; expire after 1 active second", "priority": 90, "once": "session", "lines": [
+      { "id": "l1_anxious_02", "identity": "anxious", "text": "Too close. Too close.", "delivery": "contained urgency; not a directional instruction" }
+    ] },
+    { "id": "l1_hurt", "level": 1, "trigger": "nonfatal health decrease", "guard": "wait 0.7 active seconds for Shaun's hurt sound; health still above 0; no current vocal", "priority": 70, "cooldownSeconds": 35, "once": "line per session", "alternatives": true, "lines": [
+      { "id": "l1_protector_04", "identity": "protector", "text": "Breathe, Shaun. Find some space.", "delivery": "firm and measured" },
+      { "id": "l1_anxious_03", "identity": "anxious", "text": "That hurt. Keep breathing.", "delivery": "shaken, softening" }
+    ] },
+    { "id": "l1_repeated_hurt", "level": 1, "trigger": "third nonfatal health decrease within 30 active seconds", "guard": "health above 35; defer until combat eases; supersedes ordinary hurt cue; expire after 4 seconds", "priority": 75, "once": "session", "overlap": "protector enters during final 0.2 seconds of tormentor", "lines": [
+      { "id": "l1_tormentor_04", "identity": "tormentor", "text": "They'll mark every mistake.", "delivery": "low, dismissive" },
+      { "id": "l1_protector_05", "identity": "protector", "text": "A mistake isn't the whole of you.", "delivery": "steady, no scolding" }
+    ] },
+    { "id": "l1_low_health", "level": 1, "trigger": "health ratio crosses below 0.4", "guard": "nonfatal; wait for hurt vocal; supersedes other injury cues; no repeated threshold oscillation", "priority": 95, "once": "session", "lines": [
+      { "id": "l1_protector_06", "identity": "protector", "text": "You're still here. One thing at a time.", "delivery": "close and calm, leave heartbeat audible" }
+    ] },
+    { "id": "l1_empty_gun", "level": 1, "trigger": "ammo crosses to zero with firearm equipped", "guard": "not bashing, rolling or in tutorial; expire after 2 seconds; cancel if ammo restored", "priority": 75, "once": "session", "lines": [
+      { "id": "l1_anxious_04", "identity": "anxious", "text": "Empty. Shaun, it's empty.", "delivery": "brief, breathy" }
+    ] },
+    { "id": "l1_dean_reveal", "level": 1, "trigger": "events.deanReveal", "guard": "supersede final-credit commentary; wait at least 0.8 seconds after reveal sound; no other internal voice", "priority": 85, "once": "session", "lines": [
+      { "id": "l1_tormentor_05", "identity": "tormentor", "text": "All that work. He still holds the degree.", "delivery": "restrained bitterness" }
+    ] },
+    { "id": "l1_dean_gone", "level": 1, "trigger": "bossCutscene completes with bossState done", "guard": "at least 2 active seconds after camera return; remainingZombies above zero", "priority": 50, "once": "session", "lines": [
+      { "id": "l1_manipulator_02", "identity": "manipulator", "text": "He leaves. You do all the work.", "delivery": "sympathetic, quietly resentful" }
+    ] },
+    { "id": "l1_clear", "level": 1, "trigger": "bluePortalUnlocked rising edge", "guard": "wait 2 active seconds after final kill; alive; no player absorption; expire on entry", "priority": 60, "once": "session", "lines": [
+      { "id": "l1_protector_07", "identity": "protector", "text": "They're gone. You can move on.", "delivery": "a release of tension" }
+    ] },
+    { "id": "l1_portal_approach", "level": 1, "trigger": "unlocked portal approach within 10 world units", "guard": "grounded; outside 2.2-unit entry trigger; at least 14 seconds since last cue; cancel on entry", "priority": 30, "once": "session", "lines": [
+      { "id": "l1_manipulator_03", "identity": "manipulator", "text": "Another year. Perhaps this one will be kinder.", "delivery": "comfort with uncertain final word" }
+    ] },
+    { "id": "l1_retry", "level": 1, "trigger": "first retry after actual Level 1 death; wake intro completes", "guard": "wait 1.5 active seconds; replaces wake cue; manual R restart does not count", "priority": 60, "once": "session", "lines": [
+      { "id": "l1_protector_08", "identity": "protector", "text": "Start where you are. I'm still here.", "delivery": "familiar, patient" }
+    ] },
+    { "id": "l1_repeat_retry", "level": 1, "trigger": "second death retry; wake intro completes", "guard": "replaces other wake or retry cues; wait for control; never speak over death", "priority": 60, "once": "session", "overlap": "protector enters during final 0.2 seconds of tormentor", "lines": [
+      { "id": "l1_tormentor_06", "identity": "tormentor", "text": "Back at the beginning, Shaun.", "delivery": "cool recognition" },
+      { "id": "l1_protector_09", "identity": "protector", "text": "And you know more than before.", "delivery": "quiet interruption" }
+    ] },
+    { "id": "l2_arrival", "level": 2, "trigger": "player_arrival finishes", "guard": "arrival cinematic only; before blade demonstration; if line cannot finish before demonstration then skip", "priority": 60, "once": "session", "lines": [
+      { "id": "l2_manipulator_01", "identity": "manipulator", "text": "I did say perhaps.", "delivery": "intimate callback; no smile" }
+    ] },
+    { "id": "l2_saws_ready", "level": 2, "trigger": "deanBladeIntro becomes false", "guard": "player still on starting safe deck; wait 1 second after score onset; cancel if crossing a saw", "priority": 70, "once": "session", "lines": [
+      { "id": "l2_protector_01", "identity": "protector", "text": "His pace isn't yours. Watch the sweep.", "delivery": "calm, deliberate" }
+    ] },
+    { "id": "l2_saws_clear", "level": 2, "trigger": "puzzleIndex changes from 0 to 1", "guard": "grounded on safe deck; do not delay into first bridge jump", "priority": 60, "once": "session", "lines": [
+      { "id": "l2_anxious_01", "identity": "anxious", "text": "Past them. We're past them.", "delivery": "relief with breath still caught" }
+    ] },
+    { "id": "l2_bridge_wait", "level": 2, "trigger": "idle 12 active seconds at bridge checkpoint", "guard": "grounded on fixed deck; no jump, roll or nearby enemy; cancel on leaving deck", "priority": 15, "once": "session", "lines": [
+      { "id": "l2_tormentor_01", "identity": "tormentor", "text": "Even the ground won't commit to you.", "delivery": "dry, under the breath" }
+    ] },
+    { "id": "l2_bridge_reassure", "level": 2, "trigger": "bridge checkpoint on first visit or death retry", "guard": "choose instead of bridge-wait cue; fixed safe deck; no timed movement", "priority": 50, "once": "session", "lines": [
+      { "id": "l2_protector_02", "identity": "protector", "text": "Let your eyes settle before your feet move.", "delivery": "observant, not a jump command" }
+    ] },
+    { "id": "l2_spike_checkpoint", "level": 2, "trigger": "puzzleIndex changes from 1 to SPIKE_CORRIDOR_PUZZLE", "guard": "grounded on eight-metre fixed landing; cancel on entering spikes", "priority": 65, "once": "session", "lines": [
+      { "id": "l2_protector_03", "identity": "protector", "text": "Solid ground. Look ahead before you leave it.", "delivery": "brief respite" }
+    ] },
+    { "id": "l2_spike_observe", "level": 2, "trigger": "wait 10 active seconds on spike entry landing", "guard": "still outside retracting corridor; no combat; no time-specific crossing advice", "priority": 25, "once": "session", "lines": [
+      { "id": "l2_anxious_02", "identity": "anxious", "text": "The floor keeps moving. Even here.", "delivery": "low apprehension" }
+    ] },
+    { "id": "l2_ambush", "level": 2, "trigger": "first ambush record becomes visible while jumping", "guard": "live visible record only; not merely ambush.start; expire after 1 active second", "priority": 90, "once": "session", "lines": [
+      { "id": "l2_anxious_03", "identity": "anxious", "text": "They're climbing out!", "delivery": "fast and intelligible; no scream" }
+    ] },
+    { "id": "l2_wave_gap", "level": 2, "trigger": "currentWave advances to 2", "guard": "only if grounded on fixed safe landing; previous wave gone; cancel if next record becomes visible; otherwise skip", "priority": 25, "once": "session", "lines": [
+      { "id": "l2_tormentor_02", "identity": "tormentor", "text": "There's always another demand.", "delivery": "cold exhaustion" }
+    ] },
+    { "id": "l2_spike_hurt", "level": 2, "trigger": "nonfatal health decrease in retracting corridor", "guard": "wait 0.7 seconds after hurt sound; player subsequently grounded on fixed landing; cancel if combat persists", "priority": 70, "once": "session", "lines": [
+      { "id": "l2_protector_04", "identity": "protector", "text": "You're hurt. Give yourself a breath.", "delivery": "low, attentive" }
+    ] },
+    { "id": "l2_low_health", "level": 2, "trigger": "health ratio crosses below 0.4 during ambush", "guard": "alive; defer until hurt vocal ends; supersedes spike-hurt cue; never during a jump", "priority": 95, "once": "session", "lines": [
+      { "id": "l2_protector_05", "identity": "protector", "text": "Stay with me, Shaun. Just this moment.", "delivery": "warm, steady, no forced urgency" }
+    ] },
+    { "id": "l2_ambush_clear", "level": 2, "trigger": "ambush.cleared rising edge", "guard": "wait 2 seconds after final kill; fixed landing; before demonstration; cancel if watch begins", "priority": 65, "once": "session", "lines": [
+      { "id": "l2_anxious_04", "identity": "anxious", "text": "Nothing else is climbing.", "delivery": "tentative relief" },
+      { "id": "l2_protector_06", "identity": "protector", "text": "You held your ground.", "delivery": "short affirmation; sequential after anxious line" }
+    ] },
+    { "id": "l2_memory_wait", "level": 2, "trigger": "idle 15 active seconds at memory entrance after ambush clear", "guard": "phase chase; fixed landing; before demonstration; cancel on approach", "priority": 15, "once": "session", "overlap": "protector enters during final 0.25 seconds of manipulator", "lines": [
+      { "id": "l2_manipulator_02", "identity": "manipulator", "text": "You don't have to prove anything to him.", "delivery": "plausible comfort with a pull toward withdrawal" },
+      { "id": "l2_protector_07", "identity": "protector", "text": "Then do this for yourself.", "delivery": "quiet, no instruction about route" }
+    ] },
+    { "id": "l2_memory_rearm", "level": 2, "trigger": "ambush cleared while memoryApproachArmed false; idle 8 active seconds near entrance", "guard": "fixed landing; phase chase; no other cue; cancel once armed or watch begins", "priority": 60, "once": "session", "lines": [
+      { "id": "l2_protector_08", "identity": "protector", "text": "One step back. Meet him at the entrance.", "delivery": "clear, gentle; never during tile traversal" }
+    ] },
+    { "id": "l2_memory_retry", "level": 2, "trigger": "retry after actual memory failure", "guard": "safe checkpoint arrival only; at most 0.6 seconds of speech; cancel before watch begins at 0.9 seconds", "priority": 65, "once": "session", "lines": [
+      { "id": "l2_protector_09", "identity": "protector", "text": "Fresh eyes.", "delivery": "brief, grounded" }
+    ] },
+    { "id": "l2_final_route", "level": 2, "trigger": "phase becomes dean_exit after last valid landing", "guard": "grounded safe checkpoint; all tile timers null; wait 1 second after landing; complete before portal passage", "priority": 75, "once": "session", "lines": [
+      { "id": "l2_tormentor_03", "identity": "tormentor", "text": "And he still won't wait for you.", "delivery": "flat, no triumph" },
+      { "id": "l2_protector_10", "identity": "protector", "text": "You remembered. That was yours.", "delivery": "firm reply, sequential; no overlap" }
+    ] },
+    { "id": "l2_exit_wait", "level": 2, "trigger": "phase exit; idle 15 active seconds on safe final checkpoint", "guard": "Dean passage finished; no voice in preceding 14 seconds; cancel on player entry", "priority": 20, "once": "session", "lines": [
+      { "id": "l2_manipulator_03", "identity": "manipulator", "text": "They call it progress. It still feels like a chase.", "delivery": "soft weariness" }
+    ] },
+    { "id": "l2_hazard_retry", "level": 2, "trigger": "retry after actual saw or bridge death", "guard": "fixed checkpoint; exclude memory and manual restart; one alternative only", "priority": 60, "once": "line per session", "alternatives": true, "lines": [
+      { "id": "l2_tormentor_04", "identity": "tormentor", "text": "Still trying to keep up?", "delivery": "quiet question; no follow-up on same retry" },
+      { "id": "l2_protector_11", "identity": "protector", "text": "You can begin again without rushing.", "delivery": "patient, available only on fixed hazard checkpoints" }
+    ] }
+  ]
+}

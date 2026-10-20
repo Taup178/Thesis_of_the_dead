@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Thesis of the Dead — local voice audition</title>
+  <style>
+    body { max-width: 680px; margin: 8vh auto; padding: 24px; font: 17px/1.6 system-ui, sans-serif; color: #eee; background: #151718; }
+    label { display: block; margin: 18px 0; }
+    button, select, input { font: inherit; padding: 8px; }
+    button { margin: 8px 8px 8px 0; }
+    output { display: block; padding: 16px; background: #25292b; }
+  </style>
+</head>
+<body>
+  <h1>Local voice audition</h1>
+  <p>Choose an existing voice recording from your computer to test spatial playback and automatic ducking against the game's music. Files stay in this browser. This page generates no speech and uses no credits.</p>
+  <label>Voice recording <input id="recording" type="file" accept="audio/*" /></label>
+  <label>Position
+    <select id="identity">
+      <option value="-0.5">Tormentor — left</option>
+      <option value="0.55">Anxious One — right</option>
+      <option value="0.25">Manipulator — near right</option>
+      <option value="0.05">Protector — near center</option>
+    </select>
+  </label>
+  <label>Output
+    <select id="output">
+      <option value="headphones">Headphones</option>
+      <option value="stereo">Stereo</option>
+      <option value="centered">Centered</option>
+    </select>
+  </label>
+  <label>Master volume <input id="master" type="range" min="0" max="100" value="50" /></label>
+  <button id="music">Play background music</button>
+  <button id="play" disabled>Play voice</button>
+  <button id="stop">Stop voices</button>
+  <button id="stop-all">Stop all audio</button>
+  <output id="status" aria-live="polite">Choose a recording, then start the background music.</output>
+  <p id="mix">Normal mix</p>
+  <script type="module" src="./src/audio/voiceAudition.js"></script>
+</body>
+</html>

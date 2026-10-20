@@ -851,3 +851,27 @@ html, body {
   max-width: calc(100vw - 32px);
   text-align: center;
 }
+
+#voice-subtitles {
+  position: fixed;
+  z-index: 25;
+  bottom: max(13vh, 85px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 40px));
+  pointer-events: none;
+  text-align: center;
+  color: #f4f1e9;
+  font-size: clamp(15px, 1.5vw, 20px);
+  line-height: 1.5;
+  text-shadow: 0 2px 4px #000;
+}
+
+#voice-subtitles p {
+  margin: 5px 0;
+  padding: 7px 12px;
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: 4px;
+}
+
+#voice-subtitles strong { color: #ddc8a2; }

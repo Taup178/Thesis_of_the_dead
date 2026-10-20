@@ -1,0 +1,77 @@
+{
+  "level": 1,
+  "model": "seed_audio",
+  "approvedCreditCeiling": 5.5,
+  "quotedCredits": 5.5,
+  "authorization": "User explicitly requested generation of Level 1 recordings.",
+  "packs": [
+    {
+      "identity": "tormentor",
+      "voiceName": "Ainsley",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "First year. And already you're lost.\n\nEvery credit asks for something back.\n\nStill counting. Will it ever be enough?\n\nThey'll mark every mistake.\n\nAll that work. He still holds the degree.\n\nBack at the beginning, Shaun.",
+        "voice_id": "731b4ffe-e95e-59f4-8c00-81608936091f",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 0,
+      "job_id": "19a6ff13-238f-4092-a231-913cd0ccbdc1",
+      "status": "pending"
+    },
+    {
+      "identity": "anxious",
+      "voiceName": "Brielle",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Two of them. Shaun, they're out.\n\nToo close. Too close.\n\nThat hurt. Keep breathing.\n\nEmpty. Shaun, it's empty.",
+        "voice_id": "a00bc7f3-0236-5e76-ac65-90137ce0f5a4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 1,
+      "job_id": "8ce0e927-fbda-44b9-9a3f-17c5162f7176",
+      "status": "pending"
+    },
+    {
+      "identity": "manipulator",
+      "voiceName": "Faye",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "We could stay here. Let the year go on without us.\n\nHe leaves. You do all the work.\n\nAnother year. Perhaps this one will be kinder.",
+        "voice_id": "d198dc0b-c4e5-5198-aa1d-ecf5ca0927c4",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 2,
+      "job_id": "2b227ec9-5ad5-4aa6-8be3-0afac79a645a",
+      "status": "pending"
+    },
+    {
+      "identity": "protector",
+      "voiceName": "Delia",
+      "params": {
+        "model": "seed_audio",
+        "prompt": "Shaun. Feel the ground. You're standing.\n\nHalfway. You earned every one.\n\nRest for a breath. Then choose your next step.\n\nBreathe, Shaun. Find some space.\n\nA mistake isn't the whole of you.\n\nYou're still here. One thing at a time.\n\nThey're gone. You can move on.\n\nStart where you are. I'm still here.\n\nAnd you know more than before.",
+        "voice_id": "1550321e-7f5b-526e-b001-02328b03e9bc",
+        "voice_type": "preset",
+        "format": "wav",
+        "sample_rate": 48000,
+        "count": 1,
+        "use_unlim": false
+      },
+      "index": 3,
+      "job_id": "da94dbea-b227-4e0b-bbca-b76fec0d8c9d",
+      "status": "pending"
+    }
+  ]
+}

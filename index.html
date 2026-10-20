@@ -85,6 +85,26 @@
         <input id="volume-slider" type="range" min="0" max="100" value="70" />
       </div>
       <div class="option-row">
+        <label for="internal-voices-toggle">Internal Voices</label>
+        <input id="internal-voices-toggle" type="checkbox" checked />
+      </div>
+      <div class="option-row">
+        <label for="internal-voice-volume">Voice Volume</label>
+        <input id="internal-voice-volume" type="range" min="0" max="100" value="70" />
+      </div>
+      <div class="option-row">
+        <label for="internal-voice-mode">Voice Positioning</label>
+        <select id="internal-voice-mode">
+          <option value="headphones">Headphones</option>
+          <option value="stereo">Stereo</option>
+          <option value="centered">Centered</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <label for="internal-voice-subtitles">Voice Subtitles</label>
+        <input id="internal-voice-subtitles" type="checkbox" checked />
+      </div>
+      <div class="option-row">
         <label for="sensitivity-slider">Mouse Sensitivity</label>
         <input id="sensitivity-slider" type="range" min="1" max="10" value="5" />
       </div>
@@ -159,6 +179,8 @@
       WASD: Move | Mouse: Look | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Jump | Q: Roll | C: Camera | R: Restart
     </div>
   </div>
+
+  <div id="voice-subtitles" hidden></div>
 
   <div id="weapon-wheel" class="hidden" aria-hidden="true">
     <div class="weapon-inventory-header">

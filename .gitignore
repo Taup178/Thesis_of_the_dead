@@ -20,3 +20,6 @@ Thumbs.db
 
 # Personal local audition asset: intentionally excluded from public distribution.
 public/assets/audio/dean-laugh.mp3
+
+# Editable voice masters stay local; served chapter clips and provenance are retained.
+audio-staging/voices/masters/
