@@ -1,0 +1,126 @@
+{
+  "model": "faster-whisper tiny.en (CPU int8)",
+  "note": "Automated transcript verification, not subjective listening approval.",
+  "lines": [
+    {
+      "id": "l3_tormentor_arrival",
+      "expected": "Final year, Shaun. Nothing left to hide behind.",
+      "recognized": "Final year, Sean. Nothing left to hide behind."
+    },
+    {
+      "id": "l3_protector_arrival",
+      "expected": "You're still here. One thing at a time.",
+      "recognized": "You're still here one thing at a time"
+    },
+    {
+      "id": "l3_anxious_emergence",
+      "expected": "They're coming out of the houses.",
+      "recognized": "They're coming out of the houses."
+    },
+    {
+      "id": "l3_protector_house_destroyed",
+      "expected": "One down. Keep going.",
+      "recognized": "1 down. Keep going."
+    },
+    {
+      "id": "l3_tormentor_half_time",
+      "expected": "Half the time gone already, Shaun.",
+      "recognized": "Half the time gone already, Sean."
+    },
+    {
+      "id": "l3_anxious_time_low",
+      "expected": "Shaun, there's hardly any time left.",
+      "recognized": "Sean, there's hardly any time left."
+    },
+    {
+      "id": "l3_protector_arena_clear",
+      "expected": "It's quiet. He's waiting in the centre.",
+      "recognized": "It's quiet. He's waiting in the center."
+    },
+    {
+      "id": "l3_tormentor_boss_intro",
+      "expected": "There he is. Still holding what you came for.",
+      "recognized": "There he is, still holding what you came for."
+    },
+    {
+      "id": "l3_anxious_dean_fallen",
+      "expected": "He's down. Is it over?",
+      "recognized": "He's down. Is it over?"
+    },
+    {
+      "id": "l3_tormentor_transformation",
+      "expected": "You thought it would end so easily.",
+      "recognized": "You thought it would end so easily."
+    },
+    {
+      "id": "l3_anxious_monster_reveal",
+      "expected": "Shaun... he's changed.",
+      "recognized": "Sean, he's changed."
+    },
+    {
+      "id": "l3_protector_monster_combat",
+      "expected": "Stay with me. He can still fall.",
+      "recognized": "Stay with me. He can still fall."
+    },
+    {
+      "id": "l3_tormentor_monster_enrage",
+      "expected": "Look what you've made him become.",
+      "recognized": "Look what you've made him become."
+    },
+    {
+      "id": "l3_protector_monster_fallen",
+      "expected": "He's down. Go and take what's yours.",
+      "recognized": "He's down. Go and take what's yours."
+    },
+    {
+      "id": "l3_anxious_degree_taken",
+      "expected": "It's here. We're actually holding it.",
+      "recognized": "It's here. We're actually holding it."
+    },
+    {
+      "id": "l3_protector_degree_held",
+      "expected": "You earned this, Shaun. It's yours.",
+      "recognized": "You earned this, Sean. It's yours."
+    },
+    {
+      "id": "l3_manipulator_portals",
+      "expected": "Red or blue. Which one makes all of this worth it?",
+      "recognized": "red or blue, which one makes all of this worth it?"
+    },
+    {
+      "id": "l3_protector_portals",
+      "expected": "You don't owe either one an answer. Choose for yourself.",
+      "recognized": "You don't owe either one an answer. Choose for yourself."
+    },
+    {
+      "id": "l3_protector_red_choice",
+      "expected": "You chose it. Keep going.",
+      "recognized": "You chose it. Keep going."
+    },
+    {
+      "id": "l3_protector_blue_choice",
+      "expected": "Your next step is yours, Shaun.",
+      "recognized": "Your next step is yours, Sean."
+    },
+    {
+      "id": "l3_tormentor_burn_raise",
+      "expected": "He'd rather burn it than let you take it.",
+      "recognized": "He'd rather burn it than let you take it."
+    },
+    {
+      "id": "l3_anxious_burn_flames",
+      "expected": "Shaun... it's burning.",
+      "recognized": "Sean, it's burning."
+    },
+    {
+      "id": "l3_protector_low_health",
+      "expected": "Breathe, Shaun. You're still in this.",
+      "recognized": "Breathe, Sean. You're still in this."
+    },
+    {
+      "id": "l3_manipulator_retry",
+      "expected": "Back again. You do know how this ends.",
+      "recognized": "Back again. You do know how this ends."
+    }
+  ]
+}

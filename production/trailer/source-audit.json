@@ -1,0 +1,164 @@
+[
+  {
+    "file": "ai/shot-1.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "24/1",
+    "frames": 193,
+    "duration": 8.041667,
+    "review": "edit/reviews/ai-shot-1.jpg"
+  },
+  {
+    "file": "ai/shot-2.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "24/1",
+    "frames": 193,
+    "duration": 8.041667,
+    "review": "edit/reviews/ai-shot-2.jpg"
+  },
+  {
+    "file": "ai/shot-3.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "24/1",
+    "frames": 193,
+    "duration": 8.041667,
+    "review": "edit/reviews/ai-shot-3.jpg"
+  },
+  {
+    "file": "ai/shot-4.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "24/1",
+    "frames": 193,
+    "duration": 8.041667,
+    "review": "edit/reviews/ai-shot-4.jpg"
+  },
+  {
+    "file": "local-capture/dean_combat.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 480,
+    "duration": 8,
+    "review": "edit/reviews/local-capture-dean_combat.jpg"
+  },
+  {
+    "file": "local-capture/dean_intro.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 180,
+    "duration": 3,
+    "review": "edit/reviews/local-capture-dean_intro.jpg"
+  },
+  {
+    "file": "local-capture/desert_house.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 330,
+    "duration": 5.5,
+    "review": "edit/reviews/local-capture-desert_house.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_ambush.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 300,
+    "duration": 5,
+    "review": "edit/reviews/local-capture-dungeon_ambush.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_bridge.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 210,
+    "duration": 3.5,
+    "review": "edit/reviews/local-capture-dungeon_bridge.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_memory.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 360,
+    "duration": 6,
+    "review": "edit/reviews/local-capture-dungeon_memory.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_memory_run.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 300,
+    "duration": 5,
+    "review": "edit/reviews/local-capture-dungeon_memory_run.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_saws.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 180,
+    "duration": 3,
+    "review": "edit/reviews/local-capture-dungeon_saws.jpg"
+  },
+  {
+    "file": "local-capture/dungeon_spikes.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 240,
+    "duration": 4,
+    "review": "edit/reviews/local-capture-dungeon_spikes.jpg"
+  },
+  {
+    "file": "local-capture/forest_combat.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 300,
+    "duration": 5,
+    "review": "edit/reviews/local-capture-forest_combat.jpg"
+  },
+  {
+    "file": "local-capture/forest_credit.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 300,
+    "duration": 5,
+    "review": "edit/reviews/local-capture-forest_credit.jpg"
+  },
+  {
+    "file": "local-capture/forest_run.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 300,
+    "duration": 5,
+    "review": "edit/reviews/local-capture-forest_run.jpg"
+  },
+  {
+    "file": "local-capture/forest_sword.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 180,
+    "duration": 3,
+    "review": "edit/reviews/local-capture-forest_sword.jpg"
+  },
+  {
+    "file": "local-capture/opening_scene.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": "60/1",
+    "frames": 180,
+    "duration": 3,
+    "review": "edit/reviews/local-capture-opening_scene.jpg"
+  }
+]

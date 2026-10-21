@@ -24,9 +24,20 @@ public/assets/audio/dean-laugh.mp3
 # Editable voice masters stay local; served chapter clips and provenance are retained.
 audio-staging/voices/masters/
 /tmp/level2-voices.zip
+/tmp/level3-voices.zip
 /tmp/memory-voices.zip
 /tmp/level1-orbs.zip
 /tmp/opening-*.png
 /tmp/opening-voices.zip
+
+# Trailer renders and raw capture frames; keep production scripts/plans in source.
+/production/trailer/gameplay/
+/production/trailer/references/
+/production/trailer/*.mp4
+/production/trailer/*.zip
+/production/trailer/tools/
+/production/trailer/local-capture/
+/production/trailer/ai/
+/production/trailer/edit/
 /tmp/monster-*.png
 /tmp/monster-motion-preview.html

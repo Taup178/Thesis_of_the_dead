@@ -5,10 +5,10 @@ import { AudioManager } from '../src/core/AudioManager.js';
 import { loadDeanLaugh } from '../src/enemies/DeanLaughAudio.js';
 
 class FakeParam {
-  constructor(value = 1) { this.value = value; }
+  constructor(value = 1) { this.value = value; this.events = []; }
   setTargetAtTime(value) { this.value = value; }
-  setValueAtTime(value) { this.value = value; }
-  linearRampToValueAtTime(value) { this.value = value; }
+  setValueAtTime(value, time) { this.value = value; this.events.push({ type: 'set', value, time }); }
+  linearRampToValueAtTime(value, time) { this.value = value; this.events.push({ type: 'ramp', value, time }); }
   cancelScheduledValues() {}
 }
 
@@ -25,7 +25,7 @@ class FakeNode {
   }
   connect(node) { this.connections.push(node); }
   disconnect() {}
-  start() {}
+  start(...args) { this.startArgs = args; }
   stop() { this.onended?.(); }
 }
 
@@ -59,6 +59,7 @@ class FakeAudioContext {
     return {
       numberOfChannels: 1,
       length: 4,
+      duration: 180,
       getChannelData: () => new Float32Array([0.01, 0.02, -0.01, -0.02]),
     };
   }
@@ -173,21 +174,73 @@ test('pausing and stopping cancel pending one-shots without leaving voice reserv
   }
 });
 
-test('final encounter is quiet before house emergence, then plays Tar and the Dean score without wind ambience', async () => {
+test('final fights crossfade to Tar at 1:00 and Red Moon at 0:25 without the old boss score', async () => {
   await withAudioGlobals(async urls => {
     const manager = new AudioManager();
     await manager.setLevelTheme('Chapter 3: The Final Encounter');
-    assert.equal(manager.themeKey, null);
+    assert.equal(manager.themeSources.size, 0);
     await manager.setFinalEncounterPhase('house-emergence');
     assert.equal(manager.themeKey, 'final-house-emergence');
     assert.ok(urls.some(url => url.endsWith('/music/tar.mp3')));
-    await manager.setFinalEncounterPhase('boss');
+    manager.context.currentTime = 10;
+    const house = [...manager.themeSources][0];
+    await manager.setFinalEncounterPhase('dean');
     assert.equal(manager.themeKey, 'final-dean');
+    const dean = [...manager.themeSources][0];
+    assert.deepEqual(dean.source.startArgs, [10, 60]);
+    assert.equal(dean.source.buffer, manager.cache.get('./assets/audio/music/tar.mp3'));
+    assert.deepEqual(dean.gain.gain.events[0], { type: 'set', value: 0, time: 10 });
+    assert.equal(dean.gain.gain.events.at(-1).time, 13, 'Tar fades up over three seconds');
+    assert.equal(house.gain.gain.events.at(-1).value, 0, 'the preceding music fades away');
+    const count = manager.context.sources.length;
+    await manager.setFinalEncounterPhase('dean');
+    assert.equal(manager.context.sources.length, count, 'per-frame phase sync never restarts the song');
+    manager.context.currentTime = 35;
+    await manager.setFinalEncounterPhase('monster');
+    const monster = [...manager.themeSources][0];
+    assert.equal(manager.themeKey, 'final-monster');
+    assert.deepEqual(monster.source.startArgs, [35, 25]);
+    assert.equal(monster.source.buffer, manager.cache.get('./assets/audio/red-moon.mp3'));
+    assert.deepEqual(monster.gain.gain.events[0], { type: 'set', value: 0, time: 35 });
+    assert.equal(monster.gain.gain.events.at(-1).time, 38, 'Red Moon fades up over three seconds');
+    assert.equal(dean.gain.gain.events.at(-1).value, 0, 'Tar fades out beneath Red Moon');
+    manager.pause(); await Promise.resolve(); manager.resume(); await Promise.resolve();
+    await manager.setFinalEncounterPhase('monster');
+    assert.equal(manager.context.sources.length, count + 1, 'pause resumes the existing song');
+    manager.context.currentTime = 50;
+    await manager.setFinalEncounterPhase('complete');
+    assert.equal(manager.themeKey, 'final-complete');
+    assert.equal(manager.themeSources.size, 0);
+    assert.deepEqual(monster.gain.gain.events.at(-1), { type: 'ramp', value: 0, time: 52 },
+      'all music fades out over two seconds after the degree cutscene');
+    await manager.setFinalEncounterPhase('complete');
+    assert.equal(manager.context.sources.length, count + 1, 'silence does not restart a source');
     assert.ok(!urls.some(url => url.endsWith('/music/arena-wind.ogg')));
-    assert.ok(urls.some(url => url.endsWith('/music/lost-horror.ogg')));
+    assert.ok(!urls.some(url => url.endsWith('/music/lost-horror.ogg')));
     assert.ok(!urls.some(url => url.endsWith('/music/final-boss.mp3')));
     manager.stopAll();
   });
+});
+
+test('returning to the quiet final arena cancels the preceding chapter music', async () => {
+  await withAudioGlobals(async () => {
+    const manager = new AudioManager();
+    await manager.playTheme('earlier-level', './assets/audio/music/rannsaka.mp3');
+    assert.equal(manager.themeSources.size, 1);
+    await manager.setLevelTheme('Chapter 3: The Final Encounter');
+    assert.equal(manager.themeSources.size, 0);
+    manager.stopAll();
+  });
+});
+
+test('both final boss tracks match the supplied Zombie Kit originals', () => {
+  for (const [served, original] of [
+    ['music/tar.mp3', 'Tar [agmPnGNZ574].mp3'],
+    ['red-moon.mp3', 'Red Moon [uvgIA_KBNf8].mp3'],
+  ]) {
+    assert.ok(readFileSync(new URL(`../public/assets/audio/${served}`, import.meta.url))
+      .equals(readFileSync(new URL(`../Zombie_Kit/${original}`, import.meta.url))));
+  }
 });
 
 test('Level 1 stays quiet until the first-orb song starts and a restart clears it', async () => {

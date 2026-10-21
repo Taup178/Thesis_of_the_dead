@@ -1,0 +1,29 @@
+{
+  "status": "all_four_completed_successfully",
+  "approvedCredits": 96,
+  "maxGenerations": 4,
+  "submittedCount": 4,
+  "jobs": [
+    {
+      "index": 1,
+      "job_id": "2eb7c189-dbe1-4cbd-beac-b36fa7ef94f6",
+      "status": "pending"
+    },
+    {
+      "index": 2,
+      "job_id": "e6066363-9b10-4cc2-9bd5-b894e2a50391",
+      "status": "pending"
+    },
+    {
+      "index": 3,
+      "job_id": "795730c7-c423-47c9-9144-b1bd53f72e34",
+      "status": "pending"
+    },
+    {
+      "index": 4,
+      "job_id": "9a3cff9e-1efd-4062-b127-c3c8ef407110",
+      "status": "pending"
+    }
+  ],
+  "warning": "Do not submit additional generations or retry an uncertain submission. Four-job allowance has been used."
+}

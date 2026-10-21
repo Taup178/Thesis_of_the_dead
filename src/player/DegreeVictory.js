@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ArenaNavigation } from '../environment/ArenaNavigation.js';
+import { fitShaunDegreeGrip } from './ShaunDegreeGrip.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const smooth = THREE.MathUtils.smootherstep;
@@ -38,33 +39,17 @@ export class DegreeVictory {
     this.grip = new THREE.Object3D(); this.grip.name = 'ShaunVictoryDegreeGrip';
     const paperScale = this.scroll.getWorldScale(V());
     this.paperFit = 0.7;
-    if (this.lower && finger) {
-      this.lower.updateWorldMatrix(true, true);
-      const knuckles = ['Index1L', 'Middle1L', 'Pinky1L'].map(name => model.getObjectByName(name)).filter(Boolean);
-      const points = knuckles.map(node => this.lower.worldToLocal(node.getWorldPosition(V())));
-      const center = points.reduce((sum, point) => sum.add(point), V()).divideScalar(points.length);
-      const across = points[0].clone().sub(points.at(-1)).normalize();
-      const forward = center.clone().addScaledVector(across, -center.dot(across)).normalize();
-      const normal = new THREE.Vector3().crossVectors(forward, across).normalize();
-      const unit = Math.abs(this.lower.getWorldScale(V()).x);
-      const width = points[0].distanceTo(points.at(-1)) * unit;
-      this.paperFit = THREE.MathUtils.clamp(width * 3.2, 0.57, 0.63) / (0.85 * Math.abs(paperScale.x));
-      const gun = player.weaponPresentation?.worldWeapons.smg;
-      if (gun) {
-        const handle = this.lower.worldToLocal(gun.getWorldPosition(V()));
-        if (handle.sub(center).dot(normal) < 0) { normal.negate(); forward.negate(); }
-      }
-      const radius = 0.105 * Math.abs(paperScale.y) * this.paperFit;
-      this.grip.position.copy(center).addScaledVector(normal, (radius + 0.045) / unit);
-      this.grip.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, normal, forward));
-      this.lower.add(this.grip); this.palm = this.grip.position.clone();
-    } else { player.group.add(this.grip); this.grip.position.set(0.28, 1, -0.3); }
     const fingerPose = (clipName, node, fallback) => {
       const track = player.animations?.find(clip => clip.name === clipName)?.tracks.find(track => track.name === `${node.name}.quaternion`);
       return track ? new THREE.Quaternion().fromArray(track.createInterpolant().evaluate(0.3)) : fallback.clone();
     };
     this.fingers = this.bones.filter(({ node }) => /^(Index|Middle|Pinky|Thumb)[123]L$/.test(node.name))
       .map(({ node, rotation }) => ({ node, open: fingerPose('Idle', node, rotation), closed: fingerPose('Idle_Gun', node, rotation) }));
+    if (this.lower && finger) {
+      const fit = fitShaunDegreeGrip(player, this.lower, this.grip, paperScale, this.fingers);
+      this.paperFit = fit.paperFit; this.paperRadialFit = fit.radialFit; this.fingerContacts = fit.contacts;
+      this.lower.add(this.grip); this.palm = this.grip.position.clone();
+    } else { player.group.add(this.grip); this.grip.position.set(0.37, 0.68, -0.08); }
     this.openFingers = degreeCatch.pose.filter(({ node }) => /^L_(thumb|point|middle|ring|pink)/.test(node.name));
     const paperCenter = this.scroll.getWorldPosition(V());
     boss.group.updateMatrixWorld(true);
@@ -121,7 +106,7 @@ export class DegreeVictory {
     const a = start.distanceTo(elbow), b = elbow.distanceTo(hand), axis = target.clone().sub(start);
     const distance = THREE.MathUtils.clamp(axis.length(), Math.abs(a - b) + 0.001, a + b - 0.001);
     axis.normalize();
-    const pole = this.player.group.localToWorld(V(0.65, 0.75, -0.15)).sub(start);
+    const pole = this.player.group.localToWorld(V(0.3, 0.55, 0.12)).sub(start);
     pole.addScaledVector(axis, -pole.dot(axis)).normalize();
     const along = (a * a - b * b + distance * distance) / (2 * distance);
     const bend = start.clone().addScaledVector(axis, along).addScaledVector(pole, Math.sqrt(Math.max(0, a * a - along * along)));
@@ -169,11 +154,11 @@ export class DegreeVictory {
       const heading = new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(-toward.x, -toward.z));
       player.group.quaternion.rotateTowards(heading, 3 * dt); player.yaw = player.group.rotation.y;
       this._animate(this.phase === 'hold' && this.speed > 0.05 ? 'RelaxedWalkBackward' : 'Idle', dt);
-      const celebration = this.phase === 'hold' ? smooth(this.time, 1.9, 2.6) * (1 - smooth(this.time, 3.3, 4)) : 0;
-      const target = this.phase === 'reach' ? this.contact.clone()
-        : player.group.localToWorld(V(0.28 + celebration * 0.04, 1.05 + celebration * 0.73, -0.3 + celebration * 0.22));
+      const target = this.phase === 'reach' ? this.contact.clone() : this.grip.getWorldPosition(V());
       if (this.phase === 'hold') target.lerp(this.contact, 1 - smooth(this.time, 0, 1));
-      this._reach(target, this.phase === 'reach' ? smooth(this.time, 0.12, 1.05) : 1);
+      if (this.phase === 'reach' || this.time < 1) {
+        this._reach(target, this.phase === 'reach' ? smooth(this.time, 0.12, 1.05) : 1);
+      }
       const curl = this.phase === 'reach' ? smooth(this.time, 0.9, 1.38) : 1;
       this._gripFingers(curl);
       player.group.updateWorldMatrix(true, true);
@@ -209,7 +194,10 @@ export class DegreeVictory {
   _seatPaper(blend) {
     this.scroll.position.copy(this.transfer.position).multiplyScalar(1 - blend);
     this.scroll.quaternion.copy(this.transfer.rotation).slerp(new THREE.Quaternion(), blend);
-    this.scroll.scale.copy(this.transfer.scale).multiplyScalar(THREE.MathUtils.lerp(1, this.paperFit, blend));
+    const radialFit = this.paperRadialFit ?? this.paperFit;
+    this.scroll.scale.copy(this.transfer.scale).multiply(V(
+      THREE.MathUtils.lerp(1, this.paperFit, blend),
+      THREE.MathUtils.lerp(1, radialFit, blend), THREE.MathUtils.lerp(1, radialFit, blend)));
   }
 
   _gripFingers(weight) {
@@ -226,7 +214,6 @@ export class DegreeVictory {
 
   keepHolding() {
     this._hideWeapons();
-    if (!this.player.isDodging) this._reach(this.player.group.localToWorld(V(0.28, 1.05, -0.3)));
     this._gripFingers(1);
     this._seatPaper(1);
     this.player.group.updateWorldMatrix(true, true);

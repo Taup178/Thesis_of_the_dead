@@ -1,6 +1,7 @@
 import { AudioManager } from '../core/AudioManager.js';
 import { loadVoiceAssets } from './Level1Voices.js';
 import { LEVEL2_VOICE_CUES } from './level2VoiceCatalog.js';
+import { LEVEL3_VOICE_CUES } from './level3VoiceCatalog.js';
 
 const audio = new AudioManager();
 // Audition options are temporary. Do not overwrite the player's saved preferences.
@@ -9,8 +10,11 @@ const get = id => document.getElementById(id);
 let recordingUrl;
 const identities = ['tormentor', 'anxious', 'manipulator', 'protector'];
 const revokeRecording = () => { if (typeof recordingUrl === 'string' && recordingUrl.startsWith('blob:')) URL.revokeObjectURL(recordingUrl); };
-const chapterAssets = await loadVoiceAssets('./assets/audio/voices/level2/manifest.json', LEVEL2_VOICE_CUES);
-for (const line of LEVEL2_VOICE_CUES.flatMap(cue => cue.lines)) {
+const chapter = new URLSearchParams(location.search).get('level') === '3' ? 3 : 2;
+const catalog = chapter === 3 ? LEVEL3_VOICE_CUES : LEVEL2_VOICE_CUES;
+get('chapter-label').textContent = `Level ${chapter} generated line`;
+const chapterAssets = await loadVoiceAssets(`./assets/audio/voices/level${chapter}/manifest.json`, catalog);
+for (const line of catalog.flatMap(cue => cue.lines)) {
   if (!chapterAssets[line.id]) continue;
   const option = document.createElement('option'); option.value = line.id;
   option.textContent = `${line.label}: ${line.text}`;
@@ -19,7 +23,7 @@ for (const line of LEVEL2_VOICE_CUES.flatMap(cue => cue.lines)) {
 get('chapter-line').addEventListener('change', () => {
   audio.internalVoices.unload(); revokeRecording();
   recordingUrl = chapterAssets[get('chapter-line').value] || null;
-  const line = LEVEL2_VOICE_CUES.flatMap(cue => cue.lines).find(item => item.id === get('chapter-line').value);
+  const line = catalog.flatMap(cue => cue.lines).find(item => item.id === get('chapter-line').value);
   if (line) get('identity').selectedIndex = identities.indexOf(line.identity);
   get('play').disabled = !recordingUrl;
   get('status').textContent = line ? `${line.text} — effects already included in the recording.` : 'Choose a recording.';

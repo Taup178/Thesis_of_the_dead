@@ -1,0 +1,73 @@
+{
+  "music": {
+    "file": "public/assets/audio/red-moon.mp3",
+    "sourceStartSeconds": 25,
+    "bytes": 2650982
+  },
+  "clips": [
+    {
+      "id": "opening_protector_01",
+      "chapter": "opening",
+      "file": "public/assets/audio/voices/opening/protector/opening_protector_01.ogg",
+      "speechDuration": 2.9,
+      "effectsBaked": true,
+      "bytes": 46762
+    },
+    {
+      "id": "opening_manipulator_01",
+      "chapter": "opening",
+      "file": "public/assets/audio/voices/opening/manipulator/opening_manipulator_01.ogg",
+      "speechDuration": 3.33,
+      "effectsBaked": true,
+      "bytes": 62135
+    },
+    {
+      "id": "opening_tormentor_01",
+      "chapter": "opening",
+      "file": "public/assets/audio/voices/opening/tormentor/opening_tormentor_01.ogg",
+      "speechDuration": 2.74,
+      "effectsBaked": true,
+      "bytes": 55753
+    },
+    {
+      "id": "l1_tormentor_02",
+      "chapter": "level1",
+      "file": "public/assets/audio/voices/level1/tormentor/l1_tormentor_02.wav",
+      "speechDuration": null,
+      "effectsBaked": false,
+      "bytes": 149324
+    },
+    {
+      "id": "l1_anxious_02",
+      "chapter": "level1",
+      "file": "public/assets/audio/voices/level1/anxious/l1_anxious_02.wav",
+      "speechDuration": null,
+      "effectsBaked": false,
+      "bytes": 147644
+    },
+    {
+      "id": "l2_protector_02",
+      "chapter": "level2",
+      "file": "public/assets/audio/voices/level2/protector/l2_protector_02.ogg",
+      "speechDuration": 2.75,
+      "effectsBaked": true,
+      "bytes": 35906
+    },
+    {
+      "id": "l2_anxious_03",
+      "chapter": "level2",
+      "file": "public/assets/audio/voices/level2/anxious/l2_anxious_03.ogg",
+      "speechDuration": 1.3699999999999992,
+      "effectsBaked": true,
+      "bytes": 26160
+    },
+    {
+      "id": "l3_tormentor_boss_intro",
+      "chapter": "level3",
+      "file": "public/assets/audio/voices/level3/tormentor/l3_tormentor_boss_intro.ogg",
+      "speechDuration": 3.0000000000000004,
+      "effectsBaked": true,
+      "bytes": 50117
+    }
+  ]
+}

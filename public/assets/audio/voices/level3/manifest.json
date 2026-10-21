@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "clips": {
+    "l3_tormentor_arrival": {
+      "file": "tormentor/l3_tormentor_arrival.ogg",
+      "effectsBaked": true,
+      "speechDuration": 5.84
+    },
+    "l3_protector_arrival": {
+      "file": "protector/l3_protector_arrival.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.9399999999999995
+    },
+    "l3_anxious_emergence": {
+      "file": "anxious/l3_anxious_emergence.ogg",
+      "effectsBaked": true,
+      "speechDuration": 1.84
+    },
+    "l3_protector_house_destroyed": {
+      "file": "protector/l3_protector_house_destroyed.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.02
+    },
+    "l3_tormentor_half_time": {
+      "file": "tormentor/l3_tormentor_half_time.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.7
+    },
+    "l3_anxious_time_low": {
+      "file": "anxious/l3_anxious_time_low.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.6800000000000006
+    },
+    "l3_protector_arena_clear": {
+      "file": "protector/l3_protector_arena_clear.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.16
+    },
+    "l3_tormentor_boss_intro": {
+      "file": "tormentor/l3_tormentor_boss_intro.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.0000000000000004
+    },
+    "l3_anxious_dean_fallen": {
+      "file": "anxious/l3_anxious_dean_fallen.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.36
+    },
+    "l3_tormentor_transformation": {
+      "file": "tormentor/l3_tormentor_transformation.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.3400000000000003
+    },
+    "l3_anxious_monster_reveal": {
+      "file": "anxious/l3_anxious_monster_reveal.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.2
+    },
+    "l3_protector_monster_combat": {
+      "file": "protector/l3_protector_monster_combat.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.6800000000000006
+    },
+    "l3_tormentor_monster_enrage": {
+      "file": "tormentor/l3_tormentor_monster_enrage.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.3
+    },
+    "l3_protector_monster_fallen": {
+      "file": "protector/l3_protector_monster_fallen.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.4
+    },
+    "l3_anxious_degree_taken": {
+      "file": "anxious/l3_anxious_degree_taken.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.84
+    },
+    "l3_protector_degree_held": {
+      "file": "protector/l3_protector_degree_held.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.02
+    },
+    "l3_manipulator_portals": {
+      "file": "manipulator/l3_manipulator_portals.ogg",
+      "effectsBaked": true,
+      "speechDuration": 6.5200000000000005
+    },
+    "l3_protector_portals": {
+      "file": "protector/l3_protector_portals.ogg",
+      "effectsBaked": true,
+      "speechDuration": 5.0
+    },
+    "l3_protector_red_choice": {
+      "file": "protector/l3_protector_red_choice.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.3800000000000003
+    },
+    "l3_protector_blue_choice": {
+      "file": "protector/l3_protector_blue_choice.ogg",
+      "effectsBaked": true,
+      "speechDuration": 4.2
+    },
+    "l3_tormentor_burn_raise": {
+      "file": "tormentor/l3_tormentor_burn_raise.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.66
+    },
+    "l3_anxious_burn_flames": {
+      "file": "anxious/l3_anxious_burn_flames.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.2
+    },
+    "l3_protector_low_health": {
+      "file": "protector/l3_protector_low_health.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.04
+    },
+    "l3_manipulator_retry": {
+      "file": "manipulator/l3_manipulator_retry.ogg",
+      "effectsBaked": true,
+      "speechDuration": 3.34
+    }
+  }
+}

@@ -30,7 +30,8 @@ export class Level3 {
     this.props = []; this.staticObstacles = []; this.bulletObstacles = [];
     this.resources = new Set(); this.targetHouse = null; this.lastHitHouse = null; this.targetHold = 0;
     this.failureReason = 'The desert overwhelmed you. Regroup and try the encounter again.';
-    this.transformationPreview = !!options?.transformationPreview;
+    this.victoryPreview = !!options?.victoryPreview;
+    this.transformationPreview = !!options?.transformationPreview || this.victoryPreview;
     this.bossPreview = !!options?.bossPreview || this.transformationPreview;
     this.resumeArena = !!options?.arenaCleared || this.transformationPreview;
     if (this.resumeArena) this.timeRemaining = Math.max(0, Math.min(FINAL_ENCOUNTER_SECONDS, options.timeRemaining ?? FINAL_ENCOUNTER_SECONDS));
@@ -120,6 +121,12 @@ export class Level3 {
       player.scriptedMovement = false;
       player.ammo = Math.min(player.maxAmmo, Math.max(player.ammo, 45));
       player.weaponPresentation?.update(0);
+      if (this.victoryPreview) {
+        // Settle the preceding cinematic under the loading overlay so this
+        // preview begins with the fallen boss and the degree collection.
+        for (let frame = 0; frame < 2400 && !this.monsterFight; frame++) this.update(1 / 60, player);
+        this.monsterFight?.takeDamage(this.monsterFight.maxHealth);
+      }
       return;
     }
     this.arrivalPlayer = player; this.arrivalBodyVisible = player.bodyMesh.visible;
@@ -335,30 +342,30 @@ export class Level3 {
     [...rocks, ...shrubs, ...scenery].forEach(prop => this._collectResources(prop));
     let seed = 24681357;
     const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-    const place = (template, x, z, height, rotation = 0, y = 0) => {
+    const place = (template, x, z, height, rotation = 0, { y = 0, solid = true } = {}) => {
       const prop = template.clone(); prop.geometry.computeBoundingBox();
       const size = prop.geometry.boundingBox.getSize(new THREE.Vector3());
       prop.scale.setScalar(height / Math.max(0.05, size.y));
       prop.position.set(x, y, z); prop.rotation.y = rotation;
-      this.environment.add(prop); this.props.push(prop); return prop;
+      this.environment.add(prop); this.props.push(prop);
+      this._addSceneryCollision(prop, solid);
+      return prop;
     };
     // Large silhouettes frame the settlement and continue beyond the walkable arena.
     for (let i = 0; i < 34; i++) {
       const angle = i / 34 * Math.PI * 2, radius = 49 + random() * 29;
       const height = 3 + random() * 10;
-      place(rocks[(i % 3) + 12], Math.sin(angle) * radius, Math.cos(angle) * radius, height, random() * 6.28, -0.2);
+      place(rocks[(i % 3) + 12], Math.sin(angle) * radius, Math.cos(angle) * radius, height, random() * 6.28, { y: -0.2 });
     }
     for (const [x, z, height] of [[-33, 13, 2.3], [31, 18, 1.6], [-31, -7, 1.4], [34, -9, 2.2], [-32, -34, 2.6], [32, -37, 2.5]]) {
-      const prop = place(rocks[8], x, z, height, random() * 6.28);
-      const size = new THREE.Box3().setFromObject(prop).getSize(new THREE.Vector3());
-      this.staticObstacles.push({ x, z, radius: Math.max(size.x, size.z) * 0.45 });
-      this.bulletObstacles.push(prop);
+      place(rocks[8], x, z, height, random() * 6.28);
     }
     for (let i = 0; i < 100; i++) {
       const x = (random() - 0.5) * 90, z = (random() - 0.5) * 90;
       if (MUD_HOUSE_POSITIONS.some(([hx, hz]) => Math.hypot(x - hx, z - hz) < 7) || Math.abs(x) < 5) continue;
-      if (i % 3 === 0) place(rocks[i % 12], x, z, 0.12 + random() * 0.4, random() * 6.28);
-      else place(shrubs[i % shrubs.length], x, z, 0.25 + random() * 0.65, random() * 6.28);
+      // Ground clutter is walkable; larger scenery keeps its solid footprint.
+      if (i % 3 === 0) place(rocks[i % 12], x, z, 0.12 + random() * 0.4, random() * 6.28, { solid: false });
+      else place(shrubs[i % shrubs.length], x, z, 0.25 + random() * 0.65, random() * 6.28, { solid: false });
     }
     // The supplied desert scene contributes its tall cacti and weathered dead wood.
     for (let i = 0; i < 15; i++) {
@@ -368,6 +375,22 @@ export class Level3 {
       if (Math.abs(x) < 5 && z > this.spawnPoint.z - 3) continue;
       place(scenery[i % scenery.length], x, z, height, rotation);
     }
+  }
+
+  _addSceneryCollision(prop, solid = true) {
+    this.bulletObstacles.push(prop);
+    if (!solid) return;
+    prop.updateWorldMatrix(true, true);
+    const center = new THREE.Box3().setFromObject(prop).getCenter(new THREE.Vector3());
+    const vertices = prop.geometry.getAttribute('position'), point = new THREE.Vector3();
+    let radius = 0;
+    // Cover the entire rotated footprint, including skull horns and rock edges.
+    // Measuring the vertices avoids the old undersized rock collision radius.
+    for (let i = 0; i < vertices.count; i++) {
+      point.fromBufferAttribute(vertices, i).applyMatrix4(prop.matrixWorld);
+      radius = Math.max(radius, Math.hypot(point.x - center.x, point.z - center.z));
+    }
+    this.staticObstacles.push({ x: center.x, z: center.z, radius: Math.max(0.05, radius), scenery: prop });
   }
 
   _createDeanStage() {
@@ -387,6 +410,7 @@ export class Level3 {
       bannerGeometry.computeVertexNormals();
       const banner = new THREE.Mesh(bannerGeometry, cloth); banner.position.set(x + 0.68, 4, -38.8);
       pole.castShadow = banner.castShadow = true; this.environment.add(pole, banner);
+      this._addSceneryCollision(pole); this.bulletObstacles.push(banner);
     }
   }
 
@@ -425,6 +449,12 @@ export class Level3 {
   }
 
   getWorldBounds() { return this.worldBounds; }
+  getMusicPhase() {
+    if (this.degreeVictory?.done) return 'complete';
+    if (this.monsterFight) return 'monster';
+    if (this.deanDefeated || this.transformation || this.bossFight && this.bossFight.phase !== 'waiting') return 'dean';
+    return this.houseEmergenceCuePlayed ? 'house-emergence' : 'arena';
+  }
   getRestartState() {
     if (this.transformationPreview || this.deanDefeated) return { transformationPreview: true };
     if (this.arenaCleared) return { arenaCleared: true, timeRemaining: this.timeRemaining, ...(this.bossPreview ? { bossPreview: true } : {}) };
@@ -433,7 +463,8 @@ export class Level3 {
   getCompletionText() { return this.destinyChoice
     ? `You claimed your degree and chose the ${this.destinyChoice} portal. Your destiny awaits.`
     : 'The Dean and his monstrous final form have fallen. You claimed your degree and survived the final encounter.'; }
-  getObstacles() { return [...this.staticObstacles, ...this.houses.filter(house => house.alive).map(house => house.obstacle),
+  getObstacles() { return [...this.staticObstacles, ...(this.entrancePortal?.obstacles ?? []),
+    ...this.houses.filter(house => house.alive).map(house => house.obstacle),
     ...(this.destinyReady ? this.victoryPortals.obstacles : []),
     ...(this.monsterFight?.corpseObstacles ?? []),
     ...(this.monsterFight?.alive ? [this.monsterFight.obstacle]

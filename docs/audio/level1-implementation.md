@@ -1,6 +1,6 @@
 # Level 1 voice implementation
 
-Level 1's 18 cue groups / 22 recordings are implemented and registered. Level 2 now also has its own [implementation](level2-implementation.md), using the same voice identities and shared playback system; there is no Level 3 voice catalog.
+Level 1's 18 cue groups / 22 recordings are implemented and registered. [Level 2](level2-implementation.md) and [Level 3](level3-implementation.md) also use the same voice identities and shared playback system.
 
 The four approved Seed Audio packs use Ainsley (Tormentor), Brielle (Anxious One), Faye (Manipulator) and Delia (Protector). The completed generation records are in [level1-results.json](../../audio-staging/voices/level1-results.json). The quote was 5.5 credits, and the account balance changed from 100 to 94.5. No extra generation or retakes were submitted. The trial endpoint continued to report its original trial-credit counter separately; the account balance is the useful observed spending measure here.
 

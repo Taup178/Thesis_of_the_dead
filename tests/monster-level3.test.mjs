@@ -6,6 +6,29 @@ import { WeaponCombat } from '../src/player/WeaponCombat.js';
 import { monsterFixture } from './helpers/monster-fixture.mjs';
 import { VictoryPortals } from '../src/props/VictoryPortals.js';
 
+test('Level 3 selects each boss song and stops music after the degree pickup cutscene', () => {
+  const level = new Level3(new THREE.Scene());
+  try {
+    assert.equal(level.getMusicPhase(), 'arena');
+    level.houseEmergenceCuePlayed = true;
+    assert.equal(level.getMusicPhase(), 'house-emergence');
+    level.bossFight = { phase: 'approach' };
+    assert.equal(level.getMusicPhase(), 'dean');
+    level.bossFight.phase = 'combat';
+    assert.equal(level.getMusicPhase(), 'dean');
+    level.bossFight.phase = 'defeated'; level.deanDefeated = true;
+    assert.equal(level.getMusicPhase(), 'dean', 'Tar continues through the transformation');
+    for (const phase of ['combat', 'dying', 'defeated']) {
+      level.monsterFight = { phase };
+      assert.equal(level.getMusicPhase(), 'monster', 'Red Moon stays through the degree pickup');
+    }
+    level.degreeVictory = { done: true };
+    assert.equal(level.getMusicPhase(), 'complete', 'portal reveal and choice are silent');
+    level.destinyReady = true; level.destinyChoice = 'blue';
+    assert.equal(level.getMusicPhase(), 'complete', 'the score never restarts after entering a portal');
+  } finally { level.monsterFight = null; level.bossFight = null; level.degreeVictory = null; level.dispose(); }
+});
+
 async function levelFixture() {
   const f = await monsterFixture(), level = new Level3(new THREE.Scene());
   level.root.add(f.monster.group);

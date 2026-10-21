@@ -389,7 +389,8 @@ export class Game {
     const directSophomoreSection = launch.get('section');
     const level = await this.levelManager.loadLevel(levelIndex ?? (directFinal ? 2 : directSophomore ? 1 : 0), (p) => {
       progressBar.style.width = `${p * 100}%`;
-    }, directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
+    }, directFinal && launch.get('victory') === '1' ? { victoryPreview: true } :
+      directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
       directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
@@ -574,7 +575,7 @@ export class Game {
   }
 
   levelComplete() {
-    this.psychologicalVoices?.cancel();
+    if (!this.currentLevel?.destinyChoice) this.psychologicalVoices?.cancel();
     this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.LEVELCOMPLETE;
     const overlay = document.getElementById('levelcomplete-overlay');
@@ -1051,9 +1052,7 @@ export class Game {
         if (events.portalArrival || events.portalPassage) this.audio?.playPortalEntry?.();
         if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
         if (this.currentLevel.title?.toLowerCase().includes('final')) {
-          const phase = this.currentLevel.bossFight?.phase === 'combat'
-            || ['combat', 'dying'].includes(this.currentLevel.monsterFight?.phase) ? 'boss'
-            : this.currentLevel.houseEmergenceCuePlayed ? 'house-emergence' : 'arena';
+          const phase = this.currentLevel.getMusicPhase();
           this.audio?.setFinalEncounterPhase?.(phase);
         }
 
@@ -1078,7 +1077,8 @@ export class Game {
     const active = this.state === this.STATE.PLAYING
       && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
     this.psychologicalVoices?.update(dt, this.currentLevel, this.player, {
-      active,
+      // Let the final response finish over the completion card after portal entry.
+      active: active || this.state === this.STATE.LEVELCOMPLETE && !!this.currentLevel?.destinyChoice && !document.hidden,
       blocked: this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
       events: voiceEvents,
     });

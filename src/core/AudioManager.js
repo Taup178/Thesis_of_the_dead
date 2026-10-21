@@ -28,9 +28,22 @@ const MUSIC_SCENES = Object.freeze({
   },
   finalDean: {
     key: 'final-dean',
+    fadeSeconds: 3,
     layers: [
-      { url: './assets/audio/music/lost-horror.ogg', volume: 0.72, channel: 'music' },
+      { url: './assets/audio/music/tar.mp3', offset: 60, volume: 0.68, channel: 'music' },
     ],
+  },
+  finalMonster: {
+    key: 'final-monster',
+    fadeSeconds: 3,
+    layers: [
+      { url: './assets/audio/red-moon.mp3', offset: 25, volume: 0.68, channel: 'music' },
+    ],
+  },
+  finalComplete: {
+    key: 'final-complete',
+    fadeSeconds: 2,
+    layers: [],
   },
 });
 
@@ -399,7 +412,8 @@ export class AudioManager {
       url: item.url,
       volume: Number(item.volume ?? options.volume ?? 0.75),
       channel: item.channel || 'music',
-    })));
+      offset: Number(item.offset ?? options.offset ?? 0),
+    })), options.fadeSeconds ?? 1.25);
   }
 
   async _startMusicScene(key, layers, fadeSeconds = 1.25) {
@@ -419,6 +433,11 @@ export class AudioManager {
     }));
     if (request !== this.themeRequest) return null;
     if (!loaded.some(Boolean)) {
+      if (!layers.length) {
+        this.stopTheme(fadeSeconds);
+        this.themeKey = this.requestedThemeKey = key;
+        return key;
+      }
       this.requestedThemeKey = null;
       return null;
     }
@@ -444,7 +463,8 @@ export class AudioManager {
         gain.disconnect();
         this.themeSources.delete(track);
       };
-      source.start(startAt);
+      const offset = Number.isFinite(layer.offset) ? Math.max(0, layer.offset) : 0;
+      source.start(startAt, Math.min(offset, Math.max(0, (layer.buffer.duration || 0) - 0.001)));
     }
     this.themeKey = key;
     this.requestedThemeKey = key;
@@ -484,9 +504,11 @@ export class AudioManager {
   }
 
   setFinalEncounterPhase(phase) {
-    const scene = phase === 'boss' ? MUSIC_SCENES.finalDean
+    const scene = phase === 'complete' ? MUSIC_SCENES.finalComplete
+      : phase === 'monster' ? MUSIC_SCENES.finalMonster
+      : phase === 'dean' || phase === 'boss' ? MUSIC_SCENES.finalDean
       : phase === 'house-emergence' ? MUSIC_SCENES.finalHouseEmergence : MUSIC_SCENES.finalArena;
-    return this._startMusicScene(scene.key, scene.layers);
+    return this._startMusicScene(scene.key, scene.layers, scene.fadeSeconds);
   }
 
   pause() {

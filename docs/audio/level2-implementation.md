@@ -1,6 +1,6 @@
 # Level 2 internal voices
 
-Level 2 now uses the same four recurring female identities as Level 1, with 22 new recordings and an adapter for The Sophomore Room. Level 3 has no voice integration.
+Level 2 uses the same four recurring female identities as Level 1, with 22 new recordings and an adapter for The Sophomore Room. Level 3 now has its own [event-driven voice integration](level3-implementation.md).
 
 ## Recordings with the effect included
 

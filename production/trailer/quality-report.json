@@ -1,0 +1,47 @@
+{
+  "file": "C:\\Users\\2559327\\Thesis_of_the_dead\\production\\trailer\\Thesis-of-the-Dead-Reveal-Trailer.mp4",
+  "duration": "88.000000",
+  "bytes": 308592445,
+  "checks": {
+    "dimensions": true,
+    "cadence": true,
+    "frames": true,
+    "duration": true,
+    "videoCodec": true,
+    "pixelFormat": true,
+    "stereoAudio": true,
+    "fullAudio": true,
+    "fullDecode": true,
+    "loudness": true,
+    "truePeak": true,
+    "noUnexpectedMusicDropout": true
+  },
+  "loudness": {
+    "input_i": "-15.05",
+    "input_tp": "-1.04",
+    "input_lra": "3.90",
+    "input_thresh": "-25.58",
+    "output_i": "-14.71",
+    "output_tp": "-1.50",
+    "output_lra": "2.90",
+    "output_thresh": "-25.19",
+    "normalization_type": "dynamic",
+    "target_offset": "-0.29"
+  },
+  "silences": [
+    {
+      "start": 3.189396,
+      "end": 4.657208
+    }
+  ],
+  "music": {
+    "originalAsset": "public/assets/audio/red-moon.mp3",
+    "sourceStartSeconds": 25,
+    "trailerEntrySeconds": 9
+  },
+  "sourceCadence": {
+    "actualGameplay": "native 60 FPS",
+    "seedance": "native 24 FPS preserved on 60 FPS editing timeline; no optical-flow interpolation"
+  },
+  "note": "Automated export checks plus contact sheets. These measurements do not substitute for a subjective listening review."
+}

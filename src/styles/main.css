@@ -871,7 +871,7 @@ html, body {
 
 #voice-subtitles {
   position: fixed;
-  z-index: 75;
+  z-index: 101;
   bottom: max(13vh, 85px);
   left: 50%;
   transform: translateX(-50%);

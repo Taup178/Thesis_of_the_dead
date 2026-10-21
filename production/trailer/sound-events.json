@@ -1,0 +1,1402 @@
+[
+  {
+    "at": 13.850000000000001,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0439181735394367,
+    "seconds": 2
+  },
+  {
+    "at": 14.200000000000001,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0231779938751293,
+    "seconds": 2
+  },
+  {
+    "at": 14.549999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9486572428758405,
+    "seconds": 2
+  },
+  {
+    "at": 14.899999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9518573613351706,
+    "seconds": 2
+  },
+  {
+    "at": 15.249999999999996,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0281146414937774,
+    "seconds": 2
+  },
+  {
+    "at": 15.599999999999994,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.944539441310364,
+    "seconds": 2
+  },
+  {
+    "at": 15.85,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9972503009933301,
+    "seconds": 2
+  },
+  {
+    "at": 16.2,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0084827155137654,
+    "seconds": 2
+  },
+  {
+    "at": 23.2,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9847648410488378,
+    "seconds": 2
+  },
+  {
+    "at": 23.433333333333334,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9853976144056118,
+    "seconds": 2
+  },
+  {
+    "at": 23.666666666666664,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9910865245259836,
+    "seconds": 2
+  },
+  {
+    "at": 23.9,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9772696649091124,
+    "seconds": 2
+  },
+  {
+    "at": 24.133333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9757511871153521,
+    "seconds": 2
+  },
+  {
+    "at": 24.166666666666668,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9674206034448255,
+    "seconds": 2
+  },
+  {
+    "at": 24.21666666666667,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9938121620094498,
+    "seconds": 2
+  },
+  {
+    "at": 24.366666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9907759963941064,
+    "seconds": 2
+  },
+  {
+    "at": 24.5,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 24.55,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 24.599999999999998,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.0096004029027184,
+    "seconds": 2
+  },
+  {
+    "at": 24.716666666666665,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0548323824905919,
+    "seconds": 2
+  },
+  {
+    "at": 24.833333333333332,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9983621054348824,
+    "seconds": 2
+  },
+  {
+    "at": 25.066666666666663,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9418544473498933,
+    "seconds": 2
+  },
+  {
+    "at": 25.066666666666663,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0333737710858129,
+    "seconds": 2
+  },
+  {
+    "at": 25.066666666666663,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 25.066666666666663,
+    "file": "public/assets/audio/sfx/zombie/hurt-01.ogg",
+    "volume": 0.276,
+    "pitch": 1.0422118607130026,
+    "seconds": 2
+  },
+  {
+    "at": 25.166666666666664,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9602242306925401,
+    "seconds": 2
+  },
+  {
+    "at": 25.216666666666665,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.8489926347466509,
+    "seconds": 2
+  },
+  {
+    "at": 25.28333333333333,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.916667053378937,
+    "seconds": 2
+  },
+  {
+    "at": 25.299999999999997,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9868221559268802,
+    "seconds": 2
+  },
+  {
+    "at": 25.299999999999997,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-1.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 25.299999999999997,
+    "file": "public/assets/audio/sfx/zombie/hurt-01.ogg",
+    "volume": 0.276,
+    "pitch": 0.9279073117857585,
+    "seconds": 2
+  },
+  {
+    "at": 25.399999999999995,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 0.9809813187453987,
+    "seconds": 2
+  },
+  {
+    "at": 25.816666666666663,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.950821929995426,
+    "seconds": 2
+  },
+  {
+    "at": 25.816666666666663,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9989326391922305,
+    "seconds": 2
+  },
+  {
+    "at": 26.049999999999994,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9941871390150957,
+    "seconds": 2
+  },
+  {
+    "at": 26.08333333333333,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 26.08333333333333,
+    "file": "public/assets/audio/sfx/zombie/death-02.ogg",
+    "volume": 0.336,
+    "pitch": 0.9416382530376259,
+    "seconds": 2
+  },
+  {
+    "at": 26.26666666666666,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9620601244167305,
+    "seconds": 2
+  },
+  {
+    "at": 26.283333333333328,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0169947708019078,
+    "seconds": 2
+  },
+  {
+    "at": 26.31666666666666,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 26.31666666666666,
+    "file": "public/assets/audio/sfx/zombie/death-01.ogg",
+    "volume": 0.336,
+    "pitch": 1.0331483359652731,
+    "seconds": 2
+  },
+  {
+    "at": 26.51666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0217645339781867,
+    "seconds": 2
+  },
+  {
+    "at": 26.56666666666666,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 26.56666666666666,
+    "file": "public/assets/audio/sfx/zombie/hurt-01.ogg",
+    "volume": 0.276,
+    "pitch": 0.8924640650284312,
+    "seconds": 2
+  },
+  {
+    "at": 26.61666666666666,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0444909388863612,
+    "seconds": 2
+  },
+  {
+    "at": 26.749999999999993,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0286603715944422,
+    "seconds": 2
+  },
+  {
+    "at": 26.966666666666658,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9667437145504288,
+    "seconds": 2
+  },
+  {
+    "at": 26.983333333333324,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9904689969537135,
+    "seconds": 2
+  },
+  {
+    "at": 27.2,
+    "file": "public/assets/audio/sfx/weapon/artninja-sword-swing-01.ogg",
+    "volume": 0.312,
+    "pitch": 0.9838797027446925,
+    "seconds": 2
+  },
+  {
+    "at": 27.2,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-04.ogg",
+    "volume": 0.216,
+    "pitch": 1.0085074369905263,
+    "seconds": 2
+  },
+  {
+    "at": 27.416666666666664,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.938339761430999,
+    "seconds": 2
+  },
+  {
+    "at": 27.633333333333333,
+    "file": "public/assets/audio/sfx/weapon/artninja-sword-swing-02.ogg",
+    "volume": 0.312,
+    "pitch": 0.954240888820205,
+    "seconds": 2
+  },
+  {
+    "at": 27.633333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-04.ogg",
+    "volume": 0.216,
+    "pitch": 1.0334615990299802,
+    "seconds": 2
+  },
+  {
+    "at": 27.683333333333334,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 27.866666666666667,
+    "file": "public/assets/audio/sfx/weapon/melee-impact-1.ogg",
+    "volume": 0.36,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 27.866666666666667,
+    "file": "public/assets/audio/sfx/zombie/death-01.ogg",
+    "volume": 0.336,
+    "pitch": 1.01276793520184,
+    "seconds": 2
+  },
+  {
+    "at": 28,
+    "file": "public/assets/audio/sfx/weapon/artninja-sword-swing-01.ogg",
+    "volume": 0.312,
+    "pitch": 0.9746843746122968,
+    "seconds": 2
+  },
+  {
+    "at": 28,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-03.ogg",
+    "volume": 0.216,
+    "pitch": 0.9933657890954203,
+    "seconds": 2
+  },
+  {
+    "at": 29.299999999999997,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.8456867013363427,
+    "seconds": 2
+  },
+  {
+    "at": 36.85,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0099178928913288,
+    "seconds": 2
+  },
+  {
+    "at": 37.11666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-03.ogg",
+    "volume": 0.216,
+    "pitch": 0.9821413413483263,
+    "seconds": 2
+  },
+  {
+    "at": 37.53333333333334,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0540108369863186,
+    "seconds": 2
+  },
+  {
+    "at": 37.66666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 0.9602854062674231,
+    "seconds": 2
+  },
+  {
+    "at": 38.083333333333336,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9774789689413517,
+    "seconds": 2
+  },
+  {
+    "at": 38.21666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-01.ogg",
+    "volume": 0.216,
+    "pitch": 1.0214161878067856,
+    "seconds": 2
+  },
+  {
+    "at": 38.63333333333333,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0568075257353047,
+    "seconds": 2
+  },
+  {
+    "at": 38.766666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-04.ogg",
+    "volume": 0.216,
+    "pitch": 0.9661979434547578,
+    "seconds": 2
+  },
+  {
+    "at": 39.18333333333333,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.022077947017127,
+    "seconds": 2
+  },
+  {
+    "at": 39.43333333333333,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.942670522075758,
+    "seconds": 2
+  },
+  {
+    "at": 39.83333333333333,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9537074751777579,
+    "seconds": 2
+  },
+  {
+    "at": 39.85,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 1.0321657610571369,
+    "seconds": 2
+  },
+  {
+    "at": 40.550000000000004,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0218713068827874,
+    "seconds": 2
+  },
+  {
+    "at": 40.56666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-01.ogg",
+    "volume": 0.216,
+    "pitch": 0.9971972878001112,
+    "seconds": 2
+  },
+  {
+    "at": 41.266666666666666,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9830202398759199,
+    "seconds": 2
+  },
+  {
+    "at": 41.28333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 0.9915067364414496,
+    "seconds": 2
+  },
+  {
+    "at": 41.983333333333334,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0329323137587498,
+    "seconds": 2
+  },
+  {
+    "at": 42,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-05.ogg",
+    "volume": 0.216,
+    "pitch": 0.9930552764026814,
+    "seconds": 2
+  },
+  {
+    "at": 42.699999999999996,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0080378793628095,
+    "seconds": 2
+  },
+  {
+    "at": 42.71666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-05.ogg",
+    "volume": 0.216,
+    "pitch": 0.96432592505039,
+    "seconds": 2
+  },
+  {
+    "at": 43.75000000000001,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0338578208507379,
+    "seconds": 2
+  },
+  {
+    "at": 43.95,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-03.ogg",
+    "volume": 0.216,
+    "pitch": 0.9809481008581609,
+    "seconds": 2
+  },
+  {
+    "at": 44.650000000000006,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.012926116272883,
+    "seconds": 2
+  },
+  {
+    "at": 44.86666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-04.ogg",
+    "volume": 0.216,
+    "pitch": 0.9840120367681539,
+    "seconds": 2
+  },
+  {
+    "at": 45.56666666666667,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9986677047511492,
+    "seconds": 2
+  },
+  {
+    "at": 45.766666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 1.0308240146917294,
+    "seconds": 2
+  },
+  {
+    "at": 51.2,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9556615748610288,
+    "seconds": 2
+  },
+  {
+    "at": 51.61666666666667,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0006834269402378,
+    "seconds": 2
+  },
+  {
+    "at": 51.833333333333336,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-01.ogg",
+    "volume": 0.216,
+    "pitch": 1.0071802513327552,
+    "seconds": 2
+  },
+  {
+    "at": 52.53333333333334,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9664585774106857,
+    "seconds": 2
+  },
+  {
+    "at": 52.833333333333336,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-01.ogg",
+    "volume": 0.216,
+    "pitch": 0.9976138732050953,
+    "seconds": 2
+  },
+  {
+    "at": 53.53333333333333,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.053585714687389,
+    "seconds": 2
+  },
+  {
+    "at": 53.81666666666666,
+    "file": "public/assets/audio/brick-wall-impact.mp3",
+    "volume": 0.3,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 53.86666666666667,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 1.020162897899097,
+    "seconds": 2
+  },
+  {
+    "at": 54.6,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-05.ogg",
+    "volume": 0.216,
+    "pitch": 1.0267493195683157,
+    "seconds": 2
+  },
+  {
+    "at": 54.900000000000006,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9808667916263452,
+    "seconds": 2
+  },
+  {
+    "at": 54.95,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.8885726692453513,
+    "seconds": 2
+  },
+  {
+    "at": 55.13333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9981714544156449,
+    "seconds": 2
+  },
+  {
+    "at": 55.28333333333334,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 55.36666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9736963650593738,
+    "seconds": 2
+  },
+  {
+    "at": 55.43333333333334,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9678084995153631,
+    "seconds": 2
+  },
+  {
+    "at": 55.516666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-04.ogg",
+    "volume": 0.216,
+    "pitch": 1.0202254293613422,
+    "seconds": 2
+  },
+  {
+    "at": 55.6,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0189755129049647,
+    "seconds": 2
+  },
+  {
+    "at": 55.6,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 55.6,
+    "file": "public/assets/audio/sfx/zombie/hurt-02.ogg",
+    "volume": 0.276,
+    "pitch": 0.968856745345776,
+    "seconds": 2
+  },
+  {
+    "at": 55.71666666666667,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.8953612075023398,
+    "seconds": 2
+  },
+  {
+    "at": 55.766666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 55.833333333333336,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.98257788815179,
+    "seconds": 2
+  },
+  {
+    "at": 55.95,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.855337398449911,
+    "seconds": 2
+  },
+  {
+    "at": 56.05,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 56.06666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.023076584351208,
+    "seconds": 2
+  },
+  {
+    "at": 56.28333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 56.3,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9669676200348201,
+    "seconds": 2
+  },
+  {
+    "at": 56.3,
+    "file": "public/assets/audio/sfx/weapon/bullet-impact-2.ogg",
+    "volume": 0.288,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 56.3,
+    "file": "public/assets/audio/sfx/zombie/death-01.ogg",
+    "volume": 0.336,
+    "pitch": 0.9428532038069026,
+    "seconds": 2
+  },
+  {
+    "at": 56.416666666666664,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 0.9723313767128414,
+    "seconds": 2
+  },
+  {
+    "at": 56.53333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9664941374384587,
+    "seconds": 2
+  },
+  {
+    "at": 56.71666666666666,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9469771115267829,
+    "seconds": 2
+  },
+  {
+    "at": 56.766666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9721435589832981,
+    "seconds": 2
+  },
+  {
+    "at": 56.949999999999996,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9677525761485272,
+    "seconds": 2
+  },
+  {
+    "at": 56.99999999999999,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.0216961286890318,
+    "seconds": 2
+  },
+  {
+    "at": 57.05,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 57.23333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0195147427924103,
+    "seconds": 2
+  },
+  {
+    "at": 57.28333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 57.31666666666666,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-03.ogg",
+    "volume": 0.216,
+    "pitch": 0.9952503754672847,
+    "seconds": 2
+  },
+  {
+    "at": 57.46666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.0341328902665603,
+    "seconds": 2
+  },
+  {
+    "at": 57.699999999999996,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0267737552322695,
+    "seconds": 2
+  },
+  {
+    "at": 57.71666666666666,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.9015213248684019,
+    "seconds": 2
+  },
+  {
+    "at": 57.93333333333332,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0350065409076803,
+    "seconds": 2
+  },
+  {
+    "at": 57.949999999999996,
+    "file": "public/assets/audio/sfx/zombie/attack.ogg",
+    "volume": 0.336,
+    "pitch": 0.8747660171553492,
+    "seconds": 2
+  },
+  {
+    "at": 58.04999999999999,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 58.16666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9715692181347252,
+    "seconds": 2
+  },
+  {
+    "at": 58.26666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0190481615012958,
+    "seconds": 2
+  },
+  {
+    "at": 58.5,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9772295726286491,
+    "seconds": 2
+  },
+  {
+    "at": 58.733333333333334,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0011289371480394,
+    "seconds": 2
+  },
+  {
+    "at": 58.96666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9747060155934284,
+    "seconds": 2
+  },
+  {
+    "at": 59.2,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0340717437219313,
+    "seconds": 2
+  },
+  {
+    "at": 59.43333333333334,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0209236463914906,
+    "seconds": 2
+  },
+  {
+    "at": 59.66666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9623373504807491,
+    "seconds": 2
+  },
+  {
+    "at": 59.9,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0366529360029757,
+    "seconds": 2
+  },
+  {
+    "at": 60.13333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.0131568466362055,
+    "seconds": 2
+  },
+  {
+    "at": 60.36666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.987127254534229,
+    "seconds": 2
+  },
+  {
+    "at": 60.6,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9653409294107304,
+    "seconds": 2
+  },
+  {
+    "at": 60.83333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.033586107570988,
+    "seconds": 2
+  },
+  {
+    "at": 61.06666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0018617891927237,
+    "seconds": 2
+  },
+  {
+    "at": 61.3,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 1.0272535432449907,
+    "seconds": 2
+  },
+  {
+    "at": 61.53333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9616703890718994,
+    "seconds": 2
+  },
+  {
+    "at": 61.76666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9876450999022803,
+    "seconds": 2
+  },
+  {
+    "at": 61.99999999999999,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 0.9893880965134338,
+    "seconds": 2
+  },
+  {
+    "at": 62.23333333333333,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 1.0305311300307152,
+    "seconds": 2
+  },
+  {
+    "at": 62.46666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.014156065698586,
+    "seconds": 2
+  },
+  {
+    "at": 62.69999999999999,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9868316114791816,
+    "seconds": 2
+  },
+  {
+    "at": 62.93333333333332,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9898878761088744,
+    "seconds": 2
+  },
+  {
+    "at": 63.16666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9654117816928572,
+    "seconds": 2
+  },
+  {
+    "at": 63.39999999999999,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9950411357946948,
+    "seconds": 2
+  },
+  {
+    "at": 60,
+    "file": "public/assets/audio/brick-wall-impact.mp3",
+    "volume": 0.48,
+    "pitch": 0.85,
+    "seconds": 2
+  },
+  {
+    "at": 61.81666666666666,
+    "file": "public/assets/audio/brick-wall-impact.mp3",
+    "volume": 0.48,
+    "pitch": 0.85,
+    "seconds": 2
+  },
+  {
+    "at": 69.05,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0455100278885932,
+    "seconds": 2
+  },
+  {
+    "at": 69.39999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9769559162182575,
+    "seconds": 2
+  },
+  {
+    "at": 69.46666666666667,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9943643043769467,
+    "seconds": 2
+  },
+  {
+    "at": 69.53333333333333,
+    "file": "public/assets/audio/sfx/zombie/hurt-01.ogg",
+    "volume": 0.276,
+    "pitch": 1.0084233741485042,
+    "seconds": 2
+  },
+  {
+    "at": 69.7,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9717954881944004,
+    "seconds": 2
+  },
+  {
+    "at": 69.75,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.042289128078651,
+    "seconds": 2
+  },
+  {
+    "at": 69.75,
+    "file": "public/assets/audio/sfx/zombie/hurt-02.ogg",
+    "volume": 0.276,
+    "pitch": 0.8832154821749976,
+    "seconds": 2
+  },
+  {
+    "at": 69.78333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-05.ogg",
+    "volume": 0.216,
+    "pitch": 0.9898829078483528,
+    "seconds": 2
+  },
+  {
+    "at": 70.2,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.041593401042457,
+    "seconds": 2
+  },
+  {
+    "at": 70.2,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
+    "volume": 0.36,
+    "pitch": 0.9652635509088607,
+    "seconds": 2
+  },
+  {
+    "at": 70.43333333333334,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9691662085929308,
+    "seconds": 2
+  },
+  {
+    "at": 70.43333333333334,
+    "file": "public/assets/audio/sfx/zombie/hurt-02.ogg",
+    "volume": 0.276,
+    "pitch": 0.9369156520117552,
+    "seconds": 2
+  },
+  {
+    "at": 70.45,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9801403696477128,
+    "seconds": 2
+  },
+  {
+    "at": 70.45,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.36,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 70.66666666666666,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-01.ogg",
+    "volume": 0.36,
+    "pitch": 1.039724091560703,
+    "seconds": 2
+  },
+  {
+    "at": 70.66666666666666,
+    "file": "public/assets/audio/sfx/zombie/hurt-02.ogg",
+    "volume": 0.276,
+    "pitch": 1.0402212651888916,
+    "seconds": 2
+  },
+  {
+    "at": 70.8,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9612111729027454,
+    "seconds": 2
+  },
+  {
+    "at": 70.89999999999999,
+    "file": "public/assets/audio/sfx/weapon/smg-bang-02.ogg",
+    "volume": 0.36,
+    "pitch": 0.9606031415870063,
+    "seconds": 2
+  },
+  {
+    "at": 70.89999999999999,
+    "file": "public/assets/audio/sfx/zombie/hurt-02.ogg",
+    "volume": 0.276,
+    "pitch": 0.9101616680498529,
+    "seconds": 2
+  },
+  {
+    "at": 71.14999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9925548771573995,
+    "seconds": 2
+  },
+  {
+    "at": 71.5,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0167320344700574,
+    "seconds": 2
+  },
+  {
+    "at": 71.53333333333333,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-02.ogg",
+    "volume": 0.216,
+    "pitch": 0.9781528182638415,
+    "seconds": 2
+  },
+  {
+    "at": 71.94999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9986611565992185,
+    "seconds": 2
+  },
+  {
+    "at": 72.19999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9835489330482479,
+    "seconds": 2
+  },
+  {
+    "at": 72.54999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0358821728921812,
+    "seconds": 2
+  },
+  {
+    "at": 72.89999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9545365047315665,
+    "seconds": 2
+  },
+  {
+    "at": 73.24999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9677828465475851,
+    "seconds": 2
+  },
+  {
+    "at": 73.59999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0580330320854026,
+    "seconds": 2
+  },
+  {
+    "at": 73.94999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9779725522975384,
+    "seconds": 2
+  },
+  {
+    "at": 74.29999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9402401547900364,
+    "seconds": 2
+  },
+  {
+    "at": 74.64999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9811066335477673,
+    "seconds": 2
+  },
+  {
+    "at": 74.99999999999999,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9756625220599798,
+    "seconds": 2
+  },
+  {
+    "at": 75.34999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9687054362358416,
+    "seconds": 2
+  },
+  {
+    "at": 75.41666666666664,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-01.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 75.69999999999997,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0156414856975193,
+    "seconds": 2
+  },
+  {
+    "at": 75.83333333333331,
+    "file": "public/assets/audio/sfx/player/shaun-hurt-02.ogg",
+    "volume": 0.312,
+    "pitch": 1,
+    "seconds": 2
+  },
+  {
+    "at": 76.04999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0382276379210778,
+    "seconds": 2
+  },
+  {
+    "at": 76.39999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.000994884146378,
+    "seconds": 2
+  },
+  {
+    "at": 76.74999999999997,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0152661823489624,
+    "seconds": 2
+  },
+  {
+    "at": 77.14999999999999,
+    "file": "public/assets/audio/sfx/weapon/artninja-sword-swing-01.ogg",
+    "volume": 0.312,
+    "pitch": 0.9746843746122968,
+    "seconds": 2
+  },
+  {
+    "at": 77.14999999999999,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-03.ogg",
+    "volume": 0.216,
+    "pitch": 0.9933657890954203,
+    "seconds": 2
+  },
+  {
+    "at": 77.56666666666666,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9774789689413517,
+    "seconds": 2
+  },
+  {
+    "at": 77.69999999999999,
+    "file": "public/assets/audio/sfx/player/shaun-exertion-01.ogg",
+    "volume": 0.216,
+    "pitch": 1.0214161878067856,
+    "seconds": 2
+  },
+  {
+    "at": 31.85,
+    "file": "public/assets/audio/concrete-scrape-loop.mp3",
+    "volume": 0.13,
+    "pitch": 1,
+    "seconds": 8
+  }
+]

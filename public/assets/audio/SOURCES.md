@@ -183,7 +183,17 @@ the score under saws, breaking tiles, combat, and low-health feedback, then reco
 gradually. Master Volume applies to both music and effects. Pausing or hiding the
 tab fades the score out, preserves its position, and fades it back in on resume.
 Unloading the level releases playback and its audio resources.
-# Level 1 orb and boss additions
+# Additional internal dialogue
+
+## Level 3 score
+
+The Dean fight crossfades into the supplied `music/tar.mp3` at 1:00 over three seconds. The transformed boss crossfades into the supplied `red-moon.mp3` at 0:25 over three seconds. Both served files are byte-identical to the originals in `Zombie_Kit`. Music fades to silence over two seconds when the degree pickup cutscene finishes, before control returns for the portal choice. `music/lost-horror.ogg` is no longer selected for either boss.
+
+## Level 3 internal dialogue
+
+24 original lines were generated with Higgsfield Seed Audio using the same Ainsley, Brielle, Faye and Delia preset identities as earlier chapters. Job records and scripts: `audio-staging/voices/level3-results.json` and `level3-input.json`. Served as 48 kHz stereo Ogg Vorbis with baked stereo placement, filtered reflections, headphone processing, balanced levels and fades. Clip provenance and hashes: `audio-staging/voices/level3-clips.json`. Original WAV masters remain local and Git-ignored. No source performances from other games were used.
+
+## Level 1 opening and orb additions
 
 Opening cinematic: six original lines generated with Higgsfield Seed Audio using the established Faye, Brielle, Ainsley and Delia preset identities. Provenance, hashes and mastering levels: `audio-staging/voices/opening-results.json`. Served as stereo 48 kHz Ogg Vorbis with baked filtered cross-ear repetitions and balanced loudness. Original WAV masters remain local. No Hellblade recordings or identifiable performances were copied.
 

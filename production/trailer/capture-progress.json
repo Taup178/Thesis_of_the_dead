@@ -1,0 +1,50 @@
+{
+  "phase": "final trailer exported; remaining fields below are historical capture notes",
+  "generationJobsSubmitted": 4,
+  "generationJobsCompleted": 4,
+  "finalFile": "production/trailer/Thesis-of-the-Dead-Reveal-Trailer.mp4",
+  "durationSeconds": 88,
+  "qualityReport": "production/trailer/quality-report.json",
+  "preparedRequests": "production/trailer/seedance-requests.json",
+  "sandboxRoot": "/home/user/thesis-trailer-repo",
+  "captureTest": {
+    "seconds": 8,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "nativeVideoFrames": 240,
+    "audioSeconds": 8,
+    "status": "uploaded and visually inspected; technical test, not final trailer",
+    "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/feb27317-6d3b-473d-9817-c46f4033eeff.mp4"
+  },
+  "validation": {
+    "forest": "real pickup and kills captured",
+    "saws": "initial death take rejected; corrected controller passes 3 seconds with health 100",
+    "memory": "demonstration and 5-second actual tile traversal validated",
+    "bridge": "3.5-second crossing validated",
+    "spikes": "4-second traversal validated",
+    "ambush": "corrected 5-second combat take validated",
+    "dean": "normal combat state and inputs validated; longer render pending"
+  },
+  "activeCapture": {
+    "pid": 1516,
+    "log": "/home/user/.bg/c59fe2e8.log",
+    "status": "/home/user/.bg/c59fe2e8.exit",
+    "takes": [
+      "dungeon_saws",
+      "dungeon_memory_run",
+      "dean_combat"
+    ],
+    "durationEach": 3,
+    "fps": 30,
+    "output": "production/trailer/gameplay-retakes",
+    "boundedMinutes": 15
+  },
+  "notes": [
+    "No generation job has been authorized by the 96-credit proposal yet.",
+    "Do not represent original dean_combat test as boss combat: it captured only the normal approach cinematic.",
+    "The new gameplay-retakes output uses the corrected controllers.",
+    "All audio source files are in the synced sandbox repo; Red Moon must start at source 25 seconds.",
+    "Use existing media UUIDs; do not re-import the same image URLs."
+  ]
+}

@@ -1,0 +1,300 @@
+{
+  "duration": 88,
+  "fps": 60,
+  "note": "Native 60 FPS gameplay; Seedance remains naturally 24 FPS on a 60 FPS timeline. Trimmed selections avoid visual drift; no optical-flow interpolation.",
+  "cuts": [
+    {
+      "index": 0,
+      "start": 0,
+      "end": 3,
+      "source": "local-capture/opening_scene.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 180
+    },
+    {
+      "index": 1,
+      "start": 3,
+      "end": 11,
+      "source": "ai/shot-1.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 480
+    },
+    {
+      "index": 2,
+      "start": 11,
+      "end": 13.8,
+      "source": null,
+      "inPoint": 0,
+      "lines": [
+        "Shaun is experiencing",
+        "a psychological episode."
+      ],
+      "kind": "card",
+      "frames": 168
+    },
+    {
+      "index": 3,
+      "start": 13.8,
+      "end": 15.85,
+      "source": "local-capture/forest_run.mp4",
+      "inPoint": 1,
+      "lines": [],
+      "kind": "picture",
+      "frames": 123
+    },
+    {
+      "index": 4,
+      "start": 15.85,
+      "end": 19,
+      "source": "local-capture/forest_credit.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 189
+    },
+    {
+      "index": 5,
+      "start": 19,
+      "end": 20.4,
+      "source": "ai/shot-2.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 84
+    },
+    {
+      "index": 6,
+      "start": 20.4,
+      "end": 23.2,
+      "source": "ai/shot-2.mp4",
+      "inPoint": 5,
+      "lines": [],
+      "kind": "picture",
+      "frames": 168
+    },
+    {
+      "index": 7,
+      "start": 23.2,
+      "end": 24.2,
+      "source": "local-capture/forest_combat.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 60
+    },
+    {
+      "index": 8,
+      "start": 24.2,
+      "end": 27.2,
+      "source": "local-capture/forest_combat.mp4",
+      "inPoint": 1,
+      "lines": [],
+      "kind": "picture",
+      "frames": 180
+    },
+    {
+      "index": 9,
+      "start": 27.2,
+      "end": 29.4,
+      "source": "local-capture/forest_sword.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 132
+    },
+    {
+      "index": 10,
+      "start": 29.4,
+      "end": 31.85,
+      "source": null,
+      "inPoint": 0,
+      "lines": [
+        "EVERY CREDIT HAS A COST."
+      ],
+      "kind": "card",
+      "frames": 147
+    },
+    {
+      "index": 11,
+      "start": 31.85,
+      "end": 36.85,
+      "source": "ai/shot-3.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 300
+    },
+    {
+      "index": 12,
+      "start": 36.85,
+      "end": 39.85,
+      "source": "local-capture/dungeon_saws.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 180
+    },
+    {
+      "index": 13,
+      "start": 39.85,
+      "end": 43.35,
+      "source": "local-capture/dungeon_bridge.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 210
+    },
+    {
+      "index": 14,
+      "start": 43.35,
+      "end": 45.8,
+      "source": "local-capture/dungeon_spikes.mp4",
+      "inPoint": 0.3,
+      "lines": [],
+      "kind": "picture",
+      "frames": 147
+    },
+    {
+      "index": 15,
+      "start": 45.8,
+      "end": 48.2,
+      "source": null,
+      "inPoint": 0,
+      "lines": [
+        "REMEMBER THE WAY.",
+        "BEFORE IT DISAPPEARS."
+      ],
+      "kind": "card",
+      "frames": 144
+    },
+    {
+      "index": 16,
+      "start": 48.2,
+      "end": 51.2,
+      "source": "local-capture/dungeon_memory.mp4",
+      "inPoint": 3,
+      "lines": [],
+      "kind": "picture",
+      "frames": 180
+    },
+    {
+      "index": 17,
+      "start": 51.2,
+      "end": 54.2,
+      "source": "local-capture/dungeon_memory_run.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 180
+    },
+    {
+      "index": 18,
+      "start": 54.2,
+      "end": 58.2,
+      "source": "local-capture/dungeon_ambush.mp4",
+      "inPoint": 0.5,
+      "lines": [],
+      "kind": "picture",
+      "frames": 240
+    },
+    {
+      "index": 19,
+      "start": 58.2,
+      "end": 63.45,
+      "source": "local-capture/desert_house.mp4",
+      "inPoint": 0.25,
+      "lines": [],
+      "kind": "picture",
+      "frames": 315
+    },
+    {
+      "index": 20,
+      "start": 63.45,
+      "end": 65.85,
+      "source": "local-capture/dean_intro.mp4",
+      "inPoint": 0.5,
+      "lines": [],
+      "kind": "picture",
+      "frames": 144
+    },
+    {
+      "index": 21,
+      "start": 65.85,
+      "end": 69.05,
+      "source": "ai/shot-4.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 192
+    },
+    {
+      "index": 22,
+      "start": 69.05,
+      "end": 77.05,
+      "source": "local-capture/dean_combat.mp4",
+      "inPoint": 0,
+      "lines": [],
+      "kind": "picture",
+      "frames": 480
+    },
+    {
+      "index": 23,
+      "start": 77.05,
+      "end": 77.53333333333333,
+      "source": "local-capture/forest_sword.mp4",
+      "inPoint": 0.7,
+      "lines": [],
+      "kind": "picture",
+      "frames": 29
+    },
+    {
+      "index": 24,
+      "start": 77.53333333333333,
+      "end": 78,
+      "source": "local-capture/dungeon_saws.mp4",
+      "inPoint": 1.2,
+      "lines": [],
+      "kind": "picture",
+      "frames": 28
+    },
+    {
+      "index": 25,
+      "start": 78,
+      "end": 80.8,
+      "source": null,
+      "inPoint": 0,
+      "lines": [
+        "HOW MUCH OF YOURSELF",
+        "WILL YOU LEAVE BEHIND?"
+      ],
+      "kind": "card",
+      "frames": 168
+    },
+    {
+      "index": 26,
+      "start": 80.8,
+      "end": 81.85,
+      "source": null,
+      "inPoint": 0,
+      "lines": [],
+      "kind": "card",
+      "frames": 63
+    },
+    {
+      "index": 27,
+      "start": 81.85,
+      "end": 88,
+      "source": null,
+      "inPoint": 0,
+      "lines": [
+        "THESIS OF THE DEAD"
+      ],
+      "kind": "title",
+      "frames": 369
+    }
+  ]
+}

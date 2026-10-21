@@ -1,0 +1,104 @@
+{
+  "status": "four_jobs_submitted",
+  "generationsSubmitted": 4,
+  "maxGenerations": 4,
+  "estimatedTotalCredits": 96,
+  "quotedAt": "2026-10-21T20:29:38.801Z",
+  "plannedTrailerSeconds": 88,
+  "music": {
+    "file": "public/assets/audio/red-moon.mp3",
+    "sourceStartSeconds": 25,
+    "trailerEntrySeconds": 9
+  },
+  "referencesConfirmed": true,
+  "outputs": {
+    "captureTest": "https://d2ol7oe51mr4n9.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/feb27317-6d3b-473d-9817-c46f4033eeff.mp4",
+    "referencePack": "https://d2ol7oe51mr4n9.cloudfront.net/user_38qXahK1Cv75h1IHtiKQuHQP38f/7ca0fffa-efd4-4187-9064-ac2c15de5524.zip"
+  },
+  "jobs": [
+    {
+      "shot": 1,
+      "name": "Shaun's psychological opening",
+      "estimatedCredits": 24,
+      "params": {
+        "model": "seedance1_5",
+        "duration": 8,
+        "resolution": "1080p",
+        "aspect_ratio": "16:9",
+        "generate_audio": false,
+        "count": 1,
+        "prompt": "Use the supplied actual game render as the visual source of truth. Preserve the\nstylized low-poly character proportions, face, clothing, asset silhouettes, textures,\npalette and environment geometry. Do not turn this into live action, photoreal\nhumans or a different game's art. Improve cinematography with controlled camera\nmovement, natural depth, physically coherent light and restrained atmosphere.\nNo new characters, locations, weapons, powers, architecture, HUD, subtitles, text,\nlogos, extra limbs or fingers. No redesign, morphing, flickering outfit or shot cuts\ninside the generation. One continuous camera move, stable exposure, 16:9, 1080p,\neight seconds, silent. Respect the exact start-image composition at the opening.\n\nSlow, almost imperceptible eight-second dolly toward Shaun seated on the actual\nworn couch. He is a stylized orange-bearded student in the reference teal-and-white\ncap, green shirt, brown vest and teal trousers. Both hands cover his ears in the\nsame established pose; subtle breathing and a small anxious rocking motion only.\nRetain the bed, bedside table and original spatial arrangement. A single warm\noverhead spotlight isolates him against deep blackness, with soft couch contact\nshadows. Frame his face and hands with emotional restraint. Keep every hand\nanatomically stable; do not expose a new face or change his cap. No apparition,\nmonster, new prop or supernatural event. The dread comes from stillness and sound\nwe will add in the edit. Finish with a stable readable pose for the match cut.",
+        "medias": [
+          {
+            "role": "start_image",
+            "value": "f015482b-a6f2-4c91-bf86-bb6fd79b8771"
+          }
+        ]
+      }
+    },
+    {
+      "shot": 2,
+      "name": "Forest portal",
+      "estimatedCredits": 24,
+      "params": {
+        "model": "seedance1_5",
+        "duration": 8,
+        "resolution": "1080p",
+        "aspect_ratio": "16:9",
+        "generate_audio": false,
+        "count": 1,
+        "prompt": "Use the supplied actual game render as the visual source of truth. Preserve the\nstylized low-poly character proportions, face, clothing, asset silhouettes, textures,\npalette and environment geometry. Do not turn this into live action, photoreal\nhumans or a different game's art. Improve cinematography with controlled camera\nmovement, natural depth, physically coherent light and restrained atmosphere.\nNo new characters, locations, weapons, powers, architecture, HUD, subtitles, text,\nlogos, extra limbs or fingers. No redesign, morphing, flickering outfit or shot cuts\ninside the generation. One continuous camera move, stable exposure, 16:9, 1080p,\neight seconds, silent. Respect the exact start-image composition at the opening.\n\nLow, controlled lateral camera drift past the actual red portal in the moonlit\nFreshman Woods. Retain the portal model, original red illumination, forest ground,\nmixed trees and existing night sky from the reference. The same two implemented\nzombies emerge along grounded forward paths, using their reference body shapes\nand clothing. No crowd or additional spawn. Their feet make coherent ground\ncontact; no floating or wall climbing. Keep subtle ground mist and cool moonlit\ndepth, with red rim light motivating the composition. The camera ends looking\ntoward the playable approach lane so the next real gameplay shot feels continuous.\nNo explosion, supernatural attack, invented building, cinematic gore or new weapon.",
+        "medias": [
+          {
+            "role": "start_image",
+            "value": "ade61f22-d823-417d-9fc3-17a105828a7c"
+          },
+          {
+            "role": "end_image",
+            "value": "5a467416-da38-4dec-8274-449889259f6a"
+          }
+        ]
+      }
+    },
+    {
+      "shot": 3,
+      "name": "Sophomore Room",
+      "estimatedCredits": 24,
+      "params": {
+        "model": "seedance1_5",
+        "duration": 8,
+        "resolution": "1080p",
+        "aspect_ratio": "16:9",
+        "generate_audio": false,
+        "count": 1,
+        "prompt": "Use the supplied actual game render as the visual source of truth. Preserve the\nstylized low-poly character proportions, face, clothing, asset silhouettes, textures,\npalette and environment geometry. Do not turn this into live action, photoreal\nhumans or a different game's art. Improve cinematography with controlled camera\nmovement, natural depth, physically coherent light and restrained atmosphere.\nNo new characters, locations, weapons, powers, architecture, HUD, subtitles, text,\nlogos, extra limbs or fingers. No redesign, morphing, flickering outfit or shot cuts\ninside the generation. One continuous camera move, stable exposure, 16:9, 1080p,\neight seconds, silent. Respect the exact start-image composition at the opening.\n\nEight-second lateral dolly through the actual torchlit Sophomore Room composition.\nThe existing large circular saw sweeps on its overhead carriage in the foreground;\nits spinning metal, rail, visible clearance and sparks remain mechanically\ncoherent. Shaun waits on the real stone deck in the same outfit, watching the\nhazard. Preserve the authored skull-lined walls, torch positions and corridor\ndimensions. Warm torch pools fall into deep cool stone shadows. Use foreground\nocclusion and controlled parallax to reveal the danger, not a fabricated stunt.\nDo not let the blade intersect Shaun or invent another trap. No camera teleport,\nimpossible room extension, extra bridge or character redesign. Finish on the real\nsafe approach so we can cut to the actual dodge-roll input and collision system.",
+        "medias": [
+          {
+            "role": "start_image",
+            "value": "5e7de629-217d-4238-8c83-b79bdd08ffd7"
+          }
+        ]
+      }
+    },
+    {
+      "shot": 4,
+      "name": "Dean confrontation",
+      "estimatedCredits": 24,
+      "params": {
+        "model": "seedance1_5",
+        "duration": 8,
+        "resolution": "1080p",
+        "aspect_ratio": "16:9",
+        "generate_audio": false,
+        "count": 1,
+        "prompt": "Use the supplied actual game render as the visual source of truth. Preserve the\nstylized low-poly character proportions, face, clothing, asset silhouettes, textures,\npalette and environment geometry. Do not turn this into live action, photoreal\nhumans or a different game's art. Improve cinematography with controlled camera\nmovement, natural depth, physically coherent light and restrained atmosphere.\nNo new characters, locations, weapons, powers, architecture, HUD, subtitles, text,\nlogos, extra limbs or fingers. No redesign, morphing, flickering outfit or shot cuts\ninside the generation. One continuous camera move, stable exposure, 16:9, 1080p,\neight seconds, silent. Respect the exact start-image composition at the opening.\n\nRestrained eight-second arc through the real desert confrontation, keeping Shaun\nand the actual Dean model in one coherent composition. Preserve the Dean's\nimplemented stylized yellow zombie appearance, size relative to Shaun, original\nclothing and the degree scroll held in the left hand. The scroll remains a stable\nphysical object with a coherent grip. Shaun keeps his established outfit and\nexisting firearm in the reference pose; his posture is tense but physically natural. Retain\nochre sand, real mud-house silhouettes, skulls/cacti and warm desert lighting.\nLet the camera approach over Shaun's shoulder toward the Dean; sparse suspended\ndust, deep environmental layers, stable exposure. No attack not shown in the game,\nno transformation, no monster reveal, no burning degree, no victory, no portal\nchoice and no ending spoiler. End on a steady confrontation for a hard action cut.",
+        "medias": [
+          {
+            "role": "start_image",
+            "value": "7944fae0-ad69-4dc0-9d7e-447d7211be61"
+          }
+        ]
+      }
+    }
+  ]
+}
