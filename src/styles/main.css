@@ -903,3 +903,24 @@ html, body {
   border-radius: 4px;
 }
 
+#enemy-lock-pin {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #ffdb78;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #15100b, inset 0 0 4px #15100b;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 8;
+}
+#enemy-lock-pin::after {
+  content: '';
+  position: absolute;
+  top: 17px;
+  left: 2px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #ffdb78;
+}
+#enemy-lock-pin.hidden { display: none; }

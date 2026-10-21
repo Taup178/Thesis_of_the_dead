@@ -2,6 +2,28 @@ import * as THREE from 'three';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const X = V(1, 0, 0);
+const Z = V(0, 0, 1);
+
+// Continuous, authored rocking with slight variation instead of a rigid loop.
+function seatedRock(time) {
+  return Math.sin(time * 2.95 + Math.sin(time * 0.53) * 0.1) * 0.055
+    + Math.sin(time * 1.37) * 0.008;
+}
+
+function seatedSway(time) {
+  return Math.sin(time * 2) * 0.033 + Math.sin(time * 0.71) * 0.005;
+}
+
+// Short frustrated gestures layered over the continuous rocking.
+function annoyance(time) {
+  for (const start of [10.2, 16.6, 23.2, 29.2, 36.4, 43.1]) {
+    const progress = (time - start) / 1.6;
+    if (progress < 0 || progress > 1) continue;
+    const pressure = Math.sin(progress * Math.PI) ** 2;
+    return { pressure, turn: Math.sin(progress * Math.PI * 2) * pressure * 0.17 };
+  }
+  return { pressure: 0, turn: 0 };
+}
 
 function aim(bone, localEnd, target) {
   bone.parent.updateWorldMatrix(true, false);
@@ -63,6 +85,7 @@ export class OpeningPose {
     this.head = model.getObjectByName('Head');
     this.abdomen = model.getObjectByName('Abdomen');
     this.torso = model.getObjectByName('Torso');
+    this.shoulders = ['L', 'R'].map(side => model.getObjectByName(`Shoulder${side}`)).filter(Boolean);
     if (!this.hips || !this.head) throw new Error('Opening requires Shaun\'s head and hips rig.');
     model.updateMatrixWorld(true);
     const hip = this.hips.getWorldPosition(V());
@@ -114,12 +137,21 @@ export class OpeningPose {
       node.position.copy(position); node.quaternion.copy(quaternion);
     }
     model.position.copy(this.basePosition);
-    const rock = Math.sin(time * 2.35) * 0.045 + Math.sin(time * 1.13) * 0.012;
+    const sway = seatedSway(time);
+    const shoulderSway = seatedSway(time - 0.1);
+    const rock = seatedRock(time);
+    const shoulderRock = seatedRock(time - 0.1);
+    const { pressure, turn } = annoyance(time);
     this.abdomen?.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(X, 0.12 + rock));
-    this.torso?.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(X, 0.06 + rock * 0.45));
-    this.head.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.08 + rock * 0.2, Math.sin(time * 0.8) * 0.025, 0)));
+    // Lean through the spine above a supported pelvis, rather than sliding the
+    // whole actor across the cushion. Shoulders follow with a small delay.
+    this.abdomen?.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z, sway));
+    this.torso?.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(X, 0.09 + shoulderRock * 0.45 + pressure * 0.015));
+    this.torso?.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z, shoulderSway * 0.38));
+    this.head.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.14 + shoulderRock * 0.2 + pressure * 0.025, turn, -shoulderSway * 0.28)));
+    for (const shoulder of this.shoulders) shoulder.position.y += 0.006 + pressure * 0.006;
     for (const { node, quaternion } of this.handPose) node.quaternion.copy(quaternion);
-    if (this.torso) this.torso.position.y += Math.sin(time * 3.1) * 0.0025;
+    if (this.torso) this.torso.position.y += Math.sin(time * 1.5) * 0.001;
     model.updateMatrixWorld(true);
     for (const leg of this.limbs) {
       const { sign } = leg;
@@ -132,10 +164,17 @@ export class OpeningPose {
     }
     model.updateMatrixWorld(true);
     const head = this.head.getWorldPosition(V());
+    const headRotation = this.head.getWorldQuaternion(new THREE.Quaternion());
+    // Keep each palm beside its ear as the head turns, including on the
+    // mirrored rig. Cache the neutral orientation once, before any gestures.
+    this.restHeadRotation ??= headRotation.clone();
+    const handRotation = headRotation.clone().multiply(this.restHeadRotation.clone().invert());
     for (const arm of this.limbs) {
-      const wrist = head.clone().add(V(arm.sign * 0.33, 0.10, 0.08));
+      const offset = V(arm.sign * 0.32, 0.10, 0.08)
+        .multiplyScalar(1 - pressure * 0.04).applyQuaternion(handRotation);
+      const wrist = head.clone().add(offset);
       chain(arm.arm, arm.forearm, arm.finger.position, wrist,
-        head.clone().add(V(arm.sign * 0.5, -0.36, 0.30)));
+        head.clone().add(V(arm.sign * (0.47 - pressure * 0.025), -0.36, 0.30)));
       // Preserve the authored finger pose. Independently aiming each finger
       // collapses the supplied glove mesh and tears its atlas seams.
     }

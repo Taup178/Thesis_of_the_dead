@@ -65,7 +65,8 @@ test('actual rig retains seated hips and planted feet while hands follow the ear
     let previous = null;
     const hips = pose.hips.getWorldPosition(new THREE.Vector3());
     const feet = pose.limbs.map(limb => limb.foot.getWorldPosition(new THREE.Vector3()));
-    for (let time = 0; time <= 34; time += 0.2) {
+    for (let frame = 0; frame <= 49 * 60; frame++) {
+      const time = frame / 60;
       pose.update(time); f.opening.jointLining.update();
       assert.ok(pose.hips.getWorldPosition(new THREE.Vector3()).distanceTo(hips) < 1e-7);
       const head = pose.head.getWorldPosition(new THREE.Vector3());
@@ -76,12 +77,76 @@ test('actual rig retains seated hips and planted feet while hands follow the ear
         assert.ok(limb.lower.getWorldPosition(new THREE.Vector3()).z > hips.z + 0.15, 'knees point forward');
         return wrist;
       });
-      if (previous) wrists.forEach((wrist, i) => assert.ok(wrist.distanceTo(previous[i]) < 0.04, 'no IK popping'));
+      if (previous) wrists.forEach((wrist, i) => assert.ok(wrist.distanceTo(previous[i]) < 0.006,
+        `no IK popping: hand ${i} at ${time.toFixed(2)}s moved ${wrist.distanceTo(previous[i]).toFixed(4)}m`));
       previous = wrists;
     }
     for (const { mesh, bone } of f.opening.jointLining.parts) {
       assert.ok(mesh.position.distanceTo(bone.getWorldPosition(new THREE.Vector3())) < 1e-7);
     }
+  } finally { f.dispose(); }
+});
+
+test('seated rocking continues forward and back at a brisk pace with smaller sideways sway', () => {
+  const f = setup();
+  try {
+    const pose = f.opening.pose;
+    const samples = [];
+    let previous = null;
+    for (let frame = 0; frame <= 49 * 60; frame++) {
+      const time = frame / 60;
+      pose.update(time);
+      const head = pose.head.getWorldPosition(new THREE.Vector3());
+      samples.push({ time, head });
+      assert.ok(Math.abs(head.x) < 0.1, 'head stays above the supported pelvis');
+      if (previous) assert.ok(head.distanceTo(previous) < 0.004, 'no sudden jerks while rocking');
+      previous = head;
+    }
+    for (let start = 9; start <= 45; start += 4) {
+      const window = samples.filter(sample => sample.time >= start && sample.time <= start + 4);
+      const forward = window.map(sample => sample.head.z);
+      const sideways = window.map(sample => sample.head.x);
+      const forwardRange = Math.max(...forward) - Math.min(...forward);
+      const sidewaysRange = Math.max(...sideways) - Math.min(...sideways);
+      assert.ok(forwardRange > 0.04, `visible forward/back rocking throughout ${start}–${start + 4}s`);
+      assert.ok(sidewaysRange > 0.015 && sidewaysRange < forwardRange, 'sideways movement complements the rocking');
+      let reversals = 0;
+      for (let i = 2; i < forward.length; i++) {
+        if ((forward[i] - forward[i - 1]) * (forward[i - 1] - forward[i - 2]) < 0) reversals++;
+      }
+      assert.ok(reversals >= 3 && reversals <= 5, 'roughly two full rocking cycles per four seconds');
+    }
+    pose.update(12.3);
+    const first = pose.head.getWorldPosition(new THREE.Vector3());
+    pose.update(28); pose.update(12.3);
+    assert.ok(pose.head.getWorldPosition(new THREE.Vector3()).distanceTo(first) < 1e-7, 'seeking never accumulates bone rotations');
+  } finally { f.dispose(); }
+});
+
+test('annoyance adds brief head shakes and hand pressure while palms stay beside the ears', () => {
+  const f = setup();
+  try {
+    const pose = f.opening.pose;
+    const yaw = [], distances = [], directions = [];
+    for (let frame = 0; frame <= 96; frame++) {
+      pose.update(10.2 + frame / 60);
+      const head = pose.head.getWorldPosition(new THREE.Vector3());
+      const inverse = pose.head.getWorldQuaternion(new THREE.Quaternion()).invert();
+      yaw.push(pose.head.rotation.y);
+      pose.limbs.forEach((limb, index) => {
+        const offset = limb.finger.getWorldPosition(new THREE.Vector3()).sub(head);
+        assert.ok(offset.length() > 0.28 && offset.length() < 0.4, 'palms stay outside the head');
+        if (index === 0) distances.push(offset.length());
+        const direction = offset.applyQuaternion(inverse).normalize();
+        directions[index] ??= direction.clone();
+        assert.ok(direction.distanceTo(directions[index]) < 0.01, 'hands follow the turning head');
+      });
+    }
+    assert.ok(Math.max(...yaw) - Math.min(...yaw) > 0.1, 'visible but restrained head shake');
+    assert.ok(Math.max(...yaw) - Math.min(...yaw) < 0.3, 'head shake stays small');
+    assert.ok(Math.max(...distances) - Math.min(...distances) > 0.008, 'hands briefly press closer to the ears');
+    pose.update(13);
+    assert.ok(Math.abs(pose.head.rotation.y) < 0.01, 'head shake settles between gestures');
   } finally { f.dispose(); }
 });
 

@@ -26,5 +26,5 @@ export function createTransformationMonster(root, gltf) {
   model.scale.multiplyScalar(scale);
   model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
   group.visible = false;
-  return { group, model, mixer, height: 4.5 };
+  return { group, model, mixer, animations: gltf.animations, height: 4.5 };
 }

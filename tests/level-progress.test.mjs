@@ -9,6 +9,32 @@ function memoryStorage() {
   return { getItem: () => value, setItem: (_key, next) => { value = next; } };
 }
 
+test('Start Game honors the final-boss URL instead of forcing Chapter 1', async () => {
+  const previousDocument = globalThis.document, previousWindow = globalThis.window;
+  const elements = new Map();
+  const element = id => {
+    if (!elements.has(id)) elements.set(id, { style: {}, classList: { add() {} },
+      listeners: {}, addEventListener(type, callback) { this.listeners[type] = callback; } });
+    return elements.get(id);
+  };
+  globalThis.document = { getElementById: element, addEventListener() {}, querySelectorAll: () => [] };
+  globalThis.window = { location: { search: '?level=3&transform=1' } };
+  const stop = new Error('stop after selecting the level');
+  let selected, launch;
+  const game = { input: {}, renderer: { domElement: element('canvas') },
+    combat: { reset() {} }, firstLevelTutorialSeen: new Set(), firstLevelHintQueue: [],
+    STATE: { LOADING: 'loading' }, hudEl: element('hud'), _showOverlay() {}, _releaseMouse() {},
+    levelManager: { progress: new LevelProgress(memoryStorage()),
+      async loadLevel(index, progress, options) { selected = { index, options }; throw stop; } },
+    startGame(...args) { launch = Game.prototype.startGame.apply(this, args); } };
+  try {
+    Game.prototype._bindUI.call(game);
+    element('btn-start').listeners.click();
+    await assert.rejects(launch, error => error === stop);
+    assert.deepEqual(selected, { index: 2, options: { transformationPreview: true } });
+  } finally { globalThis.document = previousDocument; globalThis.window = previousWindow; }
+});
+
 test('only Level 1 starts unlocked; reaching later levels persists without replay relocking them', () => {
   const storage = memoryStorage(), progress = new LevelProgress(storage);
   assert.deepEqual([0, 1, 2].map(i => progress.canPlay(i)), [true, false, false]);

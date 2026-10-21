@@ -9,7 +9,7 @@
 
 export const PAD = {
   JUMP: 0, ROLL: 1, WHEEL: 2, CAMERA: 3, SPRINT_ALT: 4, BASH: 5,
-  ALT_FIRE: 6, FIRE: 7, START: 9, SPRINT: 10,
+  ALT_FIRE: 6, FIRE: 7, START: 9, SPRINT: 10, LOCK_ON: 11,
   UP: 12, DOWN: 13, PREV_WEAPON: 14, NEXT_WEAPON: 15,
 };
 
@@ -24,6 +24,7 @@ export const PAD_TO_KEY = {
   [PAD.WHEEL]: 'Digit1',
   [PAD.BASH]: 'KeyF',
   [PAD.SPRINT]: 'ShiftLeft',
+  [PAD.LOCK_ON]: 'KeyL',
 };
 
 export const KEY_TO_PAD = Object.fromEntries(Object.entries(PAD_TO_KEY).map(([button, code]) => [code, Number(button)]));

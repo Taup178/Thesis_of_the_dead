@@ -1,11 +1,16 @@
 import * as THREE from 'three';
 
-const ROWS = 9, COLUMNS = 3, COUNT = ROWS * COLUMNS;
+const COLUMNS = 3;
 const smooth = THREE.MathUtils.smoothstep;
 
 /** A travelling rupture: planted stone slabs erupt in sequence, then settle into the earth. */
 export class DeanEarthWave {
-  constructor(root, rockMaterial, crackMaterial) {
+  constructor(root, rockMaterial, crackMaterial, options = {}) {
+    this.rows = options.rows ?? 9; this.spacing = options.spacing ?? 1.7;
+    this.rowDelay = options.rowDelay ?? 0.12; this.damage = options.damage ?? 18;
+    this.warningLead = options.warningLead ?? 0.16;
+    this.lifetime = options.lifetime ?? 2.5;
+    const count = this.rows * COLUMNS;
     this.root = new THREE.Group(); this.root.name = 'DeanEarthRupture'; root.add(this.root);
     this.geometry = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
     const positions = this.geometry.attributes.position;
@@ -28,11 +33,11 @@ export class DeanEarthWave {
     this.dustMaterial = new THREE.MeshBasicMaterial({ color: 0xa89172, map: this.dustTexture,
       transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
     this.object = new THREE.Object3D(); this.side = new THREE.Vector3();
-    this.pool = Array.from({ length: 2 }, () => {
-      const slabs = new THREE.InstancedMesh(this.geometry, rockMaterial, COUNT);
-      const cracks = new THREE.InstancedMesh(this.crackGeometry, crackMaterial, COUNT);
-      const dust = new THREE.InstancedMesh(this.dustGeometry, this.dustMaterial, COUNT * 2);
-      const debris = new THREE.InstancedMesh(this.geometry, rockMaterial, COUNT * 2);
+    this.pool = Array.from({ length: options.poolSize ?? 2 }, () => {
+      const slabs = new THREE.InstancedMesh(this.geometry, rockMaterial, count);
+      const cracks = new THREE.InstancedMesh(this.crackGeometry, crackMaterial, count);
+      const dust = new THREE.InstancedMesh(this.dustGeometry, this.dustMaterial, count * 2);
+      const debris = new THREE.InstancedMesh(this.geometry, rockMaterial, count * 2);
       for (const mesh of [slabs, cracks, dust, debris]) {
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         // Only a few small bounded batches; avoid rebuilding bounds during eruption.
@@ -45,16 +50,16 @@ export class DeanEarthWave {
 
   launch(origin, direction, enraged) {
     const wave = this.pool.find(wave => !wave.active) || this.pool.reduce((a, b) => a.age > b.age ? a : b);
-    wave.active = true; wave.age = 0; wave.hit = false; wave.damage = enraged ? 23 : 18;
+    wave.active = true; wave.age = 0; wave.hit = false; wave.damage = enraged ? 23 : this.damage;
     wave.tiles.length = 0;
     this.side.set(-direction.z, 0, direction.x);
-    for (let row = 0; row < ROWS; row++) for (let column = 0; column < COLUMNS; column++) {
+    for (let row = 0; row < this.rows; row++) for (let column = 0; column < COLUMNS; column++) {
       const index = row * COLUMNS + column;
       const offset = (column - 1) * (1.15 + row * 0.1);
-      const distance = 1.6 + row * 1.7;
+      const distance = 1.6 + row * this.spacing;
       const position = origin.clone().addScaledVector(direction, distance).addScaledVector(this.side, offset);
       position.y = 0;
-      wave.tiles.push({ position, delay: row * (enraged ? 0.09 : 0.12) + Math.abs(column - 1) * 0.025,
+      wave.tiles.push({ position, delay: row * (enraged ? 0.09 : this.rowDelay) + Math.abs(column - 1) * 0.025,
         height: 1.25 + row * 0.1 + (column === 1 ? 0.45 : 0),
         yaw: Math.atan2(direction.x, direction.z) + Math.sin(index * 7.3) * 0.27,
         width: 0.95 + (column === 1 ? 0.15 : 0), depth: 1.05 + (index % 3) * 0.1 });
@@ -75,7 +80,7 @@ export class DeanEarthWave {
           wave.hit = true; player.takeDamage(wave.damage, { type: 'blunt', source: tile.position });
         }
       }
-      if (wave.age > 2.5) {
+      if (wave.age > this.lifetime) {
         wave.active = false; wave.slabs.visible = wave.cracks.visible = wave.dust.visible = wave.debris.visible = false;
       } else this._draw(wave, player.camera);
     }
@@ -93,7 +98,7 @@ export class DeanEarthWave {
       // Fully hide underground geometry to avoid shadows or edges leaking through the ground.
       if (time <= 0 || time >= 1.48) object.scale.setScalar(0);
       object.updateMatrix(); wave.slabs.setMatrixAt(index, object.matrix);
-      const crack = smooth(time, -0.16, 0.02) * (1 - smooth(time, 1.25, 1.9));
+      const crack = smooth(time, -this.warningLead, 0.02) * (1 - smooth(time, 1.25, 1.9));
       object.position.copy(tile.position); object.position.y = 0.075;
       object.rotation.set(-Math.PI / 2, 0, -tile.yaw);
       object.scale.set(tile.width * 1.3 * crack, tile.depth * 1.6 * crack, 1);

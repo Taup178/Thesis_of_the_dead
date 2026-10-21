@@ -25,7 +25,7 @@ export class Player {
     this.airAcceleration = 18; // limited steering; takeoff speed sets the airborne limit
     this.dodgeSpeed = 13;
     this.dodgeDuration = 0.42;  // seconds; covers roughly the same distance as the old dash
-    this.dodgeCooldown = 0.8;
+    this.dodgeCooldown = 0.1;
     this.mouseSensitivity = 0.002;
     this.maxHealth = 100;
     this.health = this.maxHealth;
@@ -44,6 +44,10 @@ export class Player {
     // --- State ---
     this.yaw = 0;
     this.pitch = 0;
+    this.bossLockAvailable = null;
+    this.lockOnTarget = null;
+    this.lockOnHeight = 2;
+    this._lockPoint = new THREE.Vector3();
     this.velocity = new THREE.Vector3();
     this.airSpeedLimit = 0;
     this.isDodging = false;
@@ -53,6 +57,7 @@ export class Player {
     this.dodgeHeld = false;
     this.jumpHeld = false;
     this.dodgeCooldownTimer = 0;
+    this.dodgeBufferTimer = 0;
     this.dodgeDirection = new THREE.Vector3();
     this._moveForward = new THREE.Vector3();
     this._moveRight = new THREE.Vector3();
@@ -240,6 +245,33 @@ export class Player {
     return this.camera.getWorldDirection(new THREE.Vector3());
   }
 
+  setBossLockTarget(target = null, height = 2) {
+    this.bossLockAvailable = target;
+    this.lockOnHeight = height;
+    if (this.lockOnTarget !== target) this.lockOnTarget = null;
+  }
+
+  toggleBossLock() {
+    if (!this.alive || this.scriptedMovement) return;
+    this.lockOnTarget = this.lockOnTarget ? null : this.bossLockAvailable;
+    if (this.lockOnTarget) {
+      this._faceLockedBoss(0);
+      this.group.rotation.y = this.yaw;
+      this._updateCamera();
+    }
+    this.input.flushMouseDelta();
+  }
+
+  _faceLockedBoss(dt) {
+    if (!this.lockOnTarget) return;
+    this.lockOnTarget.getWorldPosition(this._lockPoint);
+    const dx = this._lockPoint.x - this.group.position.x, dz = this._lockPoint.z - this.group.position.z;
+    // Preserve yaw directly below a leaping boss, where horizontal bearing is undefined.
+    if (dx * dx + dz * dz < 0.16) return;
+    const target = Math.atan2(-dx, -dz), difference = target - this.yaw;
+    this.yaw += Math.atan2(Math.sin(difference), Math.cos(difference)) * (dt > 0 ? 1 - Math.exp(-18 * dt) : 1);
+  }
+
   toggleCamera() {
     if (!this.alive) return;
     this.isFirstPerson = !this.isFirstPerson;
@@ -272,7 +304,7 @@ export class Player {
   }
 
   get isAiming() {
-    return weaponById(this.weapon)?.type === 'gun'
+    return !this.carryingDegree && weaponById(this.weapon)?.type === 'gun'
       && (this.aimTime > 0 || (this.input.pointerLocked
         && (this.input.isMouseButtonDown?.(0) || this.input.isMouseButtonDown?.(2))));
   }
@@ -323,6 +355,7 @@ export class Player {
     this.hitDirection.normalize();
     if (this.health <= 0) {
       this.alive = false;
+      this.lockOnTarget = null;
       this.deathSequence = new PlayerDeath(this, { ...impact, direction: this.hitDirection });
       this.velocity.set(0, 0, 0);
       this.verticalVelocity = 0;
@@ -377,11 +410,13 @@ export class Player {
     this.dodgeHeld = false;
     this.jumpHeld = false;
     this.dodgeCooldownTimer = 0;
+    this.dodgeBufferTimer = 0;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
     this.stepTimer = 0;
     this.yaw = 0;
     this.pitch = 0;
+    this.bossLockAvailable = this.lockOnTarget = null;
     this.velocity.set(0, 0, 0);
     this.airSpeedLimit = 0;
     this.verticalVelocity = 0;
@@ -401,7 +436,7 @@ export class Player {
 
   update(dt, obstacles = [], worldBounds = null, platforming = null) {
     this.boundaryNoticeTime = Math.max(0, (this.boundaryNoticeTime || 0) - dt);
-    if (this.scriptedMovement) { this.input.flushMouseDelta(); this.shotTime = 0; this.weaponPresentation?.update(0); return; }
+    if (this.scriptedMovement) { this.dodgeBufferTimer = 0; this.input.flushMouseDelta(); this.shotTime = 0; this.weaponPresentation?.update(0); return; }
     if (!this.alive) return;
     const wasGrounded = this.grounded;
     let jumped = false;
@@ -414,12 +449,13 @@ export class Player {
     const inp = this.input;
 
     // ---- Mouse / Gamepad Look ----
-    if (inp.pointerLocked || inp.gamepadInUse) {
+    if (!this.lockOnTarget && (inp.pointerLocked || inp.gamepadInUse)) {
       this.yaw -= inp.mouseDeltaX * this.mouseSensitivity;
       this.pitch -= inp.mouseDeltaY * this.mouseSensitivity;
       this.pitch = THREE.MathUtils.clamp(this.pitch, -this.maxLookPitch, this.maxLookPitch);
     }
     inp.flushMouseDelta();
+    this._faceLockedBoss(dt);
 
     // Apply yaw to player group (horizontal rotation)
     this.group.rotation.y = this.yaw;
@@ -444,9 +480,8 @@ export class Player {
     }
 
     // ---- Dodge Roll ----
-    if (this.dodgeCooldownTimer > 0) {
-      this.dodgeCooldownTimer -= dt;
-    }
+    this.dodgeCooldownTimer = Math.max(0, this.dodgeCooldownTimer - dt);
+    this.dodgeBufferTimer = Math.max(0, this.dodgeBufferTimer - dt);
     const dodgeDown = inp.isDown('KeyQ');
     const dodgePressed = inp.consumeKeyPress?.('KeyQ') || (dodgeDown && !this.dodgeHeld);
     this.dodgeHeld = dodgeDown;
@@ -454,12 +489,16 @@ export class Player {
     const jumpPressed = inp.consumeKeyPress?.('Space') || (jumpDown && !this.jumpHeld);
     this.jumpHeld = jumpDown;
     const canMove = !platforming || platforming.canMove;
+    const canDodge = canMove && (!platforming || platforming.allowDodge) && this.grounded;
+    if (!canDodge) this.dodgeBufferTimer = 0;
+    else if (dodgePressed) this.dodgeBufferTimer = 0.22;
 
     if (!canMove) {
       this.isDodging = false;
       this.dodgeProgress = 0;
       moveDir.set(0, 0, 0);
     } else if (jumpPressed && this.grounded && !this.isDodging) {
+      this.dodgeBufferTimer = 0;
       // Keep an established run-up; simultaneous movement + jump can launch from rest.
       if (Math.hypot(this.velocity.x, this.velocity.z) < 0.1) {
         this.velocity.x = moveDir.x * speed;
@@ -479,7 +518,8 @@ export class Player {
       jumped = true;
       if (this.mixer) this._playAnimation('Jump', 'Jump_Idle');
       this._playExertion();
-    } else if (dodgePressed && (!platforming || platforming.allowDodge) && this.grounded && !this.isDodging && this.dodgeCooldownTimer <= 0) {
+    } else if (this.dodgeBufferTimer > 0 && canDodge && !this.isDodging && this.dodgeCooldownTimer <= 0) {
+      this.dodgeBufferTimer = 0;
       if (moveDir.lengthSq() === 0) moveDir.copy(forward);
       this.isDodging = true;
       this.dodgeTimer = this.dodgeDuration;
@@ -666,6 +706,12 @@ export class Player {
   }
 
   _updateCamera() {
+    if (this.lockOnTarget) {
+      this.lockOnTarget.getWorldPosition(this._lockPoint); this._lockPoint.y += this.lockOnHeight;
+      const eye = this.group.position.clone().add(this.isFirstPerson ? this.firstPersonOffset : this.cameraPivotOffset);
+      this.pitch = THREE.MathUtils.clamp(Math.atan2(this._lockPoint.y - eye.y,
+        Math.hypot(this._lockPoint.x - eye.x, this._lockPoint.z - eye.z)), -this.maxLookPitch, this.maxLookPitch);
+    }
     this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     if (this.isFirstPerson) {
       this.camera.position.copy(this.group.position).add(this.firstPersonOffset);
@@ -693,6 +739,7 @@ export class Player {
       this.camera.position.addScaledVector(this.hitDirection, impact * 0.07);
       this.camera.rotation.z += impact * (side < 0 ? -0.07 : 0.07);
     }
+    if (this.lockOnTarget) this.camera.lookAt(this._lockPoint);
     // Shooting happens before rendering, so its camera matrices must be current now.
     this.camera.updateMatrixWorld(true);
   }
@@ -753,6 +800,7 @@ export class Player {
     this.isDodging = false;
     this.dodgeTimer = 0;
     this.dodgeCooldownTimer = Math.max(this.dodgeCooldownTimer, this.dodgeCooldown);
+    this.dodgeBufferTimer = 0;
     this.lastSafePosition.copy(position);
     return true;
   }

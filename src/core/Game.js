@@ -13,6 +13,7 @@ import { getGlobalAudioManager } from './AudioManager.js';
 import { MenuMusic } from './MenuMusic.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 import { ChapterVoices } from '../audio/ChapterVoices.js';
+import { getEnemyLockTargets, selectEnemyLockTarget, getEnemyPinPosition } from '../player/EnemyLockOn.js';
 
 const NO_OBSTACLES = [];
 const LEVEL_AUDIO_ASSETS = Object.freeze([
@@ -85,6 +86,8 @@ export class Game {
 
     // ---- HUD references ----
     this.hudEl = document.getElementById('hud');
+    this.enemyLockPin = document.getElementById('enemy-lock-pin');
+    this.enemyPinPosition = new THREE.Vector3();
     this.hitFlashEl = document.getElementById('hit-flash');
     this.bossCinematic = document.getElementById('boss-cinematic');
     document.getElementById('skip-opening')?.addEventListener('click', () => this._skipOpening());
@@ -187,7 +190,7 @@ export class Game {
     });
 
     // Main menu
-    document.getElementById('btn-start').addEventListener('click', () => { this._playUiConfirm?.(); this.startGame(0); });
+    document.getElementById('btn-start').addEventListener('click', () => { this._playUiConfirm?.(); this.startGame(); });
     document.getElementById('btn-levels').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('levels-overlay'); });
     document.getElementById('btn-levels-back').addEventListener('click', () => { this._playUiConfirm?.(); this._showOverlay('menu-overlay'); });
     document.querySelectorAll?.('[data-level-index]')?.forEach(button => {
@@ -296,6 +299,33 @@ export class Game {
 
   _playUiConfirm() {
     this.audio?.playUiConfirm?.();
+  }
+
+  _syncEnemyLock() {
+    const player = this.player;
+    const targets = player.alive && !player.scriptedMovement && this.currentLevel.allowsShooting !== false
+      ? getEnemyLockTargets(this.currentLevel) : [];
+    const previous = player.lockOnTarget;
+    const target = targets.find(target => target.object === previous)
+      || selectEnemyLockTarget(targets, player, !!previous);
+    player.setBossLockTarget(target?.object ?? null, target?.height ?? 2);
+    if (previous && target && previous !== target.object) player.toggleBossLock();
+    this.enemyLockDescriptor = target;
+  }
+
+  _updateEnemyLockPin() {
+    if (!this.enemyLockPin) return;
+    const show = this.state === this.STATE.PLAYING && this.player?.alive && !this.player.scriptedMovement
+      && this.player.lockOnTarget && this.enemyLockDescriptor?.object === this.player.lockOnTarget;
+    if (!show) { this.enemyLockPin.classList.add('hidden'); return; }
+    getEnemyPinPosition(this.enemyLockDescriptor, this.enemyPinPosition).project(this.camera);
+    const point = this.enemyPinPosition;
+    const inView = point.z >= -1 && point.z <= 1 && Math.abs(point.x) < 1 && Math.abs(point.y) < 1;
+    this.enemyLockPin.classList.toggle('hidden', !inView);
+    if (inView) {
+      this.enemyLockPin.style.left = `${(point.x * 0.5 + 0.5) * 100}%`;
+      this.enemyLockPin.style.top = `${(-point.y * 0.5 + 0.5) * 100}%`;
+    }
   }
 
   async _captureMouse({ pauseOnFailure = true } = {}) {
@@ -535,7 +565,7 @@ export class Game {
     this._showOverlay('gameover-overlay');
     document.getElementById('gameover-text').textContent = this.currentLevel?.failureReason || 'Your stamina ran out. The zombies got your degree.';
     const restartState = this.currentLevel?.getRestartState?.();
-    const hasCheckpoint = restartState?.arenaCleared === true ||
+    const hasCheckpoint = restartState?.arenaCleared === true || restartState?.transformationPreview === true ||
       (Number.isInteger(restartState?.puzzleIndex) &&
         (restartState.puzzleIndex > 0 || (Number.isInteger(restartState.stageIndex) && restartState.stageIndex > 0)));
     document.getElementById('btn-retry').textContent = hasCheckpoint ? 'Retry Checkpoint' : 'Try Again';
@@ -794,6 +824,9 @@ export class Game {
     this.controlsHint.textContent = this.input.gamepadInUse
       ? 'Left stick: Move | Right stick: Look | RT: Shoot | A: Jump | X: Weapons | B: Roll | LB: Sprint | RB: Bash | Y: Camera | Start: Pause'
       : `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
+    if (this.player.bossLockAvailable) this.controlsHint.textContent += this.input.gamepadInUse
+      ? ` | R3: ${this.player.lockOnTarget ? 'Unlock [LOCKED]' : 'Lock enemy'}`
+      : ` | L/Middle-click: ${this.player.lockOnTarget ? 'Unlock [LOCKED]' : 'Lock enemy'}`;
     this.ammoHud.classList.toggle('hidden', this.currentLevel.allowsShooting === false);
     const equipped = weaponById(this.player.weapon) || WEAPONS[0];
     const unlimited = this.currentLevel.hasUnlimitedAmmo?.(equipped.id) === true;
@@ -953,7 +986,7 @@ export class Game {
       if (this.input.consumeGamepadPress(PAD.NEXT_WEAPON)) this._cycleWeapon(1);
       if (this.weaponWheelOpen) { this._updateWeaponWheel(); inventoryFrame = true; }
     }
-    if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && this.input.consumeKeyPress('KeyC')) {
+    if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && !this.player.carryingDegree && this.input.consumeKeyPress('KeyC')) {
       this.player.toggleCamera();
       this.motionBlur.reset();
     }
@@ -976,6 +1009,10 @@ export class Game {
       if (!this.player.alive) {
         this._updatePlayerDeath(dt);
       } else {
+        this._syncEnemyLock();
+        const lockKey = this.input.consumeKeyPress('KeyL');
+        const lockMouse = this.input.consumeMousePresses?.(1);
+        if (lockKey || lockMouse) this.player.toggleBossLock();
         this.player.update(
           dt, this.currentLevel.getObstacles?.() ?? NO_OBSTACLES,
           this.currentLevel.getWorldBounds?.(), this.currentLevel.getPlatforming?.()
@@ -991,6 +1028,8 @@ export class Game {
           && (this.input.consumeKeyPress('Enter') || this.input.consumeGamepadPress?.(PAD.ROLL))) this._skipOpening();
         const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
         const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
+        this._syncEnemyLock();
+        if (this.player.lockOnTarget && !this.player.scriptedMovement) this.player._updateCamera();
         voiceEvents = events;
         this._checkFirstLevelTutorial(events, dt);
 
@@ -1012,7 +1051,8 @@ export class Game {
         if (events.portalArrival || events.portalPassage) this.audio?.playPortalEntry?.();
         if (events.portalEntry) { this.audio?.playPortalEntry?.(); this.audio?.stopPortalHum?.(); }
         if (this.currentLevel.title?.toLowerCase().includes('final')) {
-          const phase = this.currentLevel.bossFight?.phase === 'combat' ? 'boss'
+          const phase = this.currentLevel.bossFight?.phase === 'combat'
+            || ['combat', 'dying'].includes(this.currentLevel.monsterFight?.phase) ? 'boss'
             : this.currentLevel.houseEmergenceCuePlayed ? 'house-emergence' : 'arena';
           this.audio?.setFinalEncounterPhase?.(phase);
         }
@@ -1033,6 +1073,7 @@ export class Game {
     }
 
     // ---- Render ----
+    this._updateEnemyLockPin();
     this._updateCinematicPresentation();
     const active = this.state === this.STATE.PLAYING
       && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
@@ -1138,7 +1179,8 @@ export class Game {
     const bossIntro = !!this.currentLevel?.bossCutscene;
     const cinematic = !!opening || playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
       || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
-      || !!this.currentLevel?.transformationCinematicActive || opening || this.currentLevel?.forestRevealTime < 0.8);
+      || !!this.currentLevel?.transformationCinematicActive || !!this.currentLevel?.victoryCinematicActive
+      || opening || this.currentLevel?.forestRevealTime < 0.8);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
     const fade = opening ? this.currentLevel.openingIntro.fade : this.currentLevel?.forestRevealTime < 0.8

@@ -5,11 +5,15 @@ import { createDegreeScroll, createLeftHandDegreeGrip } from '../props/DegreeScr
 import { MudHouse, createHouseFragments, createHouseEffectTextures } from '../props/MudHouse.js';
 import { DESERT_ASSET_ROOT, loadDesertAssets, extractDesertProps, createSandTexture } from '../environment/DesertAssets.js';
 import { ArenaNavigation } from '../environment/ArenaNavigation.js';
-import { RoomExitPortal, PortalEmergence } from '../props/RoomExitPortal.js';
+import { RoomExitPortal, PortalEmergence, PortalPassage } from '../props/RoomExitPortal.js';
 import { DeanDegreeBurn } from '../enemies/DeanDegreeBurn.js';
 import { loadDeanLaugh } from '../enemies/DeanLaughAudio.js';
 import { loadTransformationMonster } from '../enemies/TransformationMonster.js';
 import { DeanTransformation } from '../enemies/DeanTransformation.js';
+import { MonsterBoss } from '../enemies/MonsterBoss.js';
+import { MonsterRockWaves } from '../enemies/MonsterRockWaves.js';
+import { DegreeVictory } from '../player/DegreeVictory.js';
+import { VictoryPortals } from '../props/VictoryPortals.js';
 
 export const FINAL_ENCOUNTER_SECONDS = 60;
 export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
@@ -40,7 +44,18 @@ export class Level3 {
   get portalCinematicActive() { return !!this.arrivalPlayer; }
   get degreeBurnCinematicActive() { return !!this.degreeBurnCutscene; }
   get transformationCinematicActive() { return !!this.transformationCutscene; }
-  hasUnlimitedAmmo(weaponId) { return weaponId === 'smg' && this.bossFight?.phase === 'combat'; }
+  get victoryCinematicActive() { return !!this.degreeVictory && !this.destinyReady || !!this.destinyPassage; }
+  getLockOnTarget() {
+    if (this.monsterFight?.phase === 'combat' && this.monsterFight.alive) {
+      return { object: this.monsterFight.group, height: 2.2 };
+    }
+    if (!this.deanDefeated && this.bossFight?.phase === 'combat' && this.dean?.alive) {
+      return { object: this.dean.group, height: 1.8 };
+    }
+    return null;
+  }
+  hasUnlimitedAmmo(weaponId) { return weaponId === 'smg'
+    && (this.bossFight?.phase === 'combat' || this.monsterFight?.phase === 'combat'); }
   get spawnPoint() { return new THREE.Vector3(0, 0, this.resumeArena ? 8 : 31); }
   get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Jump | Q: Roll | C: Camera | R: Restart | Esc: Pause'; }
 
@@ -50,6 +65,8 @@ export class Level3 {
     this.preparedTransformation?.prepareAudio(this.audioContext);
     await this.preparedTransformation?.prepare(renderer, this.scene, camera);
     await this.bossFight?.earthWave?.prepare(renderer, this.scene, camera);
+    await this.monsterRocks?.prepare(renderer, this.scene, camera);
+    await this.victoryPortals?.prepare(renderer, this.scene, camera);
     if (this.resumeArena || this.bossPreview || this.preparedDegreeBurn) return;
     this.dean.mixer?.update(0.35); this.degreeGrip?.();
     this.preparedDegreeBurn = new DeanDegreeBurn(this.root, this.dean, this.degreeScroll, this.degreeGrip, this.audioContext, this.laughClip);
@@ -76,14 +93,16 @@ export class Level3 {
     this._restoreClearedArena();
     this._createDeanStage();
     this._createEntrancePortal();
+    this.victoryPortals = new VictoryPortals(this.root);
     this._createSpawns();
     this.dean = new Zombie(this.scene, new THREE.Vector3(0, 1.2, -37), './assets/models/zombies/Zombie_Arm.gltf');
     this.dean.isBoss = true; this.bossMarker = this.dean.group;
     this.bossMarker.name = 'Dean'; this.bossMarker.scale.setScalar(1.6); this.root.add(this.bossMarker);
-    await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready, this.entrancePortal.load(),
+    await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready, this.entrancePortal.load(), this.victoryPortals.load(),
       loadTransformationMonster(this.root).then(monster => { this.transformationMonster = monster; })]);
     this.dean._playAction('Idle'); this._attachDegree();
     this.bossFight = new DeanBoss(this.root, this.dean);
+    this.monsterRocks = new MonsterRockWaves(this.root);
     this.preparedTransformation = new DeanTransformation(this.root, this.dean, this.transformationMonster, this.degreeScroll, this.terrainDustColor);
     this._collectResources(this.transformationMonster.group);
     this.bossMarker.traverse(node => { if (node.isMesh) this.bulletObstacles.push(node); });
@@ -407,13 +426,18 @@ export class Level3 {
 
   getWorldBounds() { return this.worldBounds; }
   getRestartState() {
-    if (this.transformationPreview) return { transformationPreview: true };
+    if (this.transformationPreview || this.deanDefeated) return { transformationPreview: true };
     if (this.arenaCleared) return { arenaCleared: true, timeRemaining: this.timeRemaining, ...(this.bossPreview ? { bossPreview: true } : {}) };
     return this.bossPreview ? { bossPreview: true } : null;
   }
-  getCompletionText() { return 'The Dean has fallen. You claimed your degree and survived the final encounter.'; }
+  getCompletionText() { return this.destinyChoice
+    ? `You claimed your degree and chose the ${this.destinyChoice} portal. Your destiny awaits.`
+    : 'The Dean and his monstrous final form have fallen. You claimed your degree and survived the final encounter.'; }
   getObstacles() { return [...this.staticObstacles, ...this.houses.filter(house => house.alive).map(house => house.obstacle),
-    ...(this.transformation?.done ? [this.transformation.monsterObstacle] : [])]; }
+    ...(this.destinyReady ? this.victoryPortals.obstacles : []),
+    ...(this.monsterFight?.corpseObstacles ?? []),
+    ...(this.monsterFight?.alive ? [this.monsterFight.obstacle]
+      : this.transformation?.done && !this.monsterFight ? [this.transformation.monsterObstacle] : [])]; }
   getBulletObstacles() {
     const transformed = this.transformation?.swapped;
     return [...this.bulletObstacles.filter(mesh => !transformed || !this._isDeanMesh(mesh)),
@@ -421,6 +445,7 @@ export class Level3 {
   }
 
   handleBulletHit(hit, damage, player) {
+    if (this._isMonsterMesh(hit.object)) { this._damageMonster(damage, player); return true; }
     if (this._isDeanMesh(hit.object)) {
       if (this.bossFight?.takeDamage(damage)) this._onDeanDefeated(player);
       return true;
@@ -437,11 +462,23 @@ export class Level3 {
   }
 
   _isDeanMesh(object) {
-    for (let node = object; node; node = node.parent) if (node === this.bossMarker) return true;
+    const dean = this.dean?.group || this.bossMarker;
+    for (let node = object; node; node = node.parent) if (node === dean) return true;
     return false;
   }
 
+  _isMonsterMesh(object) {
+    if (!this.transformationMonster || !this.transformation?.swapped) return false;
+    for (let node = object; node; node = node.parent) if (node === this.transformationMonster.group) return true;
+    return false;
+  }
+
+  _damageMonster(damage, player) {
+    if (this.monsterFight?.takeDamage(damage)) player.addScore?.(1500);
+  }
+
   handleMeleeHit(zombie, damage, player) {
+    if (zombie === this.monsterFight) { this._damageMonster(damage, player); return true; }
     if (zombie !== this.dean) return false;
     if (this.bossFight?.takeDamage(damage)) this._onDeanDefeated(player);
     return true;
@@ -479,7 +516,7 @@ export class Level3 {
     const cut = this.transformationCutscene;
     if (!cut) return;
     const { player } = cut, camera = player.camera;
-    if (!camera) { this.allowsShooting = true; this._endDeanTransformation(); return; }
+    if (!camera) { this.allowsShooting = true; this._endDeanTransformation(); this._startMonsterFight(); return; }
     if (!cut.returnPosition) {
       cut.returnPosition = camera.position.clone(); cut.returnRotation = camera.quaternion.clone();
       cut.normalPosition = new THREE.Vector3(); cut.normalRotation = new THREE.Quaternion(); cut.returnTime = 0;
@@ -489,11 +526,20 @@ export class Level3 {
     const blend = THREE.MathUtils.smoothstep(cut.returnTime, 0, 0.65);
     camera.position.lerpVectors(cut.returnPosition, cut.normalPosition, blend);
     camera.quaternion.slerpQuaternions(cut.returnRotation, cut.normalRotation, blend); camera.updateMatrixWorld(true);
-    if (cut.returnTime >= 0.65) { this.allowsShooting = true; this._endDeanTransformation(); }
+    if (cut.returnTime >= 0.65) { this.allowsShooting = true; this._endDeanTransformation(); this._startMonsterFight(); }
+  }
+
+  _startMonsterFight() {
+    if (this.monsterFight || !this.transformation?.degreeCatch || this.disposed) return;
+    this.monsterFight = new MonsterBoss(this.root, this.transformationMonster, this.transformation.degreeCatch, this.monsterRocks);
+    this.monsterFight.start(); this.bossMarker = this.transformationMonster.group;
+    this.monsterFight.obstacle.x = this.bossMarker.position.x; this.monsterFight.obstacle.z = this.bossMarker.position.z;
   }
 
   updateTarget(hit) { this.targetHouse = hit?.object.userData.mudHouse || null; }
   getTargetStatus() {
+    if (this.monsterFight) return { title: 'THE MONSTER', health: this.monsterFight.health,
+      maxHealth: this.monsterFight.maxHealth, destroyed: this.monsterFight.phase === 'defeated' };
     if (this.deanDefeated) return null;
     if (this.bossFight && this.bossFight.phase !== 'waiting') {
       return { title: 'THE DEAN', health: this.dean.health, maxHealth: this.dean.maxHealth,
@@ -506,6 +552,22 @@ export class Level3 {
 
   update(dt, player) {
     this.entrancePortal?.update(dt, !!this.arrivalPlayer);
+    if (this.monsterFight) {
+      this.monsterFight.update(dt, player);
+      if (this.monsterFight.phase === 'defeated' && player.alive !== false) {
+        if (!this.degreeVictory) {
+          this.allowsShooting = false;
+          this.degreeVictory = new DegreeVictory(player, this.monsterFight, this.transformation.degreeCatch, this.getObstacles());
+        }
+        this.degreeVictory.update(dt);
+      }
+      if (this.degreeVictory?.done && this.victoryPortals && !this.destinyReady) {
+        this.victoryPortals.start(player.camera); this.victoryPortals.update(dt, player.camera);
+        if (this.victoryPortals.done) { this.destinyReady = true; this.degreeVictory.releaseControl(); }
+      }
+      if (this.destinyReady) this._updateDestiny(dt, player);
+      return { levelComplete: this.levelComplete, creditCollected: false };
+    }
     if (this.transformationPreview && !this.deanDefeated && this.bossFight) {
       this.bossMarker.position.set(0, 0, -4);
       this.bossMarker.lookAt(player.group.position.x, 0, player.group.position.z);
@@ -558,6 +620,26 @@ export class Level3 {
     this._updateBossCutscene(dt);
     return { levelComplete: this.levelComplete, creditCollected: false,
       houseZombiesEmerging: this.houseEmergenceCuePending };
+  }
+
+  _updateDestiny(dt, player) {
+    if (this.destinyPassage) {
+      this.destinyPassage.update(dt);
+      this.levelComplete = this.destinyPassage.complete;
+      return;
+    }
+    this.degreeVictory.keepHolding();
+    for (const portal of this.victoryPortals.portals) portal.update(dt);
+    if (!player.grounded || !player.alive) return;
+    const index = this.victoryPortals.portals.findIndex(portal => {
+      const dx = player.group.position.x - portal.center.x, dz = player.group.position.z - portal.center.z;
+      return Math.abs(dx) < 0.9 && dz > -0.45 && dz < 2.2;
+    });
+    if (index < 0) return;
+    this.destinyChoice = index === 0 ? 'red' : 'blue';
+    player.scriptedMovement = true; player.velocity?.set(0, 0, 0);
+    this.destinyPassage = new PortalPassage(player.group, this.victoryPortals.portals[index].center);
+    this.audioManager?.playPortalEntry?.();
   }
 
   _updateZombie(record, dt, player) {
@@ -613,6 +695,13 @@ export class Level3 {
   }
 
   getChallengeStatus() {
+    if (this.destinyReady) return { title: 'CHOOSE YOUR DESTINY',
+      detail: this.destinyChoice ? `You chose the ${this.destinyChoice} portal.` : 'Enter the red portal or the blue portal.',
+      timer: this.destinyChoice ? this.destinyChoice.toUpperCase() : 'CHOOSE', label: 'YOUR DESTINY',
+      progress: 1, tone: 'desert', mode: 'encounter' };
+    if (this.monsterFight) return { title: 'FINAL BOSS: THE MONSTER', detail: 'Claim your degree.',
+      timer: `${Math.ceil(this.monsterFight.health / this.monsterFight.maxHealth * 100)}%`, label: 'BOSS HEALTH',
+      progress: this.monsterFight.health / this.monsterFight.maxHealth, tone: 'danger', mode: 'encounter' };
     if (this.deanDefeated) return null;
     const seconds = Math.ceil(this.timeRemaining);
     if (this.arrivalPlayer) return { title: 'ENTERING THE FINAL ENCOUNTER', detail: 'Step through the red portal. The Dean awaits across the arena.',
@@ -648,6 +737,12 @@ export class Level3 {
     this._endBossCutscene();
     this._endDegreeBurnCutscene();
     this._endDeanTransformation();
+    this.destinyPassage?.restore(); this.destinyPassage = null;
+    this.degreeVictory?.dispose(); this.degreeVictory = null;
+    if (this.victoryPortals) { this._collectResources(this.victoryPortals.root); this.victoryPortals.dispose(); this.victoryPortals = null; }
+    if (this.monsterFight) this.monsterFight.dispose();
+    else this.monsterRocks?.dispose();
+    this.monsterFight = null; this.monsterRocks = null;
     this.transformation?.dispose(); this.transformation = null;
     this.preparedTransformation?.dispose(); this.preparedTransformation = null;
     if (this.transformationMonster) {

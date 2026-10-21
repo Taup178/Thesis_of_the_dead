@@ -10,12 +10,14 @@ export function getPortalTravelDuration(path) {
 
 /** The same animated portal used in the woods, scaled for the room's landing. */
 export class RoomExitPortal {
-  constructor(parent, position, { red = false, rotationY = 0 } = {}) {
+  constructor(parent, position, { red = false, blue = false, rotationY = 0 } = {}) {
     this.red = red;
+    this.blue = blue && !red;
     this.root = new THREE.Group(); this.root.name = red ? 'SophomoreEntrancePortal' : 'SophomoreExitPortal';
     this.root.position.copy(position); this.root.rotation.y = rotationY; parent.add(this.root);
     this.center = position.clone().add(new THREE.Vector3(0, 2.2, 0));
     this.light = new THREE.PointLight(red ? 0xff3025 : 0x65ffb5, 45, 13, 2); this.light.position.set(0, 2.2, 0.6); this.root.add(this.light);
+    if (this.blue) this.light.color.setHex(0x368dff);
     const stone = new THREE.MeshStandardMaterial({ color: 0x46504a, metalness: 0.3, roughness: 0.7 });
     this.fallback = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.23, 12, 48), stone);
     this.fallback.position.y = 2.2; this.root.add(this.fallback);
@@ -41,9 +43,11 @@ export class RoomExitPortal {
         for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
           if (material.emissive?.getHex()) {
             if (this.red) material.emissive.setHex(0xff1810);
+            else if (this.blue) material.emissive.setHex(0x226dff);
             material.emissiveIntensity = 1.7;
           }
           if (this.red && material.color?.g > material.color.r * 1.3) material.color.setHex(0xff3025);
+          else if (this.blue && material.color?.g > material.color.r * 1.3) material.color.setHex(0x368dff);
         }
       });
       this.fallback.removeFromParent(); this.fallback.geometry.dispose(); this.fallback.material.dispose();
@@ -73,6 +77,11 @@ export class RoomExitPortal {
         }`,
     }));
     this.root.updateMatrixWorld(true);
+    if (this.blue) {
+      this.surface.material.uniforms.darkColor.value.set(0.003, 0.008, 0.04);
+      this.surface.material.uniforms.cloudColor.value.set(0.025, 0.16, 0.62);
+      this.surface.material.uniforms.rimColor.value.set(0.12, 0.48, 1);
+    }
     this.surface.position.copy(this.root.worldToLocal(this.center.clone())); this.surface.position.z -= 0.1; this.root.add(this.surface);
     this.obstacles = createPortalObstacles(this.root);
   }

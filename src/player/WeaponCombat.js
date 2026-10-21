@@ -179,13 +179,15 @@ export class WeaponCombat {
     const origin = player.group.position.clone().add(new THREE.Vector3(0, 1.1, 0));
     const forward = player.getForwardDirection();
     const reach = attack?.reach ?? 2.25, arc = attack?.arc ?? 0.45;
-    const candidates = [...level.zombies, ...(level.dean?.alive && level.bossFight?.phase === 'combat' ? [level.dean] : [])]
+    const candidates = [...level.zombies, ...(level.dean?.alive && level.bossFight?.phase === 'combat' ? [level.dean] : []),
+      ...(level.monsterFight?.alive && level.monsterFight.phase === 'combat' ? [level.monsterFight] : [])]
       .filter(zombie => zombie.alive && zombie.group.visible)
-      .map(zombie => ({ zombie, center: zombie.group.position.clone().add(new THREE.Vector3(0, 1, 0)) }))
-      .filter(({ center }) => center.distanceTo(origin) <= reach && center.clone().sub(origin).normalize().dot(forward) > arc)
+      .map(zombie => ({ zombie, center: zombie.group.position.clone().add(new THREE.Vector3(0, zombie.meleeHeight ?? 1, 0)) }))
+      .filter(({ zombie, center }) => center.distanceTo(origin) <= reach + (zombie.bodyRadius ?? 0)
+        && center.clone().sub(origin).normalize().dot(forward) > arc)
       .sort((a, b) => a.center.distanceToSquared(origin) - b.center.distanceToSquared(origin));
     for (const { zombie, center } of candidates) {
-      this.ray.set(origin, center.clone().sub(origin).normalize()); this.ray.near = 0; this.ray.far = origin.distanceTo(center) + 0.1;
+      this.ray.set(origin, center.clone().sub(origin).normalize()); this.ray.near = 0; this.ray.far = Math.min(reach, origin.distanceTo(center) + 0.1);
       const hit = this.ray.intersectObjects(targets, false)[0];
       if (!hit || !belongsTo(hit.object, zombie.group)) continue;
       globalThis.__thesisAudioManager?.playRandom(['./assets/audio/sfx/weapon/melee-impact-1.ogg', './assets/audio/sfx/weapon/melee-impact-2.ogg'],

@@ -1,7 +1,8 @@
 /** Small arena grid: zombies route around houses instead of walking through walls. */
 export class ArenaNavigation {
-  constructor(obstacles, limit = 46, cell = 2) {
+  constructor(obstacles, limit = 46, cell = 2, clearance = 0.55) {
     this.obstacles = obstacles; this.limit = limit; this.cell = cell;
+    this.clearance = clearance;
     this.width = Math.floor(limit * 2 / cell) + 1;
   }
 
@@ -9,7 +10,7 @@ export class ArenaNavigation {
     const dx = b.x - a.x, dz = b.z - a.z, length = dx * dx + dz * dz;
     return this.obstacles.every(o => {
       const t = length ? Math.max(0, Math.min(1, ((o.x - a.x) * dx + (o.z - a.z) * dz) / length)) : 0;
-      return (a.x + dx * t - o.x) ** 2 + (a.z + dz * t - o.z) ** 2 > (o.radius + 0.55) ** 2;
+      return (a.x + dx * t - o.x) ** 2 + (a.z + dz * t - o.z) ** 2 > (o.radius + this.clearance) ** 2;
     });
   }
 
