@@ -1034,7 +1034,7 @@ export class Game {
           || this.currentLevel.orbPortalCutscene?.usesElapsedTime || this.currentLevel.portalCinematicActive
           || this.currentLevel.openingCinematicActive;
         if (this.currentLevel.openingCinematicActive
-          && (this.input.consumeKeyPress('Enter') || this.input.consumeGamepadPress?.(PAD.ROLL))) this._skipOpening();
+          && this._consumeOpeningSkip()) this._skipOpening();
         const levelDt = cinematicClock ? Math.min(frameDt, 0.15) : dt;
         const events = this.currentLevel.update(levelDt, this.player, this.elapsedTime);
         this._syncEnemyLock();
@@ -1141,6 +1141,7 @@ export class Game {
       loadout: ['Digit1', 'PRESS 1 TO OPEN INVENTORY'],
       roll: ['KeyQ', 'PRESS Q TO ROLL'],
       strike: ['KeyF', 'PRESS F TO STRIKE'],
+      lock: ['KeyL', 'PRESS L TO LOCK ON'],
     };
     const [control, prompt] = controls[id];
     this.firstLevelHintQueue.push({ id, title, detail, control, prompt });
@@ -1167,6 +1168,14 @@ export class Game {
       }
     }
 
+    // The third orb releases the third wave. Offer lock-on only while a
+    // target can actually be selected; never trap the player on an empty scene.
+    if (level.creditsCollected >= 3 && this.player?.alive && !this.player.lockOnTarget
+      && this.player.bossLockAvailable && !level.bossCutscene && !level.orbPortalCutscene
+      && !level.portalCinematicActive && !level.openingCinematicActive) {
+      this._queueFirstLevelHint('lock', 'Focus your aim',
+        'Lock on to a visible enemy to keep them in view. Press the same control again to unlock.');
+    }
     this._updateFirstLevelTutorial(dt);
   }
 
@@ -1183,10 +1192,15 @@ export class Game {
 
     if (this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause) return;
     if (this.firstLevelHintQueue.length) {
-      const hint = this.firstLevelHintQueue.shift();
+      // A target may disappear while earlier hints are displayed. Keep this
+      // hint queued until locking can succeed, without blocking other hints.
+      if (this.player?.lockOnTarget) this.firstLevelHintQueue = this.firstLevelHintQueue.filter(hint => hint.id !== 'lock');
+      const index = this.firstLevelHintQueue.findIndex(hint => hint.id !== 'lock' || this.player?.bossLockAvailable);
+      if (index < 0) return;
+      const [hint] = this.firstLevelHintQueue.splice(index, 1);
       this.fieldNoteTitle.textContent = hint.title;
       this.fieldNoteDetail.textContent = hint.detail;
-      this.fieldNotePrompt.textContent = hint.prompt;
+      this.fieldNotePrompt.textContent = hint.id === 'lock' && this.input?.gamepadInUse ? 'PRESS R3 TO LOCK ON' : hint.prompt;
       this.firstLevelHintTime = 0;
       this.firstLevelTutorialActive = hint;
       this.firstLevelTutorialBlocking = true;
@@ -1220,6 +1234,10 @@ export class Game {
     if (opening) document.getElementById('opening-card').textContent = this.currentLevel.openingIntro.cardText;
     this.levelTitleDisplay?.classList.toggle('opening-hidden', !!opening);
     this.hudEl?.classList.toggle('cinematic', cinematic);
+  }
+
+  _consumeOpeningSkip() {
+    return this.input.consumeKeyPress('Enter') || this.input.consumeGamepadPress?.(PAD.ROLL) || false;
   }
 
   _skipOpening() {

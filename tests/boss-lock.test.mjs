@@ -91,3 +91,11 @@ test('lock switches automatically to the next living enemy and pins the animated
   second.alive = false; Game.prototype._syncEnemyLock.call(game);
   assert.equal(player.lockOnTarget, null, 'last enemy death clears the pin and lock');
 });
+
+test('opening skip accepts keyboard Enter and gamepad B', () => {
+  for (const mode of ['enter', 'gamepad', 'none']) {
+    const input = { consumeKeyPress: code => mode === 'enter' && code === 'Enter',
+      consumeGamepadPress: button => mode === 'gamepad' && button === PAD.ROLL };
+    assert.equal(Game.prototype._consumeOpeningSkip.call({input}), mode !== 'none');
+  }
+});
