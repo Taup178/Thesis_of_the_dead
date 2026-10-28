@@ -512,7 +512,7 @@ export class AudioManager {
   }
 
   pause() {
-    this.stopEffects();
+    this.stopEffects({ preserveGroup: 'ending-ignition' });
     if (this.context?.state === 'running') this.context.suspend().catch(() => {});
   }
 
@@ -526,10 +526,11 @@ export class AudioManager {
     this.stopPortalHum(0.05);
   }
 
-  stopEffects() {
+  stopEffects({ preserveGroup = null } = {}) {
     this.sfxGeneration++;
     this.internalVoices.stop();
     for (const voice of this.activeVoices) {
+      if (voice.group === preserveGroup) continue;
       try { voice.source.stop(); } catch {}
     }
     for (const effect of this.generatedEffects) {

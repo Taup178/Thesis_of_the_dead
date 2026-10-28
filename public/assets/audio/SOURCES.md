@@ -185,6 +185,15 @@ tab fades the score out, preserves its position, and fades it back in on resume.
 Unloading the level releases playback and its audio resources.
 # Additional internal dialogue
 
+## Red ending cinematic mix
+
+`sfx/player/red-ending-fire-scream.wav` is the user-supplied edited mix of
+[fire-whoosh.wav by hnhnh](https://freesound.org/people/hnhnh/sounds/244926/)
+and [Scream.wav by FngerSounds](https://freesound.org/people/FngerSounds/sounds/249791/).
+Both original Freesound recordings are CC0 1.0. The user supplied the two sources
+already edited and mixed together, with the scream beginning approximately 0.65s
+after the fire. The supplied WAV is redistributed unchanged.
+
 ## Level 3 score
 
 The Dean fight crossfades into the supplied `music/tar.mp3` at 1:00 over three seconds. The transformed boss crossfades into the supplied `red-moon.mp3` at 0:25 over three seconds. Both served files are byte-identical to the originals in `Zombie_Kit`. Music fades to silence over two seconds when the degree pickup cutscene finishes, before control returns for the portal choice. `music/lost-horror.ogg` is no longer selected for either boss.
@@ -199,3 +208,10 @@ Opening cinematic: six original lines generated with Higgsfield Seed Audio using
 
 Six original lines generated with Higgsfield Seed Audio using the same established female preset identities. Provenance and hashes: `audio-staging/voices/level1-orbs-results.json`. Editable WAV masters are retained locally. Stereo Ogg exports include filtered fading cross-ear echoes, earwax processing, loudness mastering and fades; no source recordings or performances from Hellblade are used.
 
+
+
+## Protector good-ending recording
+
+The user supplied `hf_20261028_165210_0459c05c-9a64-444f-bb69-3884a86d7626.mp3`, identifying it as Higgsfield Seed Audio 1.0, Delia voice `1550321e-7f5b-526e-b001-02328b03e9bc`. The original is retained locally under `audio-staging/voices/masters/level3/`. The served Ogg trims 0.42–1.30 seconds, applies level balancing, filtering, stereo placement, two quiet filtered echoes, headphone processing, limiting and edge fades. Speech duration is 0.88 seconds; total duration is 1.36 seconds. Verify the applicable Higgsfield output-use and redistribution terms for the account and generation before public publication.
+
+Higgsfield's published terms state that it does not claim ownership of outputs or restrict their commercial use; its help center includes products and selling outputs. The user remains responsible for third-party rights. Sources checked 2026-10-28: https://higgsfield.ai/terms-of-use-agreement and https://higgsfield.ai/creator-hub/help-center/account/who-owns-my-generations-and-can-i-use-them-commercially. Account-specific or model-specific agreements were not accessible and should be checked before publication.

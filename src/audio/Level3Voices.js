@@ -59,6 +59,14 @@ export class Level3Voices extends Level1Voices {
       if (this.pending || this.running || this.captions.size) this.cancel();
       this.wasBlocked = true; return;
     }
+    // Choice dialogue may already have finished during the portal passage. Replay
+    // the actual registered recording once in the room so the retreat is audible.
+    if (level.endingCutscene && this.endingScene !== level.endingCutscene) {
+      this.endingScene = level.endingCutscene;
+      this.cancel();
+      this._queueStory(level.destinyChoice === 'blue' ? 'blue_choice' : 'red_choice', true, { trackHistory: false });
+      this.readyAt = this.clock;
+    }
     const step = Math.max(0, Math.min(0.15, dt));
     this.clock += step;
     this.phaseAge = current.phase === last.phase ? this.phaseAge + step : 0;

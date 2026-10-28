@@ -1,5 +1,8 @@
 // Original internal dialogue, tied to the actual final encounter rather than a timeline.
 export const LEVEL3_VOICE_CUES = [
+  { id: "good_ending_final", priority: 100, overlap: 0, lines: [
+    { id: "l3_protector_good_ending", identity: "protector", text: "It's done.", label: "The Protector", pan: 0.05 }
+  ] },
   {
     "id": "arrival",
     "priority": 55,

@@ -101,7 +101,11 @@ test('Level 3 waits for degree collection, celebration, portal reveal and a dest
     f.player.group.position.copy(blue.center).setY(0); f.player.grounded = true;
     f.level.update(1 / 60, f.player); assert.equal(f.level.destinyChoice, 'blue');
     for (let i = 0; i < 120; i++) f.level.update(1 / 60, f.player);
-    assert.equal(f.level.levelComplete, true); assert.match(f.level.getCompletionText(), /blue portal/);
+    assert.equal(f.level.levelComplete, false, 'ending must finish before completion');
+    assert.equal(f.level.endingCutscene.choice, 'blue');
+    for (let i = 0; i < 1600 && !f.level.levelComplete; i++) f.level.update(1 / 60, f.player);
+    assert.equal(f.level.levelComplete, true); assert.match(f.level.getCompletionText(), /voices are quiet/);
+    f.level.endingCutscene.dispose();
     f.level.handleBulletHit(hit, 500, f.player); assert.equal(f.player.score, 1500);
   } finally { f.clean(); }
 });

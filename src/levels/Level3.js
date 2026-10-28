@@ -14,6 +14,9 @@ import { MonsterBoss } from '../enemies/MonsterBoss.js';
 import { MonsterRockWaves } from '../enemies/MonsterRockWaves.js';
 import { DegreeVictory } from '../player/DegreeVictory.js';
 import { VictoryPortals } from '../props/VictoryPortals.js';
+import { OpeningCutscene } from '../player/OpeningCutscene.js';
+import { loadEndingTextures } from './EndingAssets.js';
+import { GoodEndingCutscene, BadEndingCutscene } from './EndingCutscene.js';
 
 export const FINAL_ENCOUNTER_SECONDS = 60;
 export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
@@ -31,6 +34,7 @@ export class Level3 {
     this.resources = new Set(); this.targetHouse = null; this.lastHitHouse = null; this.targetHold = 0;
     this.failureReason = 'The desert overwhelmed you. Regroup and try the encounter again.';
     this.victoryPreview = !!options?.victoryPreview;
+    this.endingPreview = this.victoryPreview && ['red', 'blue'].includes(options?.endingPreview) ? options.endingPreview : null;
     this.transformationPreview = !!options?.transformationPreview || this.victoryPreview;
     this.bossPreview = !!options?.bossPreview || this.transformationPreview;
     this.resumeArena = !!options?.arenaCleared || this.transformationPreview;
@@ -45,7 +49,7 @@ export class Level3 {
   get portalCinematicActive() { return !!this.arrivalPlayer; }
   get degreeBurnCinematicActive() { return !!this.degreeBurnCutscene; }
   get transformationCinematicActive() { return !!this.transformationCutscene; }
-  get victoryCinematicActive() { return !!this.degreeVictory && !this.destinyReady || !!this.destinyPassage; }
+  get victoryCinematicActive() { return !!this.degreeVictory && !this.destinyReady || !!this.destinyPassage || !!this.endingCutscene; }
   getLockOnTarget() {
     if (this.monsterFight?.phase === 'combat' && this.monsterFight.alive) {
       return { object: this.monsterFight.group, height: 2.2 };
@@ -100,7 +104,9 @@ export class Level3 {
     this.dean.isBoss = true; this.bossMarker = this.dean.group;
     this.bossMarker.name = 'Dean'; this.bossMarker.scale.setScalar(1.6); this.root.add(this.bossMarker);
     await Promise.all([...this.zombies.map(zombie => zombie.ready), this.dean.ready, this.entrancePortal.load(), this.victoryPortals.load(),
-      loadTransformationMonster(this.root).then(monster => { this.transformationMonster = monster; })]);
+      loadTransformationMonster(this.root).then(monster => { this.transformationMonster = monster; }),
+      OpeningCutscene.loadAssets().then(assets => { this.endingAssets = assets; }),
+      loadEndingTextures().then(textures => { this.endingTextures = textures; })]);
     this.dean._playAction('Idle'); this._attachDegree();
     this.bossFight = new DeanBoss(this.root, this.dean);
     this.monsterRocks = new MonsterRockWaves(this.root);
@@ -110,6 +116,14 @@ export class Level3 {
     this.navigation = new ArenaNavigation(this.getObstacles());
     this._collectResources(this.environment);
     this.root.updateMatrixWorld(true); onProgress?.(1);
+  }
+
+  async prepareShaders(renderer, camera, player) {
+    // Link the skinned actor and fire programs while the loading cover is up.
+    // The warm-up stage has no furniture and owns none of the player's assets.
+    const warmup = new BadEndingCutscene(player, null);
+    try { await renderer?.compileAsync?.(warmup.scene, camera); }
+    finally { warmup.dispose(); }
   }
 
   preparePlayer(player) {
@@ -461,7 +475,7 @@ export class Level3 {
     return this.bossPreview ? { bossPreview: true } : null;
   }
   getCompletionText() { return this.destinyChoice
-    ? `You claimed your degree and chose the ${this.destinyChoice} portal. Your destiny awaits.`
+    ? (this.destinyChoice === 'blue' ? 'At last, the voices are quiet.' : "You weren't paying attention all along.")
     : 'The Dean and his monstrous final form have fallen. You claimed your degree and survived the final encounter.'; }
   getObstacles() { return [...this.staticObstacles, ...(this.entrancePortal?.obstacles ?? []),
     ...this.houses.filter(house => house.alive).map(house => house.obstacle),
@@ -596,7 +610,14 @@ export class Level3 {
         this.victoryPortals.start(player.camera); this.victoryPortals.update(dt, player.camera);
         if (this.victoryPortals.done) { this.destinyReady = true; this.degreeVictory.releaseControl(); }
       }
-      if (this.destinyReady) this._updateDestiny(dt, player);
+      if (this.destinyReady) {
+        if (this.endingPreview && !this.destinyChoice) {
+          const portal = this.victoryPortals.portals[this.endingPreview === 'red' ? 0 : 1];
+          player.group.position.copy(portal.center).setY(0); player.grounded = true;
+          this.endingPreview = null;
+        }
+        this._updateDestiny(dt, player);
+      }
       return { levelComplete: this.levelComplete, creditCollected: false };
     }
     if (this.transformationPreview && !this.deanDefeated && this.bossFight) {
@@ -654,9 +675,26 @@ export class Level3 {
   }
 
   _updateDestiny(dt, player) {
+    if (this.endingCutscene) {
+      this.endingCutscene.update(dt);
+      this.levelComplete = this.endingCutscene.done;
+      return;
+    }
     if (this.destinyPassage) {
       this.destinyPassage.update(dt);
-      this.levelComplete = this.destinyPassage.complete;
+      // The existing portal fades the whole actor and parchment together. Hide
+      // the original scroll only once the passage has fully concealed them.
+      if (this.destinyPassage.time >= this.destinyPassage.duration && this.degreeVictory?.scroll) {
+        this.degreeVisibleBeforeEnding ??= this.degreeVictory.scroll.visible;
+        this.degreeVictory.scroll.visible = false;
+      }
+      if (this.destinyPassage.complete) {
+        this.destinyPassage.restore(); this.destinyPassage = null;
+        const Ending = this.destinyChoice === 'blue' ? GoodEndingCutscene : BadEndingCutscene;
+        this.endingCutscene = new Ending(player, this.endingAssets, this.endingTextures);
+        this.endingCutscene.audio = this.audioManager;
+        this.endingAssets = null;
+      }
       return;
     }
     this.degreeVictory.keepHolding();
@@ -668,6 +706,10 @@ export class Level3 {
     });
     if (index < 0) return;
     this.destinyChoice = index === 0 ? 'red' : 'blue';
+    // A portal can be entered during a dodge. Clear its temporary body transform
+    // before scripted movement suspends the normal roll-pose update.
+    player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0; player.dodgeBufferTimer = 0;
+    player.bodyMesh?.position.set(0, 0, 0); player.bodyMesh?.rotation.set(0, 0, 0);
     player.scriptedMovement = true; player.velocity?.set(0, 0, 0);
     this.destinyPassage = new PortalPassage(player.group, this.victoryPortals.portals[index].center);
     this.audioManager?.playPortalEntry?.();
@@ -769,6 +811,14 @@ export class Level3 {
     this._endDegreeBurnCutscene();
     this._endDeanTransformation();
     this.destinyPassage?.restore(); this.destinyPassage = null;
+    this.endingCutscene?.dispose(); this.endingCutscene = null;
+    for (const texture of Object.values(this.endingTextures ?? {})) texture?.dispose(); this.endingTextures = null;
+    // A level abandoned before its ending still owns its independently loaded furniture.
+    if (this.endingAssets) {
+      for (const root of Object.values(this.endingAssets)) this._collectResources(root);
+      this.endingAssets = null;
+    }
+    if (this.degreeVictory?.scroll && this.degreeVisibleBeforeEnding !== undefined) this.degreeVictory.scroll.visible = this.degreeVisibleBeforeEnding;
     this.degreeVictory?.dispose(); this.degreeVictory = null;
     if (this.victoryPortals) { this._collectResources(this.victoryPortals.root); this.victoryPortals.dispose(); this.victoryPortals = null; }
     if (this.monsterFight) this.monsterFight.dispose();

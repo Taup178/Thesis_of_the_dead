@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ending cinematic review</title>
+<style>body{margin:0;overflow:hidden;background:#080a0d;color:#eee;font:13px system-ui}canvas{display:block}#fade{position:fixed;inset:0;background:#000;pointer-events:none}#review{position:fixed;bottom:16px;left:16px;right:16px;padding:12px;background:#101418ed;border:1px solid #49515b;border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}button,input,select{background:#222b35;color:white;border:1px solid #647180;padding:7px;border-radius:4px}input{width:65px}a{color:#c4ddfa}#status{margin-left:auto;font-variant-numeric:tabular-nums}</style></head>
+<body><div id="fade"></div><div id="review">
+<a href="?ending=blue">Blue</a><a href="?ending=red">Red</a>
+<button id="play">Play</button><label>Time <input id="time" type="number" min="0" max="23" step="0.1" value="2"></label><button id="seek">View frame</button>
+<button data-time="2">Opening</button><button data-time="7">Transition</button><button data-time="10">Peak</button><button data-time="14">Release / collapse</button><button data-time="17">Resolution</button>
+<label>Camera <select id="angle"><option value="0">Cinematic</option><option value="-0.65">Left inspection</option><option value="0.65">Right inspection</option></select></label>
+<label>Graphics <select id="quality"><option value="low">Low</option><option value="medium" selected>Medium</option></select></label><span id="status">Loading stage…</span>
+</div><script type="module" src="/src/player/endingPreview.js"></script></body></html>

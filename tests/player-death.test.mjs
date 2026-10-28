@@ -203,3 +203,26 @@ test('Game waits for the death presentation before opening the retry screen', ()
   finished = true; Game.prototype._updatePlayerDeath.call(game, 0.05);
   assert.equal(overlays, 1);
 });
+
+test('repeated Level 3 death and shader warmup preserve Shaun’s forward-facing rig', async () => {
+  const player = makePlayer(); await loadRig(player);
+  player.input = { flushMouseDelta() {}, isDown: key => key === 'KeyW', consumeKeyPress: () => false,
+    pointerLocked: true, mouseDeltaX: 0, mouseDeltaY: 0, moveAxisX: 0, moveAxisY: 0 };
+  const { Level3 } = await import('../src/levels/Level3.js');
+  const level = new Level3(player.scene);
+  try {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      player.takeDamage(1000);
+      for (let frame = 0; frame < 30; frame++) player.deathSequence.update(.1);
+      await level.prepareShaders({ compileAsync: async () => {} }, player.camera, player);
+      player.reset(new THREE.Vector3());
+      player.yaw = .7; player.update(.1);
+      const movement = player.velocity.clone().setY(0).normalize();
+      const expected = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+      assert.ok(movement.dot(expected) > .999, `retry ${attempt}: movement follows view`);
+      assert.ok(Math.abs(player.characterModel.rotation.y - Math.PI) < 1e-6, `retry ${attempt}: model orientation remains intact`);
+      assert.ok(player.bodyMesh.quaternion.angleTo(new THREE.Quaternion()) < 1e-6, `retry ${attempt}: body has no residual turn`);
+      assert.ok(Math.abs(player.group.rotation.y - player.yaw) < 1e-6, `retry ${attempt}: body faces view`);
+    }
+  } finally { player.dispose(); }
+});
