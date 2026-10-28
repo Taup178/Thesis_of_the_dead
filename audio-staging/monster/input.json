@@ -1,0 +1,57 @@
+{
+    "provider":  "Higgsfield",
+    "model":  "seed_audio",
+    "voice":  "Arthur",
+    "params":  {
+                   "model":  "seed_audio",
+                   "voice_type":  "preset",
+                   "voice_id":  "30fc8796-ceb6-4a66-b3a7-4a145ef7f346",
+                   "format":  "wav",
+                   "sample_rate":  48000,
+                   "pitch_rate":  -9,
+                   "speech_rate":  -12
+               },
+    "clips":  [
+                  {
+                      "id":  "intro",
+                      "text":  "Still chasing your degree, Shaun? Come and take it."
+                  },
+                  {
+                      "id":  "taunt-01",
+                      "text":  "You can run. You will never leave."
+                  },
+                  {
+                      "id":  "taunt-02",
+                      "text":  "Every step brings you closer to me."
+                  },
+                  {
+                      "id":  "taunt-03",
+                      "text":  "Is that all you have left?"
+                  },
+                  {
+                      "id":  "enrage",
+                      "text":  "Enough! I will break you!"
+                  },
+                  {
+                      "id":  "rush",
+                      "text":  "Run, Shaun. Run!"
+                  },
+                  {
+                      "id":  "growl-01",
+                      "text":  "Grrrrrrrr... Hrrrrah!"
+                  },
+                  {
+                      "id":  "growl-02",
+                      "text":  "Hrrrgh... Grrrrrr!"
+                  },
+                  {
+                      "id":  "attack-roar",
+                      "text":  "Rrraaaaaagh!"
+                  },
+                  {
+                      "id":  "death",
+                      "text":  "Rrraaaaaagh... Urrrrrgh..."
+                  }
+              ],
+    "quotedCredits":  2.3
+}

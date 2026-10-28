@@ -113,6 +113,36 @@ shown below.
 | `sfx/weapon/artninja-sword-swing-01.ogg` | 0.052–0.307 s of `custom_shredder_claw_or_small_swing_w_and_without_ringout_movement_sounds_11162024`; 4 ms in / 30 ms out fade; -3 dB gain; Vorbis conversion | Artninja — https://freesound.org/people/Artninja/sounds/768408/ | CC BY 4.0, confirmed by the source listing and attribution CSV. Credit Artninja, title, URL, CC BY 4.0, and that this is an excerpt. |
 | `sfx/weapon/artninja-sword-swing-02.ogg` | 0.892–1.162 s of same; 4 ms in / 30 ms out fade; -3 dB gain; Vorbis conversion | Artninja — same URL | CC BY 4.0; same credit requirement. |
 
+## Level-specific single footsteps (2026-10-28)
+
+Level 1 uses `grass-footfall-left.ogg` and `grass-footfall-right.ogg` from
+*Grass Foot Step Sounds (Yo Frankie!)* by Blender Foundation, submitted by Lamoot:
+https://opengameart.org/content/grass-foot-step-sounds-yo-frankie —
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+Sources: `sfx_step_grass_l.flac` and `sfx_step_grass_r.flac` respectively.
+Modified by trimming leading silence below -45 dB (retaining 3 ms), adding a 3 ms
+fade in, and converting to mono 48 kHz Vorbis quality 5. Each source is a complete
+single grass footfall; no short fragments or walking loops are used. Grass playback
+gain is 1.8 times the desert surface (about +5.1 dB). The earlier Delta12 grass
+snippets were rejected and are no longer referenced by gameplay.
+Level 2 now uses `tile-step-01.ogg` and `tile-step-02.ogg`, derived from complete
+`03-footstep.ogg` and `04-footstep.ogg` hard-floor subway footfalls by
+GboxMikeFozzy: https://opengameart.org/content/footsteps-0 (CC0 1.0).
+Preparation: remove leading silence below -45 dB retaining 3 ms, high-pass at
+90 Hz, add 3 dB presence at 2.2 kHz (Q 1), apply a 3 ms fade in, and convert
+to mono 48 kHz Vorbis quality 5. These replace the rejected Fantozzi stone
+samples in level 2; the `stone` surface key now selects the tile footfalls.
+Level 2 tile playback gain is doubled (about +6 dB) for clearer audible impacts.
+
+Level 3 uses Fantozzi's individually sliced sand steps from
+https://opengameart.org/content/fantozzis-footsteps-grasssand-stone (CC0 1.0;
+Fantozzi, sliced and submitted by qubodup). Download: `Fantozzi-footsteps.7z`.
+`sand-step-01.ogg`–`04.ogg` use the
+`SandL1`, `SandR1`, `SandL2`, `SandR2` files. Preparation removes leading silence
+below -45 dB while retaining 3 ms, applies a 3 ms fade in, and converts to mono
+48 kHz Vorbis quality 5. Each file contains one foot landing, never a walking loop.
+Footstep playback follows the foot-position tracks of the active locomotion clip.
+
 ## Local-audition originals — publication hold
 
 The following user-selected originals are retained locally for listening review only.
@@ -127,6 +157,28 @@ currently used.
 | `sfx/player/footstep-01.ogg` | `313472dba31fd0c855376069fa368bb5a198c27251cc8398ef464578b7047a4c` | Compared against GaryBran 75266 after resampling: best normalized waveform correlation -0.310 at 3.515 s. | HOLD — not an identity match. |
 | `sfx/weapon/swish-1.wav` | `9a15c881345c1ce1c39cc31f52f081c8c4dc81fa41111e0079400f39d3ba0e45` | Compared against the Artninja 768408 source: best normalized waveform correlation -0.380 at 0.105 s. | HOLD — no source identity match. |
 | `sfx/weapon/swish-2.wav` | `1ce7752cce3d43f16fc222ad7f7ffb69d9a5fc01e64b93d205765fc37b8e9b0d` | Compared against the Artninja 768408 source: best normalized waveform correlation -0.370 at 7.285 s. | HOLD — no source identity match. |
+## Monster boss vocals (2026-10-29)
+
+`voices/monster/*.ogg` were generated for this game through Higgsfield MCP using
+Seed Audio 1.0 and the Arthur preset (`30fc8796-ceb6-4a66-b3a7-4a145ef7f346`).
+The pack contains an opening taunt, three combat taunts, a sprint taunt, an enrage
+line, two growls, an attack roar and a death vocal. Actual generation cost: 2.3
+credits. Rejected rate-limited submissions did
+not create duplicate generations.
+
+The Higgsfield media sandbox processed the generated masters with a quieter,
+time-aligned low throat layer, mild saturation and compression, -17 LUFS /
+-2.5 dBTP mastering, and edge fades. Game clips are mono 48 kHz Vorbis quality 5.
+Generation IDs, texts, hashes and source trims are retained in
+`audio-staging/monster/clips.json`; editable masters remain local. Rebuild processing
+with `scripts/prepare-monster-vocals.py` in the Higgsfield media sandbox.
+The listening preview is `audio-staging/monster/monster-voice-preview.mp3`.
+
+Combat playback uses one monster voice at a time, contextual attack/enrage cues,
+spaced alternating growls and taunts, and music ducking. Internal dialogue takes
+priority during combat; the death vocal interrupts the monster's taunt and holds
+victory dialogue until its finish. Player death, restart and disposal stop playback.
+
 # Main menu music
 
 `red-moon.mp3` is a byte-for-byte copy of the user-supplied

@@ -23,6 +23,18 @@ public/assets/audio/dean-laugh.mp3
 
 # Editable voice masters stay local; served chapter clips and provenance are retained.
 audio-staging/voices/masters/
+audio-staging/monster/masters/
+/audio-staging/monster/monster-voice-preview.mp3
+/audio-staging/monster/jobs.json
+/audio-staging/monster/first-results.json
+/audio-staging/monster/*-submission.json
+
+# Local previews, downloads, review frames and scratch scripts never ship.
+/tmp/
+
+# Rejected audition variants; active grass, tile and sand footsteps are retained.
+/public/assets/audio/sfx/player/grass-step-*.ogg
+/public/assets/audio/sfx/player/stone-step-*.ogg
 /tmp/level2-voices.zip
 /tmp/level3-voices.zip
 /tmp/memory-voices.zip

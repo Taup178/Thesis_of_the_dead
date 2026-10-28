@@ -1,0 +1,185 @@
+{
+  "manifest": {
+    "version": 1,
+    "provider": "Higgsfield",
+    "model": "seed_audio",
+    "voice": "Arthur",
+    "quotedCredits": 2.3,
+    "actualCredits": 2.3,
+    "processing": "Source pitch -9, dry voice with time-aligned low throat layer, subtle saturation, -17 LUFS / -2.5 dBTP mastering, 48 kHz mono Vorbis quality 5.",
+    "clips": {
+      "intro": {
+        "file": "intro.ogg",
+        "duration": 7.445333,
+        "text": "Still chasing your degree, Shaun? Come and take it."
+      },
+      "taunt-01": {
+        "file": "taunt-01.ogg",
+        "duration": 4.053333,
+        "text": "You can run. You will never leave."
+      },
+      "taunt-02": {
+        "file": "taunt-02.ogg",
+        "duration": 2.304,
+        "text": "Every step brings you closer to me."
+      },
+      "taunt-03": {
+        "file": "taunt-03.ogg",
+        "duration": 1.28,
+        "text": "Is that all you have left?"
+      },
+      "enrage": {
+        "file": "enrage.ogg",
+        "duration": 2.688,
+        "text": "Enough! I will break you!"
+      },
+      "rush": {
+        "file": "rush.ogg",
+        "duration": 2.304,
+        "text": "Run, Shaun. Run!"
+      },
+      "growl-01": {
+        "file": "growl-01.ogg",
+        "duration": 4.8,
+        "text": "Grrrrrrrr... Hrrrrah!"
+      },
+      "growl-02": {
+        "file": "growl-02.ogg",
+        "duration": 3.968,
+        "text": "Hrrrgh... Grrrrrr!"
+      },
+      "attack-roar": {
+        "file": "attack-roar.ogg",
+        "duration": 1.642667,
+        "text": "Rrraaaaaagh!"
+      },
+      "death": {
+        "file": "death.ogg",
+        "duration": 5.269333,
+        "text": "Rrraaaaaagh... Urrrrrgh..."
+      }
+    }
+  },
+  "clips": [
+    {
+      "id": "intro",
+      "text": "Still chasing your degree, Shaun? Come and take it.",
+      "job_id": "6954051a-0227-42b7-93da-4b548319e243",
+      "model": "seed_audio",
+      "duration": 7.445333,
+      "file": "intro.ogg",
+      "sourceStart": 0.36000000000000004,
+      "sourceEnd": 7.820708333333333,
+      "sha256": "cc13aaefc291a15321809f7f501dd34fbea3bcf3a2e412d111ab7166b56f076d",
+      "masterSha256": "93725c0ee46c6825d70d6350bb707675da0eb987b15e843c4ad47aeb9ea45164"
+    },
+    {
+      "id": "taunt-01",
+      "text": "You can run. You will never leave.",
+      "job_id": "2720852d-bda0-4438-a569-e8a59b2937b4",
+      "model": "seed_audio",
+      "duration": 4.053333,
+      "file": "taunt-01.ogg",
+      "sourceStart": 0.66,
+      "sourceEnd": 4.739999999999999,
+      "sha256": "ce3c7794e0f742e23bbeb1f4d6226e05fc976889af99e4e5d8780d5c32b4df6a",
+      "masterSha256": "14d5782bd2c39c27889d4876b44340a3cf8d88a4a61600a334099fa51fc4a4e7"
+    },
+    {
+      "id": "taunt-02",
+      "text": "Every step brings you closer to me.",
+      "job_id": "0496c5b9-9317-485e-86fc-a145b88410fe",
+      "model": "seed_audio",
+      "duration": 2.304,
+      "file": "taunt-02.ogg",
+      "sourceStart": 0.1,
+      "sourceEnd": 2.44,
+      "sha256": "bbf4858ab66c61634a6378f3817dd65085b100ac6b954f6e59b5a04d7176fc4c",
+      "masterSha256": "d891dbb4e64ea8f2fd3fa340ffe93cac7006d9862f69f59f056b369d3921b9e7"
+    },
+    {
+      "id": "taunt-03",
+      "text": "Is that all you have left?",
+      "job_id": "53ff3e49-9a56-47c1-bb24-4bba91fe8310",
+      "model": "seed_audio",
+      "duration": 1.28,
+      "file": "taunt-03.ogg",
+      "sourceStart": 0.22,
+      "sourceEnd": 1.5225833333333334,
+      "sha256": "9ccbb4a5f3d13d20ddfa5fc68f17ee0c6cd9e5ad59e80aedc0b4e13458c68e44",
+      "masterSha256": "c06316812fb7c42bd2b8323dd2946590745863c9a41b80275d7a780e20b83fa5"
+    },
+    {
+      "id": "enrage",
+      "text": "Enough! I will break you!",
+      "job_id": "cd9b4f60-a0f8-4c94-83f3-c5d04733b48c",
+      "model": "seed_audio",
+      "duration": 2.688,
+      "file": "enrage.ogg",
+      "sourceStart": 0.5,
+      "sourceEnd": 3.22,
+      "sha256": "c39e4ad6babbf72e0d02ab2a85c1af6b28100c1bb74795811485b2fcf9743df3",
+      "masterSha256": "f2cd67c3d93e37c043e8e2133884950f71e4dab85395aeb7f9c493dadb3afd60"
+    },
+    {
+      "id": "rush",
+      "text": "Run, Shaun. Run!",
+      "job_id": "155dbb95-8cf6-4dd0-abbd-ca1a188cfa41",
+      "model": "seed_audio",
+      "duration": 2.304,
+      "file": "rush.ogg",
+      "sourceStart": 0.46,
+      "sourceEnd": 2.8000000000000003,
+      "sha256": "14bd06ed94c2378d46143affeeed4944a29ece882bb100f96698e6e626f878ec",
+      "masterSha256": "b49be9264bdb10884a89a604724b85ff032e07bc6d1561f0b4f04c292cf3cde1"
+    },
+    {
+      "id": "growl-01",
+      "text": "Grrrrrrrr... Hrrrrah!",
+      "job_id": "299ab615-35e1-4f86-a207-62662de58528",
+      "model": "seed_audio",
+      "duration": 4.8,
+      "file": "growl-01.ogg",
+      "sourceStart": 0.5,
+      "sourceEnd": 5.319999999999999,
+      "sha256": "8ca59e702e33932fc6d1a455e772f03fc44b005cb2785a4a6c51487705d7f39e",
+      "masterSha256": "c341c451b2fbd6cedceef9c48dde18875cc0bd84b61203e47b2b0a184ec2efc4"
+    },
+    {
+      "id": "growl-02",
+      "text": "Hrrrgh... Grrrrrr!",
+      "job_id": "61c6d16a-56d8-4a47-8c54-c5bfeb7afc3e",
+      "model": "seed_audio",
+      "duration": 3.968,
+      "file": "growl-02.ogg",
+      "sourceStart": 0.18,
+      "sourceEnd": 4.16,
+      "sha256": "5e1b2ee8d4098e63d1adf57bbfbe6ee0cecb3cffb9b4be6f7309cefd28759919",
+      "masterSha256": "bbeacbf6424083d779bc3cfce7f7e40f7baa58a854bdda9ac33fc78d6b111fe4"
+    },
+    {
+      "id": "attack-roar",
+      "text": "Rrraaaaaagh!",
+      "job_id": "4b7f386d-f31b-41e7-8c9d-d883c271f80a",
+      "model": "seed_audio",
+      "duration": 1.642667,
+      "file": "attack-roar.ogg",
+      "sourceStart": 0,
+      "sourceEnd": 1.6600000000000001,
+      "sha256": "544f6be26eff88bb4ec27275a2407e522ff6d89ca858d8590d91a1000088bb41",
+      "masterSha256": "4d5a74bdca7fb2382095ccda08efd439b998192f99f3b449124f59e0277aa70b"
+    },
+    {
+      "id": "death",
+      "text": "Rrraaaaaagh... Urrrrrgh...",
+      "job_id": "c394bcc2-7095-4e3a-9864-d7f977771f01",
+      "model": "seed_audio",
+      "duration": 5.269333,
+      "file": "death.ogg",
+      "sourceStart": 0,
+      "sourceEnd": 5.3,
+      "sha256": "e46284be4337b702939c8b62fcbedaa2b35eb341421bca55b03e9df34b479377",
+      "masterSha256": "1b83ea7d76743dd4adbaa8439c680788f5d4b00e5c99b15c3b0b4f7b5b887911"
+    }
+  ]
+}

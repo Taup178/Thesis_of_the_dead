@@ -5,6 +5,7 @@ import { Level3 } from '../src/levels/Level3.js';
 import { WeaponCombat } from '../src/player/WeaponCombat.js';
 import { monsterFixture } from './helpers/monster-fixture.mjs';
 import { VictoryPortals } from '../src/props/VictoryPortals.js';
+import { Player } from '../src/player/Player.js';
 
 test('Level 3 selects each boss song and stops music after the degree pickup cutscene', () => {
   const level = new Level3(new THREE.Scene());
@@ -65,6 +66,38 @@ test('Monster combat waits for camera/control restoration and then owns the rig 
     assert.equal(f.level.getChallengeStatus().detail.includes('throw'), false, 'no attack-specific warnings');
     assert.ok(f.level.getObstacles().includes(f.level.monsterFight.obstacle));
   } finally { f.clean(); }
+});
+
+test('transformation restores face-to-face headings and a camera behind Shaun from every arena side', async () => {
+  for (const angle of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+    const f = await levelFixture();
+    let player;
+    try {
+      let flushed = 0;
+      player = new Player(f.level.scene, { flushMouseDelta() { flushed++; } }, new THREE.PerspectiveCamera());
+      player.group.position.copy(f.monster.group.position).add(new THREE.Vector3(Math.sin(angle) * 10, 0, Math.cos(angle) * 10));
+      player.yaw = angle + 1.2; player.pitch = -0.8; player.group.rotation.y = player.yaw;
+      player.isDodging = true; player.dodgeProgress = 0.4; player._updateRollPose();
+      player.lockOnTarget = f.level.dean.group;
+      player.scriptedMovement = true; player.bodyMesh.visible = false;
+      f.monster.group.rotation.y = angle + 2.1;
+      const start = player.group.position.clone();
+      f.level.transformationCutscene = { player, scriptedMovement: false, bodyVisible: true };
+      f.level.update(0.3, player);
+      assert.equal(player.scriptedMovement, true, 'camera completes its return before control unlocks');
+      f.level.update(0.36, player);
+      const towardMonster = f.monster.group.position.clone().sub(player.group.position).setY(0).normalize();
+      const towardPlayer = towardMonster.clone().negate();
+      assert.ok(new THREE.Vector3(0, 0, -1).applyQuaternion(player.group.quaternion).dot(towardMonster) > 0.99999);
+      assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(f.monster.group.quaternion).dot(towardPlayer) > 0.99999);
+      assert.ok(player.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize().dot(towardMonster) > 0.99999);
+      assert.ok(player.camera.position.clone().sub(player.group.position).dot(towardMonster) < -1, 'camera sits behind Shaun, facing the creature');
+      assert.ok(player.group.position.distanceTo(start) < 1e-8, 'heading alignment does not teleport Shaun');
+      assert.equal(player.isDodging, false); assert.ok(player.bodyMesh.rotation.x === 0 && player.bodyMesh.rotation.y === 0);
+      assert.equal(player.lockOnTarget, null); assert.ok(flushed > 0);
+      assert.equal(player.scriptedMovement, false); assert.equal(f.level.monsterFight.phase, 'combat');
+    } finally { player?.dispose(); f.clean(); }
+  }
 });
 
 test('Level 3 waits for degree collection, celebration, portal reveal and a destiny choice', async () => {

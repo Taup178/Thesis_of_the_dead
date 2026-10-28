@@ -31,6 +31,7 @@ const SPIKE_DAMAGE = 20, SPIKE_HIT_INTERVAL = 0.8;
 /** The Sophomore Room: chase the Dean through three hazards, then remember his route. */
 export class Level2 {
   constructor(scene, restartState = null) {
+    this.footstepSurface = 'stone';
     this.scene = scene;
     this.previousBackground = scene.background;
     this.previousFog = scene.fog;
@@ -178,6 +179,7 @@ export class Level2 {
   }
 
   preparePlayer(player) {
+    player.setFootstepSurface?.(this.footstepSurface);
     player.group.position.copy(this.spawnPoint);
     player.lastSafePosition.copy(player.group.position);
     player.verticalVelocity = 0;

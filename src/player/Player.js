@@ -5,6 +5,7 @@ import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './Direction
 import { weaponById } from './WeaponInventory.js';
 import { SWORD_ATTACKS, createSwordSwingClips } from './SwordSwings.js';
 import { PlayerDeath } from './PlayerDeath.js';
+import { FOOTSTEP_SOUNDS, crossedFootContacts } from './Footsteps.js';
 
 /**
  * Player - Hierarchical group: body mesh + camera rig + gun.
@@ -69,7 +70,7 @@ export class Player {
     this.hitReactionDuration = 0.48;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
-    this.stepTimer = 0;
+    this.footstepSurface = null;
     this.isFirstPerson = false;
     this.alive = true;
     this.deathSequence = null;
@@ -413,7 +414,6 @@ export class Player {
     this.dodgeBufferTimer = 0;
     this.hitReactionTime = 0;
     this.damageFlashTime = 0;
-    this.stepTimer = 0;
     this.yaw = 0;
     this.pitch = 0;
     this.bossLockAvailable = this.lockOnTarget = null;
@@ -626,7 +626,6 @@ export class Player {
     const moving = speed > 0.1;
     const aiming = this.isAiming;
     this._updateRollPose();
-    this._updateMovementAudio(dt, moving, speed);
 
     if (!this.mixer) return;
     if (this.hitReactionTime > 0 || this.isDodging) {
@@ -647,7 +646,10 @@ export class Player {
     } else {
       this._playAnimation(aiming ? 'Idle_Gun' : 'Idle', 'Idle');
     }
+    const action = this.currentAction;
+    const stepStart = action?.time ?? 0;
     this.mixer.update(dt);
+    this._updateMovementAudio(stepStart, action?.paused ? 0 : dt * this.mixer.timeScale * (action?.getEffectiveTimeScale() ?? 0), moving, speed);
   }
 
   _updateRollPose() {
@@ -664,16 +666,24 @@ export class Player {
       pivotHeight * (1 - Math.cos(angle)), Math.cos(this.dodgeFacing) * pivotOffset);
   }
 
-  _updateMovementAudio(dt, moving, speed) {
-    if (!moving || !this.grounded || this.isDodging || this.bashTime > 0) { this.stepTimer = 0; return; }
-    this.stepTimer -= dt;
-    if (this.stepTimer > 0) return;
-    globalThis.__thesisAudioManager?.playRandom([
-      './assets/audio/sfx/player/garybran-forest-step-01.ogg',
-      './assets/audio/sfx/player/garybran-forest-step-02.ogg',
-    ], { volume: 0.18 + Math.min(speed / 30, 0.10), pitch: 0.94 + Math.random() * 0.12,
-      category: 'sfx', group: 'player', maxVoices: 2, cooldownKey: 'player-footstep', cooldown: 0.09 });
-    this.stepTimer = Math.max(0.22, 0.5 - speed * 0.02);
+  setFootstepSurface(surface) {
+    if (!FOOTSTEP_SOUNDS[surface] || this.footstepSurface === surface) return;
+    this.footstepSurface = surface;
+    return globalThis.__thesisAudioManager?.preload?.(FOOTSTEP_SOUNDS[surface]);
+  }
+
+  _updateMovementAudio(start, advance, moving, speed) {
+    if (!moving || !this.alive || !this.grounded || this.isDodging || this.bashTime > 0 || this.hitReactionTime > 0) return;
+    if (!/^(?:Relaxed)?(?:Walk|Run|Strafe)/.test(this.currentActionName || '')) return;
+    const count = crossedFootContacts(this.currentAction.getClip(), start, advance);
+    const surface = this.footstepSurface || 'grass';
+    const volumeScale = surface === 'stone' ? 2 : surface === 'grass' ? 1.8 : 1;
+    for (let step = 0; step < count; step++) {
+      globalThis.__thesisAudioManager?.playRandom(FOOTSTEP_SOUNDS[surface], {
+        volume: volumeScale * (0.18 + Math.min(speed / 30, 0.10)), pitch: 0.97 + Math.random() * 0.06,
+        category: 'sfx', group: 'player-footstep', maxVoices: 8,
+      });
+    }
   }
 
   _playExertion() {

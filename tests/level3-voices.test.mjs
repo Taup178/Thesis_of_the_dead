@@ -84,6 +84,16 @@ test('victory preview skips earlier story and waits for physical pickup and visi
   assert.ok(!f.playback.played.includes('l3_protector_red_choice'));
 });
 
+test('victory dialogue waits for the monster death vocal to finish', async () => {
+  const f = fixture();
+  f.level.monsterFight = { phase: 'defeated', vocals: { dead: true, playing: true } };
+  await f.tick(5);
+  assert.equal(f.playback.played.length, 0, 'the death roar is not covered by internal dialogue');
+  f.level.monsterFight.vocals.playing = false;
+  await f.tick(2);
+  assert.deepEqual(f.playback.played, ['l3_protector_monster_fallen']);
+});
+
 test('failure mentions flames only after ignition and never says Shaun claimed his degree', async () => {
   const f = fixture(); f.level.degreeBurn = { time: 0, timing: { ignite: 8 } };
   await f.tick(3); assert.deepEqual(f.playback.played, ['l3_tormentor_burn_raise']);

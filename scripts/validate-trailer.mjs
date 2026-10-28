@@ -23,6 +23,14 @@ checks.truePeak = Number(loudness.input_tp) <= -1;
 const silence = spawnSync(ffmpeg, ['-hide_banner', '-i', file, '-vn', '-af', 'silencedetect=noise=-50dB:d=0.5', '-f', 'null', '-'], { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
 const silences = [...silence.stderr.matchAll(/silence_start: ([\d.]+)[\s\S]*?silence_end: ([\d.]+)/g)].map(m => ({ start: Number(m[1]), end: Number(m[2]) }));
 checks.noUnexpectedMusicDropout = !silences.some(s => s.start > 16 && s.end < 79 && s.end - s.start > 1);
+const ending = spawnSync(ffmpeg, ['-hide_banner', '-ss', '81.05', '-i', file, '-vn', '-af', 'volumedetect', '-f', 'null', '-'], { encoding: 'utf8', windowsHide: true });
+if (ending.status) throw Error(ending.stderr);
+const endingPeakDb = Number(ending.stderr.match(/max_volume: ([-\d.]+) dB/)?.[1]);
+checks.silentTitleReveal = Number.isFinite(endingPeakDb) && endingPeakDb <= -60;
+const edl = JSON.parse(readFileSync(join(root, 'edit-decision-list.json'), 'utf8'));
+checks.excludesShot2 = edl.cuts.every(cut => !/shot-2\.mp4$/i.test(cut.source || ''));
+const shot4 = edl.cuts.filter(cut => /shot-4\.mp4$/i.test(cut.source || ''));
+checks.shot4StartsAtTwoSeconds = shot4.length > 0 && shot4.every(cut => cut.inPoint === 2);
 const groups = [[0.6, 4, 9, 12, 14.5, 16.3, 19.7, 22, 26, 28, 30, 34],
   [37, 39, 41, 44, 46.7, 48.6, 50.7, 51.5, 53.5, 55, 57, 59],
   [60.5, 63.8, 65.4, 66.2, 68.7, 70, 73, 76, 79, 81.4, 83, 87]];
@@ -39,7 +47,8 @@ for (let group = 0; group < groups.length; group++) {
     '-vf', 'tile=4x3', '-frames:v', '1', join(root, 'edit', `final-review-${group}.jpg`)], { windowsHide: true });
 }
 const report = { file, duration: data.format.duration, bytes: Number(data.format.size), checks, loudness, silences,
-  music: { originalAsset: 'public/assets/audio/red-moon.mp3', sourceStartSeconds: 25, trailerEntrySeconds: 9 },
+  music: { originalAsset: 'public/assets/audio/red-moon.mp3', sourceStartSeconds: 25, trailerEntrySeconds: 9,
+    trailerEndSeconds: 81, endingPeakDb },
   sourceCadence: { actualGameplay: 'native 60 FPS', seedance: 'native 24 FPS preserved on 60 FPS editing timeline; no optical-flow interpolation' },
   note: 'Automated export checks plus contact sheets. These measurements do not substitute for a subjective listening review.' };
 writeFileSync(join(root, 'quality-report.json'), JSON.stringify(report, null, 2));

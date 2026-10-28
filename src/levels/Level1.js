@@ -25,6 +25,7 @@ import { CheckpointMarker } from '../props/CheckpointMarker.js';
  */
 export class Level1 {
   constructor(scene, options = null) {
+    this.footstepSurface = 'grass';
     this.scene = scene;
     this.skipOpening = options?.skipOpening === true;
     this.openingIntro = null;
@@ -117,6 +118,7 @@ export class Level1 {
   }
 
   preparePlayer(player) {
+    player.setFootstepSurface?.(this.footstepSurface);
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true;
     player.yaw = 0; player.pitch = -0.12; player.group.rotation.y = 0;

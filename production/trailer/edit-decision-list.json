@@ -60,8 +60,8 @@
       "index": 5,
       "start": 19,
       "end": 20.4,
-      "source": "ai/shot-2.mp4",
-      "inPoint": 0,
+      "source": "local-capture/forest_credit.mp4",
+      "inPoint": 3.15,
       "lines": [],
       "kind": "picture",
       "frames": 84
@@ -70,8 +70,8 @@
       "index": 6,
       "start": 20.4,
       "end": 23.2,
-      "source": "ai/shot-2.mp4",
-      "inPoint": 5,
+      "source": "local-capture/forest_run.mp4",
+      "inPoint": 0,
       "lines": [],
       "kind": "picture",
       "frames": 168
@@ -226,7 +226,7 @@
       "start": 65.85,
       "end": 69.05,
       "source": "ai/shot-4.mp4",
-      "inPoint": 0,
+      "inPoint": 2,
       "lines": [],
       "kind": "picture",
       "frames": 192

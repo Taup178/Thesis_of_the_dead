@@ -21,12 +21,13 @@ export class CheckpointMarker {
     const own = resource => { this.resources.add(resource); return resource; };
     const ringMap = own(texture(128, 128, (u, v) => {
       const r = Math.hypot(u - 0.5, v - 0.5) * 2;
-      return 0.8 * Math.exp(-Math.pow((r - 0.72) / 0.065, 2)) + 0.1 * Math.exp(-r * r * 5);
+      return Math.exp(-Math.pow((r - 0.72) / 0.1, 2)) + 0.22 * Math.exp(-r * r * 5);
     }));
     const columnMap = own(texture(1, 64, (_u, v) =>
-      THREE.MathUtils.smoothstep(v, 0, 0.12) * (1 - v) ** 2));
+      THREE.MathUtils.smoothstep(v, 0, 0.04) * (0.85 - v * 0.25)
+        * (1 - THREE.MathUtils.smoothstep(v, 0.7, 1))));
     const dustMap = own(texture(24, 24, (u, v) => Math.max(0, 1 - ((u - 0.5) ** 2 + (v - 0.5) ** 2) * 4) ** 3));
-    const options = { color, transparent: true, depthWrite: false, toneMapped: false, fog: true };
+    const options = { color, transparent: true, depthWrite: false, toneMapped: false, fog: false };
     this.groundMaterial = own(new THREE.MeshBasicMaterial({ ...options, map: ringMap, opacity: 0 }));
     this.ground = new THREE.Mesh(own(new THREE.PlaneGeometry(radius * 2.8, radius * 2.8)), this.groundMaterial);
     this.ground.rotation.x = -Math.PI / 2; this.ground.position.y = 0.045;
@@ -35,7 +36,7 @@ export class CheckpointMarker {
     this.column.position.y = height / 2 + 0.04;
     const geometry = own(new THREE.BufferGeometry());
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(36 * 3), 3));
-    this.dustMaterial = own(new THREE.PointsMaterial({ ...options, map: dustMap, size: 0.075, opacity: 0 }));
+    this.dustMaterial = own(new THREE.PointsMaterial({ ...options, map: dustMap, size: 0.11, opacity: 0 }));
     this.dust = new THREE.Points(geometry, this.dustMaterial); this.dust.frustumCulled = false;
     this.root.add(this.ground, this.column, this.dust);
     this._pose();
@@ -46,15 +47,15 @@ export class CheckpointMarker {
     if (position) this.root.position.copy(position);
     if (!visible) { this.fade = 0; return; }
     this.time += Math.max(0, Math.min(dt, 0.15));
-    this.fade = Math.min(1, this.fade + dt * 3);
+    this.fade = Math.min(1, this.fade + dt * 5);
     this._pose();
   }
 
   _pose() {
     const breath = Math.sin(this.time * 1.5);
-    this.groundMaterial.opacity = this.fade * (0.8 + breath * 0.06);
-    this.columnMaterial.opacity = this.fade * (0.25 + breath * 0.015);
-    this.dustMaterial.opacity = this.fade * 0.65;
+    this.groundMaterial.opacity = this.fade * (0.96 + breath * 0.03);
+    this.columnMaterial.opacity = this.fade * (0.8 + breath * 0.03);
+    this.dustMaterial.opacity = this.fade * 0.9;
     this.ground.scale.setScalar(1 + breath * 0.015);
     const positions = this.dust.geometry.attributes.position;
     for (let i = 0; i < positions.count; i++) {

@@ -1,4 +1,4 @@
-param([string]$BaseUrl = 'http://127.0.0.1:5175', [switch]$NewMovesOnly, [switch]$EnrageOnly, [switch]$VictoryOnly, [switch]$VoicesOnly, [switch]$MusicOnly)
+param([string]$BaseUrl = 'http://127.0.0.1:5175', [switch]$NewMovesOnly, [switch]$EnrageOnly, [switch]$VictoryOnly, [switch]$VoicesOnly, [switch]$MusicOnly, [switch]$MotionOnly, [switch]$MonsterVocalsOnly)
 $ErrorActionPreference = 'Stop'
 $reviewProfile = Join-Path $env:TEMP 'thesis-monster-browser-review'
 $reviewArgs = @('--headless=new', '--no-first-run', '--no-default-browser-check', '--enable-unsafe-swiftshader',
@@ -43,12 +43,45 @@ try {
   $target = Invoke-RestMethod -Method Put 'http://127.0.0.1:9224/json/new?about:blank'
   $socket.ConnectAsync([Uri]$target.webSocketDebuggerUrl, [Threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
   Invoke-ReviewCdp 'Runtime.enable' | Out-Null
+  Invoke-ReviewCdp 'Network.enable' | Out-Null
+  Invoke-ReviewCdp 'Network.setCacheDisabled' @{ cacheDisabled = $true } | Out-Null
   $previewQuery = if ($VictoryOnly -or $VoicesOnly) { 'level=3&victory=1' } else { 'level=3&transform=1' }
   Invoke-ReviewCdp 'Page.navigate' @{ url = "$BaseUrl/?$previewQuery" } | Out-Null
   for ($attempt = 0; $attempt -lt 100; $attempt++) {
     if (Invoke-ReviewJs '!!window.__game') { break }; Start-Sleep -Milliseconds 100
   }
   Invoke-ReviewJs '(async () => { await window.__game.startGame(); const g=window.__game; g.state=g.STATE.PAUSED; g._showOverlay(null); g.player.hits=[]; g.player.takeDamage=(damage,impact)=>g.player.hits.push({damage,leg:g.currentLevel.monsterFight?.degree.leg,source:impact.source?.toArray()}); for(let i=0;i<2400&&!g.currentLevel.monsterFight;i++)g.currentLevel.update(1/60,g.player); return {active:!!g.currentLevel.monsterFight,scripted:g.player.scriptedMovement}; })()' | ConvertTo-Json -Compress
+  if ($MonsterVocalsOnly) {
+    Invoke-ReviewJs '(async function(){const g=window.__game,b=g.currentLevel.monsterFight,a=g.audio;g.psychologicalVoices?.cancel();await a.ensureContext().resume();const files=["intro","taunt-01","taunt-02","taunt-03","enrage","rush","growl-01","growl-02","attack-roar","death"].map(id=>"./assets/audio/voices/monster/"+id+".ogg");await a.preload(files);if(!files.every(file=>a.cache.has(file)))throw Error("Missing monster vocal decode");b.vocals.update(2);await new Promise(r=>setTimeout(r,100));const normal=[...a.activeVoices].find(v=>v.group==="monster-vocal");if(!normal||normal.gain.gain.value<=0)throw Error("Monster taunt is inaudible");const introSeconds=normal.source.buffer.duration;b.takeDamage(600);await new Promise(r=>setTimeout(r,100));const death=[...a.activeVoices].filter(v=>v.group==="monster-death");if(death.length!==1||[...a.activeVoices].some(v=>v.group==="monster-vocal"))throw Error("Death did not replace the taunt");const result={decoded:files.length,introSeconds,deathSeconds:death[0].source.buffer.duration,deathGain:death[0].gain.gain.value,duckOwners:a.dialogueDuckOwners.size};b.vocals.stop();return result;})()' | ConvertTo-Json -Depth 6 -Compress
+    Write-Output ('Browser errors: ' + ($script:reviewErrors | ConvertTo-Json -Compress))
+    return
+  }
+  if ($MotionOnly) {
+    $motionFrames = Join-Path (Get-Location).Path 'tmp/monster-motion-preview'
+    New-Item -ItemType Directory -Force $motionFrames | Out-Null
+    Invoke-ReviewJs '(function(){const g=window.__game,b=g.currentLevel.monsterFight;b.degree.clear();b.rocks.clear();b.group.position.set(0,0,-8);b.group.rotation.set(0,0,0);g.player.group.position.set(0,0,10);b._beginSpinApproach(g.player);g.camera.fov=50;g.camera.updateProjectionMatrix();g.camera.position.set(8,4.5,2);g.camera.lookAt(0,2,-7);return {state:b.state};})()' | ConvertTo-Json -Compress
+    $motionTelemetry = @()
+    for ($motionFrame = 0; $motionFrame -lt 120; $motionFrame++) {
+      $frameState = Invoke-ReviewJs '(function(){const g=window.__game,b=g.currentLevel.monsterFight;if(b.state==="idle")b.cooldown=100;b.update(1/30,g.player);g.camera.position.lerp(b.group.position.clone().add({x:8,y:4.5,z:10}),1-Math.exp(-8/30));g.camera.lookAt(b.group.position.x,2,b.group.position.z+1);g.renderer.render(g.scene,g.camera);const hands=b.motion.arms.map(a=>b.group.worldToLocal(a.hand.getWorldPosition(b.group.position.clone())));return {state:b.state,age:b.time,speed:b.motion.moveSpeed,span:hands[0].x-hands[1].x,dedicatedRun:!!b.motion._sprintPose};})()'
+      $motionTelemetry += [pscustomobject]@{ frame = $motionFrame; state = $frameState.state; age = $frameState.age; speed = $frameState.speed; span = $frameState.span; dedicatedRun = $frameState.dedicatedRun }
+      $shot = Invoke-ReviewCdp 'Page.captureScreenshot' @{ format = 'png' }
+      [IO.File]::WriteAllBytes((Join-Path $motionFrames ('frame-{0:D3}.png' -f $motionFrame)), [Convert]::FromBase64String($shot.data))
+    }
+    $motionTelemetry | ConvertTo-Json -Depth 6 | Set-Content tmp/monster-motion-preview.json -Encoding UTF8
+    Invoke-ReviewJs '(function(){const b=window.__game.currentLevel.monsterFight;return {state:b.state,position:b.group.position.toArray(),hits:window.__game.player.hits};})()' | ConvertTo-Json -Depth 6 -Compress
+    & production/trailer/tools/ffmpeg.exe -hide_banner -loglevel error -y -framerate 30 -i (Join-Path $motionFrames 'frame-%03d.png') -vf 'pad=ceil(iw/2)*2:ceil(ih/2)*2' -c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -movflags +faststart tmp/monster-motion-preview.mp4
+    if ($LASTEXITCODE -ne 0) { throw 'Motion preview export failed.' }
+    $spinFrames = @($motionTelemetry | Where-Object { $_.state -eq 'spin' })
+    if (-not ($motionTelemetry[0].dedicatedRun) -or -not $spinFrames.Count -or ($spinFrames | Measure-Object span -Maximum).Maximum -lt 4.3) { throw 'Preview did not use the corrected running animation and wide-arm spin.' }
+    $spinStart = ($spinFrames[0].frame / 30).ToString('0.000', [Globalization.CultureInfo]::InvariantCulture)
+    $spinEnd = (($spinFrames[-1].frame + 2) / 30).ToString('0.000', [Globalization.CultureInfo]::InvariantCulture)
+    $motionFilter = '[0:v]split=3[normal][run][spin];[normal]drawtext=fontfile=public/assets/ui/fonts/IMFeENsc28P.ttf:text=FULL SPEED:fontsize=28:fontcolor=white:x=30:y=80:box=1:boxcolor=black@0.6[n];[run]trim=start=0.2:end=1.5,setpts=2*(PTS-STARTPTS),drawtext=fontfile=public/assets/ui/fonts/IMFeENsc28P.ttf:text=RUN - HALF SPEED:fontsize=28:fontcolor=white:x=30:y=80:box=1:boxcolor=black@0.6[r];[spin]trim=start=SPINSTART:end=SPINEND,setpts=2*(PTS-STARTPTS),drawtext=fontfile=public/assets/ui/fonts/IMFeENsc28P.ttf:text=WIDE SPIN - HALF SPEED:fontsize=28:fontcolor=white:x=30:y=80:box=1:boxcolor=black@0.6[s];[n][r][s]concat=n=3:v=1:a=0[v]'
+    $motionFilter = $motionFilter.Replace('SPINSTART', $spinStart).Replace('SPINEND', $spinEnd)
+    & production/trailer/tools/ffmpeg.exe -hide_banner -loglevel error -y -i tmp/monster-motion-preview.mp4 -filter_complex $motionFilter -map '[v]' -r 30 -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -movflags +faststart tmp/monster-run-and-wide-spin-preview.mp4
+    if ($LASTEXITCODE -ne 0) { throw 'Wide spin preview export failed.' }
+    Write-Output ('Browser errors: ' + ($script:reviewErrors | ConvertTo-Json -Compress))
+    return
+  }
   if ($MusicOnly) {
     Invoke-ReviewJs '(async function(){const g=window.__game,a=g.audio,c=a.ensureContext();await c.resume();const starts=[],create=c.createBufferSource.bind(c);c.createBufferSource=()=>{const s=create(),start=s.start.bind(s);s.start=(when,offset=0)=>{starts.push({offset,duration:s.buffer.duration});return start(when,offset);};return s;};await a.setFinalEncounterPhase("dean");const dean=[...a.themeSources].find(t=>t.key==="final-dean"),deanStart=starts.at(-1);if(!dean||deanStart.offset!==60||deanStart.duration<=60)throw Error("Tar did not start at 1:00");await new Promise(r=>setTimeout(r,100));const deanEarly=dean.gain.gain.value;await new Promise(r=>setTimeout(r,3200));if(!(deanEarly<dean.gain.gain.value*0.25))throw Error("Tar did not fade up smoothly");await a.setFinalEncounterPhase("monster");const monster=[...a.themeSources].find(t=>t.key==="final-monster"),monsterStart=starts.at(-1);if(!monster||monsterStart.offset!==25||monsterStart.duration<=25)throw Error("Red Moon did not start at 0:25");await new Promise(r=>setTimeout(r,100));const monsterEarly=monster.gain.gain.value;await new Promise(r=>setTimeout(r,3200));if(!(monsterEarly<monster.gain.gain.value*0.25))throw Error("Red Moon did not fade up smoothly");g.currentLevel.degreeVictory={done:true};await a.setFinalEncounterPhase(g.currentLevel.getMusicPhase());await new Promise(r=>setTimeout(r,2200));if(a.themeSources.size||a.themeKey!=="final-complete"||!g.menuMusic.audio.paused)throw Error("Music survived the degree cutscene");return {dean:deanStart,monster:monsterStart,endingSilent:true,oldBossTrackLoaded:a.cache.has("./assets/audio/music/lost-horror.ogg")};})()' | ConvertTo-Json -Depth 5 -Compress
     Write-Output ('Browser errors: ' + ($script:reviewErrors | ConvertTo-Json -Compress))

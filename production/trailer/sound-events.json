@@ -56,6 +56,69 @@
     "seconds": 2
   },
   {
+    "at": 20.4,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0088468060063223,
+    "seconds": 2
+  },
+  {
+    "at": 20.75,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9622954546416372,
+    "seconds": 2
+  },
+  {
+    "at": 21.099999999999998,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.048483986573233,
+    "seconds": 2
+  },
+  {
+    "at": 21.45,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0439181735394367,
+    "seconds": 2
+  },
+  {
+    "at": 21.799999999999997,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 1.0231779938751293,
+    "seconds": 2
+  },
+  {
+    "at": 22.15,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.9486572428758405,
+    "seconds": 2
+  },
+  {
+    "at": 22.499999999999996,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 0.9518573613351706,
+    "seconds": 2
+  },
+  {
+    "at": 22.849999999999994,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-02.ogg",
+    "volume": 0.168,
+    "pitch": 1.0281146414937774,
+    "seconds": 2
+  },
+  {
+    "at": 23.199999999999992,
+    "file": "public/assets/audio/sfx/player/garybran-forest-step-01.ogg",
+    "volume": 0.168,
+    "pitch": 0.944539441310364,
+    "seconds": 2
+  },
+  {
     "at": 23.2,
     "file": "public/assets/audio/sfx/weapon/smg-bang-03.ogg",
     "volume": 0.36,

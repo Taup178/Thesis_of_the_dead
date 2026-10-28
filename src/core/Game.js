@@ -415,6 +415,7 @@ export class Game {
     this.player = new Player(this.scene, this.input, this.camera);
     this._applyMouseSensitivity();
     await this.player.loadCharacter();
+    await this.player.setFootstepSurface?.(level.footstepSurface);
     this.player.group.position.copy(level.spawnPoint);
     await level.prepareShaders?.(this.renderer, this.camera, this.player);
     level.preparePlayer?.(this.player);
@@ -463,6 +464,7 @@ export class Game {
       await level.prepareCinematics?.(this.renderer, this.camera);
       await level.prepareShaders?.(this.renderer, this.camera, this.player);
       this.player.reset(level.spawnPoint);
+      await this.player.setFootstepSurface?.(level.footstepSurface);
       level.preparePlayer?.(this.player);
       await this._warmLoadedView?.();
     }
@@ -506,6 +508,7 @@ export class Game {
     applyQuality(this.renderer, this.scene, this.quality);
     this.audio?.setLevelTheme?.(level.title);
     this.player.reset(level.spawnPoint);
+    await this.player.setFootstepSurface?.(level.footstepSurface);
     await this.psychologicalVoices?.loadForLevel?.(level);
     level.audioManager = this.audio;
     level.audioContext = this.audio?.ensureContext?.() ?? this.heartbeat.context;

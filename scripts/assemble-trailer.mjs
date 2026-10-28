@@ -18,8 +18,8 @@ const cuts = [
   [11, 13.8, null, ['Shaun is experiencing', 'a psychological episode.']],
   [13.8, 15.85, raw('forest_run'), 1],
   [15.85, 19, raw('forest_credit'), 0],
-  [19, 20.4, 'ai/shot-2.mp4', 0],
-  [20.4, 23.2, 'ai/shot-2.mp4', 5],
+  [19, 20.4, raw('forest_credit'), 3.15],
+  [20.4, 23.2, raw('forest_run'), 0],
   [23.2, 24.2, raw('forest_combat'), 0],
   [24.2, 27.2, raw('forest_combat'), 1],
   [27.2, 29.4, raw('forest_sword'), 0],
@@ -34,7 +34,7 @@ const cuts = [
   [54.2, 58.2, raw('dungeon_ambush'), 0.5],
   [58.2, 63.45, raw('desert_house'), 0.25],
   [63.45, 65.85, raw('dean_intro'), 0.5],
-  [65.85, 69.05, 'ai/shot-4.mp4', 0],
+  [65.85, 69.05, 'ai/shot-4.mp4', 2],
   [69.05, 77.05, raw('dean_combat'), 0],
   [77.05, 77.53333333333333, raw('forest_sword'), 0.7],
   [77.53333333333333, 78, raw('dungeon_saws'), 1.2],
@@ -188,7 +188,7 @@ function effects() {
 function mix() {
   const filter = [
     '[0:a]asplit=3[voice][key1][key2]',
-    "[2:a]atrim=start=25:end=104,asetpts=PTS-STARTPTS,aresample=48000,afade=t=in:st=0:d=2.5,afade=t=out:st=76:d=3,volume=0.55,adelay=9000|9000,volume='if(lt(t,80.65),1,if(lt(t,80.8),(80.8-t)/0.15,if(lt(t,81.85),0.012,if(lt(t,81.862),(t-81.85)/0.012,1))))':eval=frame[music]",
+    '[2:a]atrim=start=25:end=97,asetpts=PTS-STARTPTS,aresample=48000,afade=t=in:st=0:d=2.5,afade=t=out:st=71.65:d=0.35,volume=0.55,adelay=9000|9000[music]',
     '[music][key1]sidechaincompress=threshold=0.035:ratio=6:attack=25:release=380:makeup=1[ducked]',
     '[1:a][key2]sidechaincompress=threshold=0.04:ratio=3:attack=15:release=260[fxduck]',
     '[ducked][fxduck][voice]amix=inputs=3:normalize=0,atrim=duration=88[premix]',

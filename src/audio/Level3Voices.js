@@ -19,7 +19,7 @@ export class Level3Voices extends Level1Voices {
     if (level.degreeBurn) return level.degreeBurn.time >= level.degreeBurn.timing.ignite ? 'burn_flames' : 'burn_raise';
     if (level.monsterFight) {
       if (level.monsterFight.phase === 'combat') return 'monster_combat';
-      if (level.monsterFight.phase === 'dying') return 'monster_dying';
+      if (level.monsterFight.phase === 'dying' || level.monsterFight.vocals?.dead && level.monsterFight.vocals.playing) return 'monster_dying';
       if (level.degreeVictory?.taken) return level.victoryPortals?.time >= 1.9 ? 'portals' : 'degree_taken';
       if (level.monsterFight.phase === 'defeated') return 'monster_fallen';
     }

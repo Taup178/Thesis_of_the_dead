@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "provider": "Higgsfield",
+  "model": "seed_audio",
+  "voice": "Arthur",
+  "quotedCredits": 2.3,
+  "actualCredits": 2.3,
+  "processing": "Source pitch -9, dry voice with time-aligned low throat layer, subtle saturation, -17 LUFS / -2.5 dBTP mastering, 48 kHz mono Vorbis quality 5.",
+  "clips": {
+    "intro": {
+      "file": "intro.ogg",
+      "duration": 7.445333,
+      "text": "Still chasing your degree, Shaun? Come and take it."
+    },
+    "taunt-01": {
+      "file": "taunt-01.ogg",
+      "duration": 4.053333,
+      "text": "You can run. You will never leave."
+    },
+    "taunt-02": {
+      "file": "taunt-02.ogg",
+      "duration": 2.304,
+      "text": "Every step brings you closer to me."
+    },
+    "taunt-03": {
+      "file": "taunt-03.ogg",
+      "duration": 1.28,
+      "text": "Is that all you have left?"
+    },
+    "enrage": {
+      "file": "enrage.ogg",
+      "duration": 2.688,
+      "text": "Enough! I will break you!"
+    },
+    "rush": {
+      "file": "rush.ogg",
+      "duration": 2.304,
+      "text": "Run, Shaun. Run!"
+    },
+    "growl-01": {
+      "file": "growl-01.ogg",
+      "duration": 4.8,
+      "text": "Grrrrrrrr... Hrrrrah!"
+    },
+    "growl-02": {
+      "file": "growl-02.ogg",
+      "duration": 3.968,
+      "text": "Hrrrgh... Grrrrrr!"
+    },
+    "attack-roar": {
+      "file": "attack-roar.ogg",
+      "duration": 1.642667,
+      "text": "Rrraaaaaagh!"
+    },
+    "death": {
+      "file": "death.ogg",
+      "duration": 5.269333,
+      "text": "Rrraaaaaagh... Urrrrrgh..."
+    }
+  }
+}

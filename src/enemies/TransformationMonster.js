@@ -17,7 +17,7 @@ export function createTransformationMonster(root, gltf) {
   mixer.update(0); group.updateMatrixWorld(true);
   model.traverse(node => {
     if (!node.isMesh) return;
-    node.castShadow = false; node.receiveShadow = true;
+    node.castShadow = true; node.receiveShadow = true;
     if (node.isSkinnedMesh) node.computeBoundingBox();
   });
   const bounds = new THREE.Box3().setFromObject(model);

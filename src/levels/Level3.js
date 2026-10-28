@@ -17,6 +17,7 @@ import { VictoryPortals } from '../props/VictoryPortals.js';
 import { OpeningCutscene } from '../player/OpeningCutscene.js';
 import { loadEndingTextures } from './EndingAssets.js';
 import { GoodEndingCutscene, BadEndingCutscene } from './EndingCutscene.js';
+import { MONSTER_VOCAL_ASSETS } from '../audio/MonsterVocals.js';
 
 export const FINAL_ENCOUNTER_SECONDS = 60;
 export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
@@ -24,6 +25,7 @@ export const MUD_HOUSE_POSITIONS = [[-15, 7], [15, 1], [-17, -20], [16, -24]];
 /** Final Year settlement, arena clearance, and Dean encounter. */
 export class Level3 {
   constructor(scene, options = {}) {
+    this.footstepSurface = 'sand';
     this.scene = scene; this.previousBackground = scene.background; this.previousFog = scene.fog;
     this.root = new THREE.Group(); this.root.name = 'FinalEncounter'; scene.add(this.root);
     this.worldBounds = { minX: -46, maxX: 46, minZ: -46, maxZ: 46 };
@@ -64,7 +66,9 @@ export class Level3 {
   get spawnPoint() { return new THREE.Vector3(0, 0, this.resumeArena ? 8 : 31); }
   get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Jump | Q: Roll | C: Camera | R: Restart | Esc: Pause'; }
 
-  async prepareAudio() { this.laughClip = await loadDeanLaugh(this.audioContext); }
+  async prepareAudio() {
+    [this.laughClip] = await Promise.all([loadDeanLaugh(this.audioContext), this.audioManager?.preload?.(MONSTER_VOCAL_ASSETS)]);
+  }
 
   async prepareCinematics(renderer, camera) {
     this.preparedTransformation?.prepareAudio(this.audioContext);
@@ -127,6 +131,7 @@ export class Level3 {
   }
 
   preparePlayer(player) {
+    player.setFootstepSurface?.(this.footstepSurface);
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
     player.pitch = -0.04; player.yaw = 0; player.group.rotation.y = 0;
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true; player.platformSupport = null;
@@ -561,17 +566,45 @@ export class Level3 {
     const cut = this.transformationCutscene;
     if (!cut) return;
     const { player } = cut, camera = player.camera;
-    if (!camera) { this.allowsShooting = true; this._endDeanTransformation(); this._startMonsterFight(); return; }
     if (!cut.returnPosition) {
-      cut.returnPosition = camera.position.clone(); cut.returnRotation = camera.quaternion.clone();
+      cut.returnPosition = camera?.position.clone() ?? new THREE.Vector3();
+      cut.returnRotation = camera?.quaternion.clone() ?? new THREE.Quaternion();
       cut.normalPosition = new THREE.Vector3(); cut.normalRotation = new THREE.Quaternion(); cut.returnTime = 0;
+      const monster = this.transformationMonster?.group;
+      cut.monsterStartRotation = monster?.quaternion.clone();
+      this._faceTransformedMonster(player);
+      cut.monsterEndRotation = monster?.quaternion.clone();
+      // Let the monster turn toward Shaun during the existing camera return.
+      if (camera && monster) monster.quaternion.copy(cut.monsterStartRotation);
     }
+    if (!camera) { this.allowsShooting = true; this._endDeanTransformation(); this._startMonsterFight(); return; }
     cut.returnTime += dt;
     player._updateCamera?.(); cut.normalPosition.copy(camera.position); cut.normalRotation.copy(camera.quaternion);
     const blend = THREE.MathUtils.smoothstep(cut.returnTime, 0, 0.65);
+    if (cut.monsterStartRotation) this.transformationMonster.group.quaternion.slerpQuaternions(
+      cut.monsterStartRotation, cut.monsterEndRotation, blend);
     camera.position.lerpVectors(cut.returnPosition, cut.normalPosition, blend);
     camera.quaternion.slerpQuaternions(cut.returnRotation, cut.normalRotation, blend); camera.updateMatrixWorld(true);
     if (cut.returnTime >= 0.65) { this.allowsShooting = true; this._endDeanTransformation(); this._startMonsterFight(); }
+  }
+
+  _faceTransformedMonster(player) {
+    const monster = this.transformationMonster?.group;
+    if (!monster) return;
+    const target = monster.getWorldPosition(new THREE.Vector3());
+    const position = player.group.getWorldPosition(new THREE.Vector3());
+    const dx = target.x - position.x, dz = target.z - position.z;
+    if (Math.hypot(dx, dz) < 0.001) return;
+    // Shaun faces -Z; the creature's rig faces +Z. Restore both headings rather
+    // than returning to whatever direction the player faced before the cinematic.
+    player.lockOnTarget = player.bossLockAvailable = null;
+    player.yaw = Math.atan2(-dx, -dz); player.group.rotation.y = player.yaw;
+    const eye = player.isFirstPerson ? player.firstPersonOffset?.y ?? 1.6 : player.cameraPivotOffset?.y ?? 1.55;
+    player.pitch = THREE.MathUtils.clamp(Math.atan2(target.y + 2.2 - position.y - eye, Math.hypot(dx, dz)),
+      -(player.maxLookPitch ?? Math.PI / 3), player.maxLookPitch ?? Math.PI / 3);
+    player.isDodging = false; player.dodgeProgress = player.dodgeTimer = 0;
+    player._updateRollPose?.(); player.input?.flushMouseDelta?.();
+    monster.lookAt(position.x, target.y, position.z);
   }
 
   _startMonsterFight() {
