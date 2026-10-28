@@ -27,8 +27,8 @@ Four packs cost 5.5 credits total. Unaltered 48 kHz WAV masters remain local und
 Generation jobs/settings and preparation hashes/split positions are recorded in
 `audio-staging/voices/level1-results.json` and `level1-clips.json`.
 The scripts are in `src/audio/level1VoiceCatalog.js`; the chapter manifest maps
-their IDs to actual files. Level 2 additions are documented above; no Level 3
-recordings were generated.
+their IDs to actual files. Level 2 additions are documented above; Level 3
+recordings are documented below.
 
 # Dean laugh
 
@@ -132,6 +132,8 @@ currently used.
 `red-moon.mp3` is a byte-for-byte copy of the user-supplied
 `Zombie_Kit/Red Moon [uvgIA_KBNf8].mp3`.
 
+The file metadata identifies the artist as Elephant Music - Topic; game-use and trailer distribution rights remain unverified.
+
 The original recording loops at its original speed and pitch on the main menu,
 including its Options and Credits screens. It follows Master Volume, stops when
 a level starts, and pauses while the browser tab is hidden. If autoplay is blocked,
@@ -212,6 +214,6 @@ Six original lines generated with Higgsfield Seed Audio using the same establish
 
 ## Protector good-ending recording
 
-The user supplied `hf_20261028_165210_0459c05c-9a64-444f-bb69-3884a86d7626.mp3`, identifying it as Higgsfield Seed Audio 1.0, Delia voice `1550321e-7f5b-526e-b001-02328b03e9bc`. The original is retained locally under `audio-staging/voices/masters/level3/`. The served Ogg trims 0.42–1.30 seconds, applies level balancing, filtering, stereo placement, two quiet filtered echoes, headphone processing, limiting and edge fades. Speech duration is 0.88 seconds; total duration is 1.36 seconds. Verify the applicable Higgsfield output-use and redistribution terms for the account and generation before public publication.
+The user supplied `hf_20261028_165210_0459c05c-9a64-444f-bb69-3884a86d7626.mp3`, identifying it as Higgsfield Seed Audio 1.0, Delia voice `1550321e-7f5b-526e-b001-02328b03e9bc`. The original is retained locally under `audio-staging/voices/masters/level3/`. The served Ogg trims 0.42â€“1.30 seconds, applies level balancing, filtering, stereo placement, two quiet filtered echoes, headphone processing, limiting and edge fades. Speech duration is 0.88 seconds; total duration is 1.36 seconds. Verify the applicable Higgsfield output-use and redistribution terms for the account and generation before public publication.
 
 Higgsfield's published terms state that it does not claim ownership of outputs or restrict their commercial use; its help center includes products and selling outputs. The user remains responsible for third-party rights. Sources checked 2026-10-28: https://higgsfield.ai/terms-of-use-agreement and https://higgsfield.ai/creator-hub/help-center/account/who-owns-my-generations-and-can-i-use-them-commercially. Account-specific or model-specific agreements were not accessible and should be checked before publication.
