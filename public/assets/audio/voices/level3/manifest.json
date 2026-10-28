@@ -120,6 +120,12 @@
       "file": "manipulator/l3_manipulator_retry.ogg",
       "effectsBaked": true,
       "speechDuration": 3.34
+    },
+    "l3_protector_good_ending": {
+      "file": "protector/l3_protector_good_ending.ogg",
+      "effectsBaked": true,
+      "speechDuration": 0.88,
+      "duration": 1.36
     }
   }
 }

@@ -108,11 +108,23 @@ test('all authored lines have generated local recordings with the existing four 
   const root = new URL('../public/assets/audio/voices/level3/', import.meta.url);
   const manifest = JSON.parse(readFileSync(new URL('manifest.json', root), 'utf8'));
   const lines = LEVEL3_VOICE_CUES.flatMap(c => c.lines);
-  assert.equal(lines.length, 24); assert.equal(Object.keys(manifest.clips).length, lines.length);
+  assert.equal(lines.length, 25); assert.equal(Object.keys(manifest.clips).length, lines.length);
   for (const line of lines) {
     assert.ok(['tormentor', 'anxious', 'manipulator', 'protector'].includes(line.identity));
     const clip = manifest.clips[line.id]; assert.ok(clip.effectsBaked && clip.speechDuration > 0);
     const bytes = readFileSync(new URL(clip.file, root));
     assert.equal(bytes.subarray(0, 4).toString(), 'OggS'); assert.ok(bytes.length > 2000);
   }
+});
+
+test('ending room replays the real choice recording once and stops when blocked', async () => {
+  const f = fixture(); f.level.destinyChoice = 'blue';
+  await f.tick(2);
+  const before = f.playback.played.filter(id => id === 'l3_protector_blue_choice').length;
+  f.level.endingCutscene = { time: 0 }; await f.tick(3);
+  assert.equal(f.playback.played.filter(id => id === 'l3_protector_blue_choice').length, before + 1);
+  await f.tick(3, { blocked: true });
+  assert.equal(f.handles.size, 0);
+  await f.tick(2, { blocked: true });
+  assert.equal(f.playback.played.filter(id => id === 'l3_protector_blue_choice').length, before + 1);
 });

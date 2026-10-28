@@ -198,7 +198,7 @@ test('returning to the main menu disposes gameplay and releases pointer lock', (
 
   try {
     Game.prototype.returnToMenu.call(game);
-    assert.deepEqual(calls, ['combat reset', 'unlock', 'player disposed', 'level disposed', 'hud hidden', 'menu-overlay']);
+    assert.deepEqual(calls, ['combat reset', 'unlock', 'level disposed', 'player disposed', 'hud hidden', 'menu-overlay']);
     assert.equal(game.state, 'menu');
     assert.equal(game.player, null);
     assert.equal(game.currentLevel, null);

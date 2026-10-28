@@ -1,3 +1,4 @@
+import { EndingVoice } from '../audio/EndingVoice.js';
 import * as THREE from 'three';
 import { InputManager } from './InputManager.js';
 import { Player } from '../player/Player.js';
@@ -13,10 +14,12 @@ import { getGlobalAudioManager } from './AudioManager.js';
 import { MenuMusic } from './MenuMusic.js';
 import { WEAPONS, weaponById, weaponImage } from '../player/WeaponInventory.js';
 import { ChapterVoices } from '../audio/ChapterVoices.js';
+import { INTERNAL_VOICE_GAIN } from '../audio/InternalVoices.js';
 import { getEnemyLockTargets, selectEnemyLockTarget, getEnemyPinPosition } from '../player/EnemyLockOn.js';
 
 const NO_OBSTACLES = [];
 const LEVEL_AUDIO_ASSETS = Object.freeze([
+  './assets/audio/sfx/player/red-ending-fire-scream.wav',
   './assets/audio/sfx/collect/ammo-pickup-event-a.wav', './assets/audio/sfx/collect/ammo-pickup-event-b.wav',
   ...[1, 2, 3, 4, 5].map(index => `./assets/audio/sfx/player/shaun-exertion-0${index}.ogg`),
   './assets/audio/sfx/player/garybran-forest-step-01.ogg', './assets/audio/sfx/player/garybran-forest-step-02.ogg',
@@ -35,6 +38,8 @@ export class Game {
     this.container = container;
 
     // ---- State machine ----
+    this.endingPreviewActive = import.meta.env?.DEV && new URLSearchParams(window.location.search).get('victory') === '1'
+      && ['red', 'blue'].includes(new URLSearchParams(window.location.search).get('ending'));
     this.STATE = { MENU: 'menu', PLAYING: 'playing', PAUSED: 'paused', GAMEOVER: 'gameover', LEVELCOMPLETE: 'levelcomplete', WIN: 'win', LOADING: 'loading' };
     this.state = this.STATE.MENU;
 
@@ -177,13 +182,13 @@ export class Game {
       if (document.hidden) this.pause();
     });
     document.addEventListener('pointerlockchange', () => {
-      if (!this.input.pointerLocked) this.pause();
+      if (!this.input.pointerLocked && !this.endingPreviewActive) this.pause();
     });
     document.addEventListener('pointerlockerror', () => {
       // A failed automatic re-capture after loading must not bounce to the pause menu;
       // the HUD's "click to capture" prompt covers that case instead.
       if (performance.now() < this._ignoreLockErrorsUntil) return;
-      if (!this.input.pointerLockPending && document.pointerLockElement !== this.renderer.domElement) this.pause();
+      if (!this.input.pointerLockPending && document.pointerLockElement !== this.renderer.domElement && !this.endingPreviewActive) this.pause();
     });
     this.renderer.domElement.addEventListener('click', () => {
       if (this.state === this.STATE.PLAYING && !this.input.pointerLocked) this._captureMouse();
@@ -332,7 +337,7 @@ export class Game {
     this.heartbeat.unlock();
     this.audio?.unlock?.();
     this.input.flushMouseDelta();
-    if (this.input.pointerLocked) return;
+    if (this.input.pointerLocked || this.endingPreviewActive) return;
     // Automatic captures (after loading) fail without a user gesture; their
     // pointerlockerror must not trigger the pause-on-lock-error path.
     if (!pauseOnFailure) this._ignoreLockErrorsUntil = performance.now() + 2000;
@@ -389,7 +394,7 @@ export class Game {
     const directSophomoreSection = launch.get('section');
     const level = await this.levelManager.loadLevel(levelIndex ?? (directFinal ? 2 : directSophomore ? 1 : 0), (p) => {
       progressBar.style.width = `${p * 100}%`;
-    }, directFinal && launch.get('victory') === '1' ? { victoryPreview: true } :
+    }, directFinal && launch.get('victory') === '1' ? { victoryPreview: true, endingPreview: import.meta.env?.DEV ? launch.get('ending') : null } :
       directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
@@ -522,7 +527,7 @@ export class Game {
 
   pause() {
     if (this.state !== this.STATE.PLAYING) return;
-    this.psychologicalVoices?.cancel();
+    if (!this.currentLevel?.endingCutscene?.finalVoice) this.psychologicalVoices?.cancel();
     this.state = this.STATE.PAUSED;
     this.currentLevel?.pauseEffects?.();
     this.audio?.pause?.();
@@ -546,14 +551,16 @@ export class Game {
     this.audio?.stopAll?.();
     this.state = this.STATE.MENU;
     document.exitPointerLock();
-    if (this.player) {
-      this.player.dispose();
-      this.player = null;
-    }
+    // The ending temporarily parents the player into its own scene. Restore it
+    // before Player.dispose removes and frees the character's shared resources.
     if (this.currentLevel) {
       this.currentLevel.dispose();
       this.currentLevel = null;
       this.levelManager.currentLevel = null;
+    }
+    if (this.player) {
+      this.player.dispose();
+      this.player = null;
     }
     this.hudEl.classList.add('hidden');
     this._showOverlay('menu-overlay');
@@ -575,11 +582,12 @@ export class Game {
   }
 
   levelComplete() {
-    if (!this.currentLevel?.destinyChoice) this.psychologicalVoices?.cancel();
+    this.psychologicalVoices?.cancel();
     this.currentLevel?.pauseEffects?.();
     this.state = this.STATE.LEVELCOMPLETE;
     const overlay = document.getElementById('levelcomplete-overlay');
-    document.getElementById('levelcomplete-title').textContent = 'Level Complete!';
+    document.getElementById('levelcomplete-title').textContent = this.currentLevel?.destinyChoice
+      ? (this.currentLevel.destinyChoice === 'blue' ? 'A Quiet Beginning' : 'The Wrong Way Out') : 'Level Complete!';
     document.getElementById('levelcomplete-text').textContent = this.currentLevel.getCompletionText?.() ||
       `You collected ${this.currentLevel.creditsCollected} credits and survived ${this.currentLevel.title}.`;
     this._showOverlay('levelcomplete-overlay');
@@ -962,7 +970,7 @@ export class Game {
     // Look deltas only get consumed during active gameplay (player look / weapon wheel).
     // Drop them everywhere else so mouse or right-stick movement during loading, menus,
     // or paused can't pile up and lurch the camera when gameplay resumes.
-    if (!(this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse))) {
+    if (!(this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse || this.endingPreviewActive))) {
       this.input.flushMouseDelta();
     }
     this.gamepadNoticeTime = Math.max(0, this.gamepadNoticeTime - dt);
@@ -1006,7 +1014,7 @@ export class Game {
     }
 
     // ---- Update logic ----
-    if (this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse) && this.player && this.currentLevel && !inventoryFrame) {
+    if (this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse || this.endingPreviewActive) && this.player && this.currentLevel && !inventoryFrame) {
       if (!this.player.alive) {
         this._updatePlayerDeath(dt);
       } else {
@@ -1075,11 +1083,27 @@ export class Game {
     this._updateEnemyLockPin();
     this._updateCinematicPresentation();
     const active = this.state === this.STATE.PLAYING
-      && (this.input.pointerLocked || this.input.gamepadInUse) && !document.hidden;
+      && (this.input.pointerLocked || this.input.gamepadInUse || this.endingPreviewActive) && !document.hidden;
+    const ending = this.currentLevel?.endingCutscene;
+    if (ending?.choice === 'blue' && !ending.finalVoice) {
+      ending.finalVoice = new EndingVoice(this.audio.internalVoices,
+        this.psychologicalVoices.third.assets.l3_protector_good_ending,
+        lines => this._renderVoiceCaptions(lines));
+    }
+    if (ending?.choice === 'blue' && ending.time >= 10.5 && !ending.finalVoicePrepared) {
+      this.psychologicalVoices.cancel();
+      ending.finalVoicePrepared = true;
+    }
+    if (active && ending?.choice === 'blue' && ending.time >= 11) ending.finalVoice.start();
+    const voiceGain = this.audio?.internalVoiceGain?.gain;
+    const audioContext = this.audio?.context;
+    if (voiceGain && audioContext) {
+      const fade = ending?.choice === 'blue' ? ending.time < 10.5 ? 1 - THREE.MathUtils.smoothstep(ending.time, 6, 10) : 1 : 1;
+      voiceGain.setTargetAtTime(this.audio.internalVoices.settings.volume * INTERNAL_VOICE_GAIN * fade, audioContext.currentTime, 0.08);
+    }
     this.psychologicalVoices?.update(dt, this.currentLevel, this.player, {
-      // Let the final response finish over the completion card after portal entry.
-      active: active || this.state === this.STATE.LEVELCOMPLETE && !!this.currentLevel?.destinyChoice && !document.hidden,
-      blocked: this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
+      active,
+      blocked: !!ending && (ending.choice === 'red' ? ending.time >= 15 : ending.time >= 10.5) || this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
       events: voiceEvents,
     });
     const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
@@ -1092,11 +1116,12 @@ export class Game {
     this.heartbeat.update(effects.distress, Number(document.getElementById('volume-slider').value) / 100);
     const cinematic = !!(this.currentLevel?.bossCutscene?.usesElapsedTime
       || this.currentLevel?.orbPortalCutscene?.usesElapsedTime || this.currentLevel?.portalCinematicActive
-      || this.currentLevel?.openingCinematicActive);
+      || this.currentLevel?.openingCinematicActive || this.currentLevel?.endingCutscene);
     // Warm-up passes may render temporary poses. Keep them behind the loading cover.
     if (this.state === this.STATE.LOADING) return;
-    this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0,
-      this.currentLevel?.openingCinematicActive ? this.currentLevel.openingIntro.scene : this.scene);
+    if (this.currentLevel?.endingCutscene) this.currentLevel.endingCutscene.render(this.renderer, this.quality);
+    else this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0,
+      this.currentLevel?.openingCinematicActive ? this.currentLevel.openingIntro.scene : this.currentLevel?.endingCutscene?.scene || this.scene);
     // Reveal only after the live frame and its cinematic fade have been prepared.
     this.container.classList.remove('loading');
   }
@@ -1172,18 +1197,20 @@ export class Game {
   }
 
   _updateCinematicPresentation() {
-    const playing = this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse);
+    const playing = this.state === this.STATE.PLAYING && (this.input.pointerLocked || this.input.gamepadInUse || this.endingPreviewActive);
     // The opening's black card screen must already cover its warm-up frame,
     // even while an automatic pointer-lock request is still pending.
     const opening = this.state === this.STATE.PLAYING && this.currentLevel?.openingCinematicActive;
     const bossIntro = !!this.currentLevel?.bossCutscene;
-    const cinematic = !!opening || playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
+    const completedEnding = this.state === this.STATE.LEVELCOMPLETE && !!this.currentLevel?.endingCutscene;
+    const cinematic = !!opening || completedEnding || playing && (bossIntro || !!this.currentLevel?.orbPortalCutscene
       || !!this.currentLevel?.portalCinematicActive || !!this.currentLevel?.degreeBurnCinematicActive
       || !!this.currentLevel?.transformationCinematicActive || !!this.currentLevel?.victoryCinematicActive
       || opening || this.currentLevel?.forestRevealTime < 0.8);
     this.bossCinematic?.classList.toggle('active', cinematic);
     this.bossCinematic?.classList.toggle('boss-intro', playing && bossIntro);
-    const fade = opening ? this.currentLevel.openingIntro.fade : this.currentLevel?.forestRevealTime < 0.8
+    const fade = opening ? this.currentLevel.openingIntro.fade : this.currentLevel?.endingCutscene ? this.currentLevel.endingCutscene.fade
+      : this.currentLevel?.destinyPassage ? THREE.MathUtils.smoothstep(this.currentLevel.destinyPassage.time, this.currentLevel.destinyPassage.duration * 0.65, this.currentLevel.destinyPassage.duration) : this.currentLevel?.forestRevealTime < 0.8
       ? 1 - THREE.MathUtils.smoothstep(this.currentLevel.forestRevealTime, 0, 0.8) : bossIntro ? this.currentLevel.bossCutscene.fade || 0 : 0;
     this.bossCinematic?.style?.setProperty('--cutscene-fade', String(fade));
     const openingUI = document.getElementById('opening-presentation');
