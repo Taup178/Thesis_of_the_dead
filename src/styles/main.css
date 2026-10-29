@@ -384,6 +384,7 @@ html, body {
 .menu-key-hint { display: flex; align-items: center; gap: 8px; font-size: 8px; letter-spacing: 0.7px; }
 .menu-key-hint > span { margin: 0 5px; color: #7a5e45; }
 .menu-key-hint kbd { padding: 1px 5px; border: 1px solid #72543d; border-radius: 2px; font: inherit; color: #ceb695; }
+.menu-key-hint[hidden] { display: none; }
 
 @keyframes menu-mist-drift { from { transform: translateX(-2%); opacity: 0.45; } to { transform: translateX(2%); opacity: 0.9; } }
 @media (max-width: 700px) {

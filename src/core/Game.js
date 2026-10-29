@@ -20,14 +20,30 @@ import { getEnemyLockTargets, selectEnemyLockTarget, getEnemyPinPosition } from 
 const NO_OBSTACLES = [];
 
 /**
- * Level 1 field notes. `control` is the input that dismisses the note (pad buttons
- * reach it through the usual key translation); keyboard and pad wordings are kept
- * side by side so a controller player is never told to press a key they cannot reach.
+ * B (Back) leaves these overlays by clicking the same button the mouse would use.
+ * The main menu, loading, game over, level complete and win screens have no parent to return to.
+ */
+export const MENU_BACK_BUTTONS = {
+  'levels-overlay': 'btn-levels-back',
+  'credits-overlay': 'btn-credits-back',
+  'options-overlay': 'btn-options-back',
+  'pause-overlay': 'btn-pause-resume',
+};
+
+/** Pixels a stick/d-pad press scrolls a long menu panel (credits, options). */
+const MENU_SCROLL_STEP = 64;
+
+/**
+ * Level 1 field notes. `control` is the input that dismisses the note; pad buttons
+ * reach it through the usual key translation, except when `padControl` names one
+ * directly (LB strikes through the mouse path, not its keyboard twin). Keyboard and
+ * pad wordings are kept side by side so a controller player is never told to press
+ * a key they cannot reach.
  */
 export const FIRST_LEVEL_HINTS = {
   loadout: { control: 'Digit1', key: '1', padKey: 'X', prompt: 'PRESS 1 TO OPEN INVENTORY', padPrompt: 'PRESS X TO OPEN INVENTORY' },
   roll: { control: 'KeyQ', key: 'Q', padKey: 'B', prompt: 'PRESS Q TO ROLL', padPrompt: 'PRESS B TO ROLL' },
-  strike: { control: 'KeyF', key: 'F', padKey: 'L3', prompt: 'PRESS F TO STRIKE', padPrompt: 'PRESS L3 TO STRIKE' },
+  strike: { control: 'KeyF', key: 'F', padKey: 'LB', prompt: 'PRESS F TO STRIKE', padPrompt: 'PRESS LB TO STRIKE', padControl: PAD.ATTACK },
   lock: { control: 'KeyL', key: 'L', padKey: 'R3', prompt: 'PRESS L TO LOCK ON', padPrompt: 'PRESS R3 TO LOCK ON' },
 };
 
@@ -149,7 +165,10 @@ export class Game {
     this.weaponWheelStatus = document.getElementById('weapon-wheel-status');
     this.weaponWheelRing = document.getElementById('weapon-wheel-ring');
     this.weaponWheelPadHint = document.getElementById('weapon-wheel-pad-hint');
+    this.weaponWheelKeyHints = [...document.querySelectorAll('.wheel-key-hint')];
     this.pauseGamepadHint = document.getElementById('pause-gamepad-hint');
+    this.menuKeyHint = document.getElementById('menu-key-hint');
+    this.menuGamepadHint = document.getElementById('menu-gamepad-hint');
     this.weaponWheelOpen = false;
     this.weaponWheelIndex = 0;
     this.weaponWheelItems = WEAPONS.map((weapon, index) => {
@@ -632,6 +651,7 @@ export class Game {
     this.weaponWheelIndex = Math.max(0, WEAPONS.findIndex(weapon => weapon.id === this.player.weapon));
     this._setWheelIndex(this.weaponWheelIndex);
     if (this.weaponWheelPadHint) this.weaponWheelPadHint.hidden = !this.input.gamepadInUse;
+    for (const hint of this.weaponWheelKeyHints || []) hint.hidden = this.input.gamepadInUse;
     this.input.flushMouseDelta();
   }
 
@@ -667,9 +687,13 @@ export class Game {
 
   _handleFirstLevelTutorialControl() {
     if (!this.firstLevelTutorialBlocking) return false;
-    const control = this.firstLevelTutorialActive?.control;
-    if (control && this.input.consumeKeyPress(control)) {
-      const hint = this.firstLevelTutorialActive;
+    const hint = this.firstLevelTutorialActive;
+    // A pad button named directly (LB strikes on the mouse path) takes over from the key.
+    const padControl = this.input.gamepadInUse ? hint?.padControl : undefined;
+    const acknowledged = padControl !== undefined
+      ? this.input.consumeGamepadPress(padControl)
+      : !!hint?.control && this.input.consumeKeyPress(hint.control);
+    if (acknowledged) {
       this.firstLevelTutorialBlocking = false;
       this.firstLevelTutorialActive = null;
       this.fieldNote?.classList.remove('visible', 'paused-guide');
@@ -681,7 +705,8 @@ export class Game {
         return true;
       }
       // Re-queue the acknowledged input so it performs the move the guide described.
-      this.input.pressedKeys.add(control);
+      if (padControl !== undefined) this.input.mousePresses[0] = (this.input.mousePresses[0] || 0) + 1;
+      else this.input.pressedKeys.add(hint.control);
       return false;
     }
     this.input.pressedKeys.clear();
@@ -714,6 +739,9 @@ export class Game {
     if (this.pauseGamepadHint) {
       this.pauseGamepadHint.hidden = !(overlayId === 'pause-overlay' && this.input.gamepadInUse);
     }
+    // Main menu footer: show the pad controls instead of the keyboard ones.
+    if (this.menuKeyHint) this.menuKeyHint.hidden = this.input.gamepadInUse;
+    if (this.menuGamepadHint) this.menuGamepadHint.hidden = !this.input.gamepadInUse;
     if (!overlayId || !this.input.gamepadInUse) {
       this._clearMenuFocus();
       return;
@@ -724,12 +752,28 @@ export class Game {
     }
     if (overlayId === 'loading-overlay') return;
 
-    const buttons = [...document.getElementById(overlayId).querySelectorAll('.menu-btn')]
+    // B goes back: submenus return to their parent and pause resumes. Screens with no
+    // parent (game over, win) still swallow the press so it cannot roll in gameplay.
+    if (this.input.consumeGamepadPress(PAD.ROLL)) {
+      this.input.releasePadButton(PAD.ROLL);
+      const backButtonId = MENU_BACK_BUTTONS[overlayId];
+      if (backButtonId) {
+        document.getElementById(backButtonId)?.click();
+        return;
+      }
+    }
+
+    const overlay = document.getElementById(overlayId);
+    const buttons = [...overlay.querySelectorAll('.menu-btn')]
       .filter(button => button.offsetParent !== null && !button.disabled);
     if (buttons.length === 0) {
       this._clearMenuFocus();
       return;
     }
+    // Long panels (credits, options) have a single Back button, so the stick scrolls
+    // the panel itself; short button lists move the highlight, which stays in view.
+    const panel = overlay.querySelector('.menu-container');
+    const scrollable = !!panel && panel.scrollHeight > panel.clientHeight + 1;
 
     if (nav.overlayId !== overlayId) {
       nav.overlayId = overlayId;
@@ -757,8 +801,13 @@ export class Game {
     }
     nav.stickDir = stickDir;
     if (dir !== 0) {
-      nav.index = stepFocusIndex(nav.index, dir, buttons.length);
-      this._highlightMenuButton(buttons, nav.index);
+      if (buttons.length > 1) {
+        nav.index = stepFocusIndex(nav.index, dir, buttons.length);
+        this._highlightMenuButton(buttons, nav.index);
+        buttons[nav.index]?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+      } else if (scrollable) {
+        panel.scrollBy({ top: dir * MENU_SCROLL_STEP, behavior: 'smooth' });
+      }
     }
     if (this.input.consumeGamepadPress(PAD.JUMP)) {
       this.input.releasePadButton(PAD.JUMP);
@@ -799,7 +848,8 @@ export class Game {
     this.weaponWheelDetails.textContent = weapon.type === 'gun'
       ? `${weapon.damage} damage / hit · ${this.currentLevel?.hasUnlimitedAmmo?.(weapon.id) ? '∞' : this.player.ammo} bullets${weapon.ammo > 1 ? ' · 2 / shot' : ''}`
       : `${weapon.damage} damage / hit · ${weapon.reach}m reach`;
-    this.weaponWheelStatus.textContent = weapon.id === this.player.weapon ? 'EQUIPPED' : 'CLICK TO EQUIP';
+    const pickPrompt = this.input?.gamepadInUse ? 'PRESS A TO EQUIP' : 'CLICK TO EQUIP';
+    this.weaponWheelStatus.textContent = weapon.id === this.player.weapon ? 'EQUIPPED' : pickPrompt;
   }
 
   _updateWeaponWheel() {
@@ -810,6 +860,25 @@ export class Game {
     const padUp = this.input.consumeGamepadPress(PAD.UP);
     const step = (padForward || padDown ? 1 : 0) + (padBack || padUp ? -1 : 0);
     if (step !== 0) this._setWheelIndex(this.weaponWheelIndex + step);
+    // B backs out of the wheel without equipping.
+    if (this.input.consumeGamepadPress(PAD.ROLL)) {
+      this.input.releasePadButton(PAD.ROLL);
+      // Drop the held press so backing out does not roll as gameplay resumes.
+      if (this.player) this.player.dodgeHeld = true;
+      this._closeWeaponWheel();
+      this._finishFirstLevelInventoryPause();
+      this.input.flushMouseDelta();
+      return;
+    }
+    // A equips the highlighted slot, just like clicking it with the mouse.
+    if (this.input.consumeGamepadPress(PAD.JUMP)) {
+      this.input.releasePadButton(PAD.JUMP);
+      // Drop the held press so closing the wheel does not also jump.
+      if (this.player) this.player.jumpHeld = true;
+      this._equipWeapon(WEAPONS[this.weaponWheelIndex].id);
+      this.input.flushMouseDelta();
+      return;
+    }
     this.wheelX += this.input.mouseDeltaX;
     this.wheelY += this.input.mouseDeltaY;
     const length = Math.hypot(this.wheelX, this.wheelY);
@@ -826,9 +895,12 @@ export class Game {
         this._showWheelSelection();
       }
     }
-    const clicked = this.input.isMouseButtonDown(0);
-    if (clicked && !this.wheelClickHeld) this._equipWeapon(WEAPONS[this.weaponWheelIndex].id);
-    this.wheelClickHeld = clicked;
+    // Mouse players click a slot; on a pad only A picks, so LB and RT cannot equip.
+    if (!this.input.gamepadInUse) {
+      const clicked = this.input.isMouseButtonDown(0);
+      if (clicked && !this.wheelClickHeld) this._equipWeapon(WEAPONS[this.weaponWheelIndex].id);
+      this.wheelClickHeld = clicked;
+    }
     this.input.flushMouseDelta();
   }
 
@@ -1017,6 +1089,8 @@ export class Game {
     if (this._handleFirstLevelTutorialControl()) inventoryFrame = true;
     if (this.state === this.STATE.PLAYING && this.player?.alive && !this.player.scriptedMovement
       && this.currentLevel?.allowsShooting !== false) {
+      // X opens the wheel, but B is the button that closes it — swallow X while it is open.
+      if (this.weaponWheelOpen && this.input.gamepadInUse) this.input.consumeGamepadPress(PAD.WHEEL);
       if (this.input.consumeKeyPress('Digit1')) {
         if (this.weaponWheelOpen) {
           this._closeWeaponWheel();
@@ -1177,7 +1251,7 @@ export class Game {
     if (this.firstLevelTutorialSeen.has(id)) return;
     this.firstLevelTutorialSeen.add(id);
     const hint = FIRST_LEVEL_HINTS[id];
-    this.firstLevelHintQueue.push({ id, title, detail, control: hint.control, prompt: hint.prompt, padPrompt: hint.padPrompt, key: hint.key, padKey: hint.padKey });
+    this.firstLevelHintQueue.push({ id, title, detail, control: hint.control, padControl: hint.padControl, prompt: hint.prompt, padPrompt: hint.padPrompt, key: hint.key, padKey: hint.padKey });
   }
 
   /** Word the note for the input in hand: gamepad buttons when a pad is connected, keys otherwise. */
@@ -1206,7 +1280,7 @@ export class Game {
         nearestZombieSq = Math.min(nearestZombieSq, zombie.group.position.distanceToSquared(this.player.group.position));
       }
       if (nearestZombieSq <= 7.84) {
-        this._queueFirstLevelHint('strike', 'Too close for a clean shot', 'Press {control} to strike at close range; with a firearm, Shaun pistol-whips the target.');
+        this._queueFirstLevelHint('strike', 'Too close for a clean shot', 'Press {control} to strike at close range; with an empty firearm, Shaun pistol-whips the target.');
       } else if (nearestZombieSq <= 64) {
         this._queueFirstLevelHint('roll', 'It is closing in', 'Press {control} to roll clear when the dead get within reach.');
       }

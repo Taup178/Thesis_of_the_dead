@@ -141,13 +141,34 @@ test('every field note can be dismissed from the pad and names the button that d
   const expected = {
     loadout: [PAD.WHEEL, 'X'],
     roll: [PAD.ROLL, 'B'],
-    strike: [PAD.BASH, 'L3'],
+    strike: [PAD.ATTACK, 'LB'],
     lock: [PAD.LOCK_ON, 'R3'],
   };
   for (const [id, hint] of Object.entries(FIRST_LEVEL_HINTS)) {
-    assert.equal(KEY_TO_PAD[hint.control], expected[id][0], `${id} is reachable from the pad`);
+    const padButton = hint.padControl ?? KEY_TO_PAD[hint.control];
+    assert.equal(padButton, expected[id][0], `${id} is reachable from the pad`);
     assert.equal(hint.padKey, expected[id][1], `${id} names button ${expected[id][1]}`);
     assert.ok(hint.padPrompt.includes(hint.padKey), `${id} prompt mentions its button`);
     assert.ok(hint.prompt.includes(hint.key), `${id} keyboard prompt mentions its key`);
   }
+});
+
+test('the strike note tells a pad player to press LB and the strike still lands', () => {
+  const presses = new Set([PAD.ATTACK]);
+  const strike = {
+    firstLevelTutorialBlocking: true,
+    firstLevelTutorialActive: { id: 'strike', control: 'KeyF', padControl: PAD.ATTACK },
+    input: {
+      gamepadInUse: true, mousePresses: {}, pressedKeys: new Set(),
+      consumeGamepadPress: button => presses.delete(button),
+      consumeKeyPress: () => { throw new Error('the pad strike must not go through the keyboard path'); },
+      flushMouseDelta() {},
+    },
+    fieldNote: { classList: { remove() {} }, setAttribute() {} },
+    audio: { resume() {} },
+  };
+  assert.equal(Game.prototype._handleFirstLevelTutorialControl.call(strike), false);
+  assert.equal(strike.firstLevelTutorialBlocking, false);
+  assert.equal(strike.input.mousePresses[0], 1, 'the LB press is handed to combat through the mouse path');
+  assert.equal(presses.size, 0, 'the pad press is consumed once');
 });
