@@ -147,7 +147,7 @@ html, body {
   letter-spacing: 2px;
 }
 
-.menu-btn:hover,
+body:not(.using-pad) .menu-btn:hover,
 .menu-btn.gamepad-focus,
 .menu-btn:focus-visible {
   background: rgba(126, 55, 32, 0.25);
@@ -158,18 +158,14 @@ html, body {
 .menu-btn:focus-visible { outline: 2px solid #dab58a; outline-offset: 3px; }
 .menu-container .menu-buttons { gap: 6px; }
 .menu-container > .menu-btn + .menu-btn { margin-top: 6px; }
-.menu-container .menu-btn:first-of-type {
-  border-color: rgba(146, 95, 58, 0.5);
-  border-left: 2px solid #944738;
-  background: linear-gradient(90deg, rgba(76, 26, 17, 0.45), rgba(24, 15, 9, 0.45));
-  color: #ead0a7;
-}
-.menu-container .menu-btn:first-of-type:is(:hover, :focus-visible, .gamepad-focus) {
+body:not(.using-pad) .menu-container .menu-btn:first-of-type:hover,
+.menu-container .menu-btn:first-of-type:is(:focus-visible, .gamepad-focus) {
   border-color: #bd9063;
   background: rgba(126, 55, 32, 0.35);
 }
 .menu-container .menu-btn::after { content: '\2192'; opacity: 0; font-family: Georgia, serif; }
-.menu-container .menu-btn:is(:first-of-type, :hover, :focus-visible, .gamepad-focus)::after { opacity: 0.8; }
+.menu-container .menu-btn:is(:focus-visible, .gamepad-focus)::after,
+body:not(.using-pad) .menu-container .menu-btn:hover::after { opacity: 0.8; }
 .level-select-hint { margin: -8px 0 24px; color: #b99f7e; font: 15px / 1.6 Georgia, serif; }
 .level-select-buttons { margin-bottom: 20px; }
 .level-select-btn { gap: 12px; flex-wrap: wrap; }
@@ -355,24 +351,21 @@ html, body {
   box-shadow: none;
   transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
 }
+/* Start Game leads by size and spacing; its tint belongs to hover/focus like every other entry. */
 #menu-overlay .menu-start {
   min-height: 55px;
   margin-bottom: 9px;
-  border-color: rgba(146, 95, 58, 0.5);
-  border-left: 2px solid #944738;
-  background: linear-gradient(90deg, rgba(76, 26, 17, 0.45), rgba(24, 15, 9, 0.45));
-  color: #ead0a7;
 }
 .menu-arrow { opacity: 0; font-size: 20px; line-height: 1; transition: opacity 160ms ease, transform 160ms ease; }
-.menu-start .menu-arrow { opacity: 0.7; }
-#menu-overlay .menu-btn:hover, #menu-overlay .menu-btn:focus-visible, #menu-overlay .menu-btn.gamepad-focus {
+body:not(.using-pad) #menu-overlay .menu-btn:hover, #menu-overlay .menu-btn:focus-visible, #menu-overlay .menu-btn.gamepad-focus {
   background-color: rgba(126, 55, 32, 0.25);
   border-color: rgba(197, 145, 99, 0.7);
   color: #ffe2b3;
   box-shadow: none;
 }
 #menu-overlay .menu-btn:focus-visible { outline: 2px solid #dab58a; outline-offset: 3px; }
-#menu-overlay .menu-btn:is(:hover, :focus-visible, .gamepad-focus) .menu-arrow { opacity: 1; transform: translateX(3px); }
+body:not(.using-pad) #menu-overlay .menu-btn:hover .menu-arrow,
+#menu-overlay .menu-btn:is(:focus-visible, .gamepad-focus) .menu-arrow { opacity: 1; transform: translateX(3px); }
 .menu-footer {
   color: #b39c80;
   font-size: 9px;
@@ -481,6 +474,27 @@ html, body {
   color: #bda88b;
   line-height: 1.7;
   margin: -8px 0 20px;
+}
+
+.option-hint[hidden] { display: none; }
+
+/* One highlighted row at a time: the pointer picks with hover, the pad with focus. */
+.option-row:hover {
+  outline: 1px solid rgba(189, 144, 99, 0.4);
+  outline-offset: 6px;
+  background: rgba(126, 55, 32, 0.16);
+}
+
+body.using-pad .option-row:hover {
+  outline-color: transparent;
+  background: transparent;
+}
+
+/* Gamepad focus on an option row: outline keeps the layout from shifting. */
+.option-row.gamepad-focus {
+  outline: 1px solid rgba(189, 144, 99, 0.55);
+  outline-offset: 6px;
+  background: rgba(126, 55, 32, 0.22);
 }
 
 /* ---- Loading ---- */

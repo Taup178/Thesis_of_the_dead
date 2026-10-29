@@ -100,7 +100,7 @@ export class Game {
     this.gamepadNoticeTime = 0;
     this.input.onGamepadConnected = () => { this.gamepadNoticeTime = 6; };
     this._ignoreLockErrorsUntil = 0;
-    this._menuNav = { overlayId: null, index: 0, stickDir: 0, repeat: 0, highlighted: null };
+    this._menuNav = { overlayId: null, index: 0, stickDir: 0, stickDirX: 0, repeat: 0, repeatX: 0, highlighted: null };
 
     // ---- Player (created on game start) ----
     this.player = null;
@@ -167,6 +167,7 @@ export class Game {
     this.weaponWheelPadHint = document.getElementById('weapon-wheel-pad-hint');
     this.weaponWheelKeyHints = [...document.querySelectorAll('.wheel-key-hint')];
     this.pauseGamepadHint = document.getElementById('pause-gamepad-hint');
+    this.optionsGamepadHint = document.getElementById('options-gamepad-hint');
     this.menuKeyHint = document.getElementById('menu-key-hint');
     this.menuGamepadHint = document.getElementById('menu-gamepad-hint');
     this.weaponWheelOpen = false;
@@ -735,19 +736,29 @@ export class Game {
   _updateMenuFocus(dt) {
     const nav = this._menuNav;
     const overlayId = this._activeOverlayId();
+    // Highlight for whichever device was used last: hover for the mouse, focus for the pad.
+    const padActive = !!this.input.gamepadInUse && this.input.lastInputDevice === 'pad';
+    document.body?.classList.toggle('using-pad', padActive);
     // The HUD (and its gamepad hint) is hidden while paused, so the pause menu carries its own.
     if (this.pauseGamepadHint) {
-      this.pauseGamepadHint.hidden = !(overlayId === 'pause-overlay' && this.input.gamepadInUse);
+      this.pauseGamepadHint.hidden = !(overlayId === 'pause-overlay' && padActive);
+    }
+    // The Options screen adjusts sliders and toggles in place, so it needs its own pad line.
+    if (this.optionsGamepadHint) {
+      this.optionsGamepadHint.hidden = !(overlayId === 'options-overlay' && padActive);
     }
     // Main menu footer: show the pad controls instead of the keyboard ones.
-    if (this.menuKeyHint) this.menuKeyHint.hidden = this.input.gamepadInUse;
-    if (this.menuGamepadHint) this.menuGamepadHint.hidden = !this.input.gamepadInUse;
-    if (!overlayId || !this.input.gamepadInUse) {
+    if (this.menuKeyHint) this.menuKeyHint.hidden = padActive;
+    if (this.menuGamepadHint) this.menuGamepadHint.hidden = !padActive;
+    if (!overlayId || !padActive) {
       this._clearMenuFocus();
       return;
     }
     // Swallow gameplay-only presses so they can't leak into the next playing frame.
-    for (const button of [PAD.WHEEL, PAD.BASH, PAD.CAMERA, PAD.FIRE, PAD.ALT_FIRE, PAD.ATTACK, PAD.PREV_WEAPON, PAD.NEXT_WEAPON]) {
+    // The d-pad's left/right pair survives on the Options screen, where it adjusts controls.
+    const gameplayPresses = [PAD.WHEEL, PAD.BASH, PAD.CAMERA, PAD.FIRE, PAD.ALT_FIRE, PAD.ATTACK];
+    if (overlayId !== 'options-overlay') gameplayPresses.push(PAD.PREV_WEAPON, PAD.NEXT_WEAPON);
+    for (const button of gameplayPresses) {
       this.input.consumeGamepadPress(button);
     }
     if (overlayId === 'loading-overlay') return;
@@ -764,14 +775,16 @@ export class Game {
     }
 
     const overlay = document.getElementById(overlayId);
-    const buttons = [...overlay.querySelectorAll('.menu-btn')]
-      .filter(button => button.offsetParent !== null && !button.disabled);
-    if (buttons.length === 0) {
+    // Options rows take the focus too, so volume, toggles and dropdowns adjust from the pad.
+    const selector = overlayId === 'options-overlay' ? '.option-row, .menu-btn' : '.menu-btn';
+    const items = [...overlay.querySelectorAll(selector)]
+      .filter(item => item.offsetParent !== null && !item.disabled);
+    if (items.length === 0) {
       this._clearMenuFocus();
       return;
     }
-    // Long panels (credits, options) have a single Back button, so the stick scrolls
-    // the panel itself; short button lists move the highlight, which stays in view.
+    // Long panels (credits) have a single Back button, so the stick scrolls the panel
+    // itself; item lists move the highlight, which stays in view.
     const panel = overlay.querySelector('.menu-container');
     const scrollable = !!panel && panel.scrollHeight > panel.clientHeight + 1;
 
@@ -779,8 +792,10 @@ export class Game {
       nav.overlayId = overlayId;
       nav.index = 0;
       nav.stickDir = 0;
+      nav.stickDirX = 0;
       nav.repeat = 0;
-      this._highlightMenuButton(buttons, 0);
+      nav.repeatX = 0;
+      this._highlightMenuButton(items, 0);
     }
 
     let dir = 0;
@@ -801,17 +816,75 @@ export class Game {
     }
     nav.stickDir = stickDir;
     if (dir !== 0) {
-      if (buttons.length > 1) {
-        nav.index = stepFocusIndex(nav.index, dir, buttons.length);
-        this._highlightMenuButton(buttons, nav.index);
-        buttons[nav.index]?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+      if (items.length > 1) {
+        nav.index = stepFocusIndex(nav.index, dir, items.length);
+        this._highlightMenuButton(items, nav.index);
+        items[nav.index]?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
       } else if (scrollable) {
         panel.scrollBy({ top: dir * MENU_SCROLL_STEP, behavior: 'smooth' });
       }
     }
+
+    // Left/right nudges the focused option: volume and sensitivity slide, dropdowns
+    // step and toggles check (right) or clear (left), as in a console settings screen.
+    let adjust = 0;
+    if (this.input.consumeGamepadPress(PAD.NEXT_WEAPON)) adjust = 1;
+    if (this.input.consumeGamepadPress(PAD.PREV_WEAPON)) adjust = -1;
+    const stickX = this.input.moveAxisX < -0.5 ? -1 : this.input.moveAxisX > 0.5 ? 1 : 0;
+    if (stickX !== 0) {
+      if (stickX !== nav.stickDirX) {
+        adjust = stickX;
+        nav.repeatX = 0.4;
+      } else {
+        nav.repeatX -= dt;
+        if (nav.repeatX <= 0) {
+          adjust = stickX;
+          nav.repeatX = 0.16;
+        }
+      }
+    }
+    nav.stickDirX = stickX;
+    if (adjust !== 0 && overlayId === 'options-overlay') {
+      this._adjustMenuOption(this._menuItemControl(items[nav.index]), adjust);
+    }
+
     if (this.input.consumeGamepadPress(PAD.JUMP)) {
       this.input.releasePadButton(PAD.JUMP);
-      buttons[nav.index]?.click();
+      const item = items[nav.index];
+      const control = this._menuItemControl(item);
+      if (control) this._pressMenuOption(control);
+      else item?.click();
+    }
+  }
+
+  /** The input/select inside an option row, or null for a plain menu button. */
+  _menuItemControl(item) {
+    return item?.querySelector?.('input, select') || null;
+  }
+
+  /** A or a click on an option row: toggles, or steps a dropdown on. */
+  _pressMenuOption(control) {
+    if (control.type === 'checkbox') control.click();
+    else this._adjustMenuOption(control, 1);
+  }
+
+  /** Left/right on an option row. Ranges slide, dropdowns step, toggles check/clear. */
+  _adjustMenuOption(control, direction) {
+    if (!control || direction === 0) return;
+    if (control.type === 'range') {
+      const min = Number(control.min || 0);
+      const max = Number(control.max || 100);
+      const step = max - min > 20 ? 5 : 1;
+      const value = Math.min(max, Math.max(min, Number(control.value) + direction * step));
+      control.value = String(value);
+      control.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (control.type === 'checkbox') {
+      if (control.checked !== direction > 0) control.click();
+    } else if (control.tagName === 'SELECT') {
+      const count = control.options?.length ?? 0;
+      if (count === 0) return;
+      control.selectedIndex = (control.selectedIndex + direction + count) % count;
+      control.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
@@ -822,7 +895,7 @@ export class Game {
     this._menuNav.highlighted = button || null;
     if (button) {
       button.classList.add('gamepad-focus');
-      button.focus({ preventScroll: true });
+      (button.querySelector?.('input, select') || button).focus({ preventScroll: true });
     }
   }
 

@@ -48,11 +48,13 @@ export class InputManager {
     this._padHeld = {};
     this._padPresses = new Set();
     this.onGamepadConnected = null;
+    this.lastInputDevice = 'keyboard'; // 'pad' | 'mouse' | 'keyboard'
 
     // Key listeners
     window.addEventListener('keydown', (e) => {
       if (!e.repeat && !this.keys[e.code]) this.pressedKeys.add(e.code);
       this.keys[e.code] = true;
+      this.lastInputDevice = 'keyboard';
     });
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
@@ -66,6 +68,7 @@ export class InputManager {
       }
       this.mouseX = e.clientX;
       this.mouseY = e.clientY;
+      this.lastInputDevice = 'mouse';
     });
 
     // Mouse buttons
@@ -74,6 +77,7 @@ export class InputManager {
         this.mousePresses[e.button] = (this.mousePresses[e.button] || 0) + 1;
       }
       this.mouseButtons[e.button] = true;
+      this.lastInputDevice = 'mouse';
     });
     window.addEventListener('mouseup', (e) => {
       this.mouseButtons[e.button] = false;
@@ -172,6 +176,8 @@ export class InputManager {
     this.mouseDeltaY += state.lookY * GAMEPAD_LOOK_SPEED * dt;
     this._padHeld = state.held;
     for (const index of state.pressed) this._padPresses.add(index);
+    // Menus highlight for whichever device was used last: hover for the mouse, focus for the pad.
+    if (state.active) this.lastInputDevice = 'pad';
   }
 
   _clearGamepad() {
