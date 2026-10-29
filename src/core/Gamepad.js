@@ -5,11 +5,14 @@
  * Standard-mapping button indices: 0 A/Cross, 1 B/Circle, 3 Y/Triangle,
  * 4 LB, 5 RB, 6 LT, 7 RT, 8 Back, 9 Start, 10 L3, 12/13 d-pad up/down,
  * 14/15 d-pad left/right.
+ *
+ * Layout: LB attacks (shoots a firearm, swings a melee weapon), RB sprints,
+ * L3 does the gun bash, RT also fires and LT is the single-pistol shot.
  */
 
 export const PAD = {
-  JUMP: 0, ROLL: 1, WHEEL: 2, CAMERA: 3, SPRINT_ALT: 4, BASH: 5,
-  ALT_FIRE: 6, FIRE: 7, START: 9, SPRINT: 10, LOCK_ON: 11,
+  JUMP: 0, ROLL: 1, WHEEL: 2, CAMERA: 3, ATTACK: 4, SPRINT: 5,
+  ALT_FIRE: 6, FIRE: 7, START: 9, BASH: 10, LOCK_ON: 11,
   UP: 12, DOWN: 13, PREV_WEAPON: 14, NEXT_WEAPON: 15,
 };
 
@@ -19,11 +22,10 @@ export const DEFAULT_DEADZONE = 0.18;
 export const PAD_TO_KEY = {
   [PAD.JUMP]: 'Space',
   [PAD.ROLL]: 'KeyQ',
-  [PAD.SPRINT_ALT]: 'ShiftLeft', // LB doubles L3 so pads without a stick click can still sprint
+  [PAD.SPRINT]: 'ShiftLeft', // RB
   [PAD.CAMERA]: 'KeyC',
   [PAD.WHEEL]: 'Digit1',
-  [PAD.BASH]: 'KeyF',
-  [PAD.SPRINT]: 'ShiftLeft',
+  [PAD.BASH]: 'KeyF', // L3 — kills two birds: gun bash, and a second melee input
   [PAD.LOCK_ON]: 'KeyL',
 };
 

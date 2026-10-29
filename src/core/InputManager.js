@@ -8,6 +8,16 @@ import { findConnectedPad, GAMEPAD_LOOK_SPEED, KEY_TO_PAD, KEY_TO_PADS, PAD, rea
 
 const GAMEPAD_STORAGE_KEY = 'thesis-of-the-dead:gamepad';
 
+/**
+ * Pad buttons that stand in for mouse buttons, so weapon code keeps working
+ * unchanged: LB is the primary attack (fire a gun / swing melee), RT is a
+ * second fire button, LT is the dual-pistol single shot.
+ */
+const PAD_TO_MOUSE = {
+  0: [PAD.ATTACK, PAD.FIRE],
+  2: [PAD.ALT_FIRE],
+};
+
 function loadGamepadEnabled() {
   try { return globalThis.localStorage?.getItem(GAMEPAD_STORAGE_KEY) !== 'off'; } catch { return true; }
 }
@@ -108,16 +118,16 @@ export class InputManager {
 
   isMouseButtonDown(button = 0) {
     if (this.mouseButtons[button]) return true;
-    const padButton = button === 0 ? PAD.FIRE : button === 2 ? PAD.ALT_FIRE : null;
-    return padButton !== null && !!this._padHeld[padButton];
+    return (PAD_TO_MOUSE[button] || []).some(padButton => !!this._padHeld[padButton]);
   }
 
   /** Count individual clicks, including clicks pressed and released between frames. */
   consumeMousePresses(button = 0) {
     let count = this.mousePresses[button] || 0;
     delete this.mousePresses[button];
-    const padButton = button === 0 ? PAD.FIRE : button === 2 ? PAD.ALT_FIRE : null;
-    if (padButton !== null && this._padPresses.delete(padButton)) count++;
+    for (const padButton of PAD_TO_MOUSE[button] || []) {
+      if (this._padPresses.delete(padButton)) count++;
+    }
     return count;
   }
 

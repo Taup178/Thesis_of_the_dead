@@ -4,6 +4,7 @@ import {
   applyRadialDeadzone, findConnectedPad, KEY_TO_PAD, KEY_TO_PADS, MOVE_SNAP_ANGLE,
   PAD, PAD_TO_KEY, readGamepadState, snapToCardinal, stepFocusIndex,
 } from '../src/core/Gamepad.js';
+import { InputManager } from '../src/core/InputManager.js';
 
 function fakePad({ axes = [0, 0, 0, 0], pressed = [] } = {}) {
   return {
@@ -103,15 +104,37 @@ test('button-to-key map is consistent and covers the core actions', () => {
   }
 });
 
-test('sprint is held on both L3 and LB so pads without a stick click can sprint', () => {
-  assert.equal(PAD.SPRINT, 10);
-  assert.equal(PAD.SPRINT_ALT, 4);
-  assert.deepEqual(KEY_TO_PADS['ShiftLeft'], [4, 10]);
+test('LB attacks, RB sprints and L3 gun-bashes', () => {
+  assert.equal(PAD.ATTACK, 4);
+  assert.equal(PAD.SPRINT, 5);
+  assert.equal(PAD.BASH, 10);
   assert.equal(PAD_TO_KEY[PAD.SPRINT], 'ShiftLeft');
-  assert.equal(PAD_TO_KEY[PAD.SPRINT_ALT], 'ShiftLeft');
+  assert.deepEqual(KEY_TO_PADS['ShiftLeft'], [5]);
+  assert.equal(PAD_TO_KEY[PAD.BASH], 'KeyF');
+  assert.deepEqual(KEY_TO_PADS['KeyF'], [10]);
+  // LB rides the mouse-button path instead of a virtual key, so it fires guns and swings melee.
+  assert.equal(PAD_TO_KEY[PAD.ATTACK], undefined);
   // X opens the weapon wheel.
   assert.equal(PAD.WHEEL, 2);
   assert.equal(PAD_TO_KEY[PAD.WHEEL], 'Digit1');
+});
+
+test('LB reads as a mouse click so it shoots or attacks with the equipped weapon', () => {
+  const input = Object.create(InputManager.prototype);
+  input.mouseButtons = {};
+  input.mousePresses = {};
+  input._padHeld = { [PAD.ATTACK]: true };
+  input._padPresses = new Set([PAD.ATTACK]);
+  assert.equal(input.isMouseButtonDown(0), true);
+  assert.equal(input.consumeMousePresses(0), 1);
+  assert.equal(input.consumeMousePresses(0), 0); // one press, consumed once
+  input._padHeld = { [PAD.SPRINT]: true };
+  assert.equal(input.isMouseButtonDown(0), false); // sprint must not fire
+  input._padHeld = { [PAD.ALT_FIRE]: true };
+  assert.equal(input.isMouseButtonDown(2), true);
+  assert.equal(input.isMouseButtonDown(0), false);
+  input._padHeld = { [PAD.FIRE]: true };
+  assert.equal(input.isMouseButtonDown(0), true); // RT stays a fire button
 });
 
 test('d-pad up/down use the standard-mapping button indices', () => {

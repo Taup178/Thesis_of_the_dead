@@ -18,6 +18,19 @@ import { INTERNAL_VOICE_GAIN } from '../audio/InternalVoices.js';
 import { getEnemyLockTargets, selectEnemyLockTarget, getEnemyPinPosition } from '../player/EnemyLockOn.js';
 
 const NO_OBSTACLES = [];
+
+/**
+ * Level 1 field notes. `control` is the input that dismisses the note (pad buttons
+ * reach it through the usual key translation); keyboard and pad wordings are kept
+ * side by side so a controller player is never told to press a key they cannot reach.
+ */
+export const FIRST_LEVEL_HINTS = {
+  loadout: { control: 'Digit1', key: '1', padKey: 'X', prompt: 'PRESS 1 TO OPEN INVENTORY', padPrompt: 'PRESS X TO OPEN INVENTORY' },
+  roll: { control: 'KeyQ', key: 'Q', padKey: 'B', prompt: 'PRESS Q TO ROLL', padPrompt: 'PRESS B TO ROLL' },
+  strike: { control: 'KeyF', key: 'F', padKey: 'L3', prompt: 'PRESS F TO STRIKE', padPrompt: 'PRESS L3 TO STRIKE' },
+  lock: { control: 'KeyL', key: 'L', padKey: 'R3', prompt: 'PRESS L TO LOCK ON', padPrompt: 'PRESS R3 TO LOCK ON' },
+};
+
 const LEVEL_AUDIO_ASSETS = Object.freeze([
   './assets/audio/sfx/player/red-ending-fire-scream.wav',
   './assets/audio/sfx/collect/ammo-pickup-event-a.wav', './assets/audio/sfx/collect/ammo-pickup-event-b.wav',
@@ -135,6 +148,8 @@ export class Game {
     this.weaponWheelDetails = document.getElementById('weapon-wheel-details');
     this.weaponWheelStatus = document.getElementById('weapon-wheel-status');
     this.weaponWheelRing = document.getElementById('weapon-wheel-ring');
+    this.weaponWheelPadHint = document.getElementById('weapon-wheel-pad-hint');
+    this.pauseGamepadHint = document.getElementById('pause-gamepad-hint');
     this.weaponWheelOpen = false;
     this.weaponWheelIndex = 0;
     this.weaponWheelItems = WEAPONS.map((weapon, index) => {
@@ -615,11 +630,19 @@ export class Game {
     this.weaponWheelEl.setAttribute('aria-hidden', 'false');
     this.wheelClickHeld = this.input.isMouseButtonDown(0);
     this.weaponWheelIndex = Math.max(0, WEAPONS.findIndex(weapon => weapon.id === this.player.weapon));
-    const angle = -Math.PI / 2 + this.weaponWheelIndex * Math.PI * 2 / WEAPONS.length;
+    this._setWheelIndex(this.weaponWheelIndex);
+    if (this.weaponWheelPadHint) this.weaponWheelPadHint.hidden = !this.input.gamepadInUse;
+    this.input.flushMouseDelta();
+  }
+
+  /** Move the wheel picker to `index` (wrapping) and park the analog cursor on that slot. */
+  _setWheelIndex(index) {
+    const count = WEAPONS.length;
+    this.weaponWheelIndex = ((index % count) + count) % count;
+    const angle = -Math.PI / 2 + this.weaponWheelIndex * Math.PI * 2 / count;
     this.wheelX = Math.cos(angle) * 95;
     this.wheelY = Math.sin(angle) * 95;
     this._showWheelSelection();
-    this.input.flushMouseDelta();
   }
 
   _closeWeaponWheel() {
@@ -687,12 +710,16 @@ export class Game {
   _updateMenuFocus(dt) {
     const nav = this._menuNav;
     const overlayId = this._activeOverlayId();
+    // The HUD (and its gamepad hint) is hidden while paused, so the pause menu carries its own.
+    if (this.pauseGamepadHint) {
+      this.pauseGamepadHint.hidden = !(overlayId === 'pause-overlay' && this.input.gamepadInUse);
+    }
     if (!overlayId || !this.input.gamepadInUse) {
       this._clearMenuFocus();
       return;
     }
     // Swallow gameplay-only presses so they can't leak into the next playing frame.
-    for (const button of [PAD.WHEEL, PAD.BASH, PAD.CAMERA, PAD.FIRE, PAD.ALT_FIRE, PAD.PREV_WEAPON, PAD.NEXT_WEAPON]) {
+    for (const button of [PAD.WHEEL, PAD.BASH, PAD.CAMERA, PAD.FIRE, PAD.ALT_FIRE, PAD.ATTACK, PAD.PREV_WEAPON, PAD.NEXT_WEAPON]) {
       this.input.consumeGamepadPress(button);
     }
     if (overlayId === 'loading-overlay') return;
@@ -776,6 +803,13 @@ export class Game {
   }
 
   _updateWeaponWheel() {
+    // D-pad steps the picker around the ring: right/down forward, left/up back.
+    const padForward = this.input.consumeGamepadPress(PAD.NEXT_WEAPON);
+    const padDown = this.input.consumeGamepadPress(PAD.DOWN);
+    const padBack = this.input.consumeGamepadPress(PAD.PREV_WEAPON);
+    const padUp = this.input.consumeGamepadPress(PAD.UP);
+    const step = (padForward || padDown ? 1 : 0) + (padBack || padUp ? -1 : 0);
+    if (step !== 0) this._setWheelIndex(this.weaponWheelIndex + step);
     this.wheelX += this.input.mouseDeltaX;
     this.wheelY += this.input.mouseDeltaY;
     const length = Math.hypot(this.wheelX, this.wheelY);
@@ -834,7 +868,7 @@ export class Game {
     // Score
     this.scoreDisplay.textContent = `Credits: ${this.player.score}`;
     this.controlsHint.textContent = this.input.gamepadInUse
-      ? 'Left stick: Move | Right stick: Look | RT: Shoot | A: Jump | X: Weapons | B: Roll | LB: Sprint | RB: Bash | Y: Camera | Start: Pause'
+      ? 'Left stick: Move | Right stick: Look | LB: Shoot/Attack | RB: Sprint | A: Jump | X: Weapons | B: Roll | Y: Camera | L3: Gun bash | Start: Pause'
       : `${this.currentLevel.controlsHint || this.defaultControlsHint} | 1: Wheel | 2-6: Equip`;
     if (this.player.bossLockAvailable) this.controlsHint.textContent += this.input.gamepadInUse
       ? ` | R3: ${this.player.lockOnTarget ? 'Unlock [LOCKED]' : 'Lock enemy'}`
@@ -994,8 +1028,10 @@ export class Game {
       for (const weapon of WEAPONS) {
         if (this.input.consumeKeyPress(`Digit${weapon.slot}`)) this._equipWeapon(weapon.id);
       }
-      if (this.input.consumeGamepadPress(PAD.PREV_WEAPON)) this._cycleWeapon(-1);
-      if (this.input.consumeGamepadPress(PAD.NEXT_WEAPON)) this._cycleWeapon(1);
+      if (!this.weaponWheelOpen) {
+        if (this.input.consumeGamepadPress(PAD.PREV_WEAPON)) this._cycleWeapon(-1);
+        if (this.input.consumeGamepadPress(PAD.NEXT_WEAPON)) this._cycleWeapon(1);
+      }
       if (this.weaponWheelOpen) { this._updateWeaponWheel(); inventoryFrame = true; }
     }
     if (this.state === this.STATE.PLAYING && !this.player.scriptedMovement && !this.player.carryingDegree && this.input.consumeKeyPress('KeyC')) {
@@ -1140,14 +1176,19 @@ export class Game {
   _queueFirstLevelHint(id, title, detail) {
     if (this.firstLevelTutorialSeen.has(id)) return;
     this.firstLevelTutorialSeen.add(id);
-    const controls = {
-      loadout: ['Digit1', 'PRESS 1 TO OPEN INVENTORY'],
-      roll: ['KeyQ', 'PRESS Q TO ROLL'],
-      strike: ['KeyF', 'PRESS F TO STRIKE'],
-      lock: ['KeyL', 'PRESS L TO LOCK ON'],
+    const hint = FIRST_LEVEL_HINTS[id];
+    this.firstLevelHintQueue.push({ id, title, detail, control: hint.control, prompt: hint.prompt, padPrompt: hint.padPrompt, key: hint.key, padKey: hint.padKey });
+  }
+
+  /** Word the note for the input in hand: gamepad buttons when a pad is connected, keys otherwise. */
+  _resolveFirstLevelHint(hint) {
+    const pad = !!this.input?.gamepadInUse;
+    const controls = FIRST_LEVEL_HINTS[hint.id] || {};
+    const keyLabel = (pad ? controls.padKey : controls.key) ?? hint.key ?? '';
+    return {
+      detail: String(hint.detail ?? '').replaceAll('{control}', keyLabel),
+      prompt: (pad ? controls.padPrompt : controls.prompt) ?? hint.prompt ?? '',
     };
-    const [control, prompt] = controls[id];
-    this.firstLevelHintQueue.push({ id, title, detail, control, prompt });
   }
 
   _checkFirstLevelTutorial(events, dt) {
@@ -1155,7 +1196,7 @@ export class Game {
     if (!level?.title?.includes('Freshman Woods')) return;
 
     if (this.combat.firstZombieHit) {
-      this._queueFirstLevelHint('loadout', 'First blood', 'The shot drew blood. Press 1 to inspect your loadout.');
+      this._queueFirstLevelHint('loadout', 'First blood', 'The shot drew blood. Press {control} to inspect your loadout.');
     }
 
     if (!level.bossCutscene && !level.orbPortalCutscene && !level.portalCinematicActive && this.player?.alive) {
@@ -1165,9 +1206,9 @@ export class Game {
         nearestZombieSq = Math.min(nearestZombieSq, zombie.group.position.distanceToSquared(this.player.group.position));
       }
       if (nearestZombieSq <= 7.84) {
-        this._queueFirstLevelHint('strike', 'Too close for a clean shot', 'Press F to strike at close range; with a firearm, Shaun pistol-whips the target.');
+        this._queueFirstLevelHint('strike', 'Too close for a clean shot', 'Press {control} to strike at close range; with a firearm, Shaun pistol-whips the target.');
       } else if (nearestZombieSq <= 64) {
-        this._queueFirstLevelHint('roll', 'It is closing in', 'Press Q to roll clear when the dead get within reach.');
+        this._queueFirstLevelHint('roll', 'It is closing in', 'Press {control} to roll clear when the dead get within reach.');
       }
     }
 
@@ -1177,7 +1218,7 @@ export class Game {
       && this.player.bossLockAvailable && !level.bossCutscene && !level.orbPortalCutscene
       && !level.portalCinematicActive && !level.openingCinematicActive) {
       this._queueFirstLevelHint('lock', 'Focus your aim',
-        'Lock on to a visible enemy to keep them in view. Press the same control again to unlock.');
+        'Lock on to a visible enemy to keep them in view. Press {control} again to unlock.');
     }
     this._updateFirstLevelTutorial(dt);
   }
@@ -1201,9 +1242,10 @@ export class Game {
       const index = this.firstLevelHintQueue.findIndex(hint => hint.id !== 'lock' || this.player?.bossLockAvailable);
       if (index < 0) return;
       const [hint] = this.firstLevelHintQueue.splice(index, 1);
+      const copy = this._resolveFirstLevelHint(hint);
       this.fieldNoteTitle.textContent = hint.title;
-      this.fieldNoteDetail.textContent = hint.detail;
-      this.fieldNotePrompt.textContent = hint.id === 'lock' && this.input?.gamepadInUse ? 'PRESS R3 TO LOCK ON' : hint.prompt;
+      this.fieldNoteDetail.textContent = copy.detail;
+      this.fieldNotePrompt.textContent = copy.prompt;
       this.firstLevelHintTime = 0;
       this.firstLevelTutorialActive = hint;
       this.firstLevelTutorialBlocking = true;

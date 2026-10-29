@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { Game } from '../src/core/Game.js';
+import { Game, FIRST_LEVEL_HINTS } from '../src/core/Game.js';
+import { KEY_TO_PAD, PAD } from '../src/core/Gamepad.js';
 import { WeaponCombat } from '../src/player/WeaponCombat.js';
 
 test('Level 1 field notes are queued by combat and world events, not a fixed tutorial sequence', () => {
@@ -23,6 +24,7 @@ test('Level 1 field notes are queued by combat and world events, not a fixed tut
   };
   game._queueFirstLevelHint = Game.prototype._queueFirstLevelHint.bind(game);
   game._updateFirstLevelTutorial = Game.prototype._updateFirstLevelTutorial.bind(game);
+  game._resolveFirstLevelHint = Game.prototype._resolveFirstLevelHint;
 
   Game.prototype._checkFirstLevelTutorial.call(game, {}, 0.016);
   assert.ok(game.firstLevelTutorialSeen.has('loadout'), 'first zombie hit triggers the weapon guide');
@@ -89,6 +91,7 @@ test('third wave offers the lock guide only when a target can be locked', () => 
     audio:{pause(){calls.push('pause');},resume(){}}, };
   game._queueFirstLevelHint = Game.prototype._queueFirstLevelHint.bind(game);
   game._updateFirstLevelTutorial = Game.prototype._updateFirstLevelTutorial.bind(game);
+  game._resolveFirstLevelHint = Game.prototype._resolveFirstLevelHint;
   Game.prototype._checkFirstLevelTutorial.call(game, {}, .1);
   assert.equal(game.firstLevelTutorialSeen.has('lock'), false);
   game.currentLevel.creditsCollected = 3; game.player.bossLockAvailable = null;
@@ -112,9 +115,39 @@ test('queued lock guide waits for an available target and displays gamepad contr
     firstLevelTutorialBlocking:false,firstLevelTutorialInventoryPause:false,
     firstLevelHintQueue:[{id:'lock',title:'Focus your aim',detail:'Lock on',control:'KeyL',prompt:'PRESS L TO LOCK ON'}],
     fieldNote:{classList:{add(){},remove(){}},setAttribute(){}},fieldNoteTitle:{},fieldNoteDetail:{},fieldNotePrompt:{},audio:{pause(){}} };
+  game._resolveFirstLevelHint = Game.prototype._resolveFirstLevelHint;
   Game.prototype._updateFirstLevelTutorial.call(game, .1);
   assert.equal(game.firstLevelTutorialBlocking,false);
   game.player.bossLockAvailable = new THREE.Group();
   Game.prototype._updateFirstLevelTutorial.call(game, .1);
   assert.equal(game.fieldNotePrompt.textContent,'PRESS R3 TO LOCK ON');
+});
+
+test('field notes word themselves for the controller in hand', () => {
+  const game = { input: { gamepadInUse: true }, _resolveFirstLevelHint: Game.prototype._resolveFirstLevelHint };
+  const roll = { id: 'roll', detail: 'Press {control} to roll clear when the dead get within reach.' };
+  assert.deepEqual(game._resolveFirstLevelHint(roll), {
+    prompt: 'PRESS B TO ROLL',
+    detail: 'Press B to roll clear when the dead get within reach.',
+  });
+  game.input.gamepadInUse = false;
+  assert.deepEqual(game._resolveFirstLevelHint(roll), {
+    prompt: 'PRESS Q TO ROLL',
+    detail: 'Press Q to roll clear when the dead get within reach.',
+  });
+});
+
+test('every field note can be dismissed from the pad and names the button that does it', () => {
+  const expected = {
+    loadout: [PAD.WHEEL, 'X'],
+    roll: [PAD.ROLL, 'B'],
+    strike: [PAD.BASH, 'L3'],
+    lock: [PAD.LOCK_ON, 'R3'],
+  };
+  for (const [id, hint] of Object.entries(FIRST_LEVEL_HINTS)) {
+    assert.equal(KEY_TO_PAD[hint.control], expected[id][0], `${id} is reachable from the pad`);
+    assert.equal(hint.padKey, expected[id][1], `${id} names button ${expected[id][1]}`);
+    assert.ok(hint.padPrompt.includes(hint.padKey), `${id} prompt mentions its button`);
+    assert.ok(hint.prompt.includes(hint.key), `${id} keyboard prompt mentions its key`);
+  }
 });

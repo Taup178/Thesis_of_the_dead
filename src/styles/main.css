@@ -185,6 +185,13 @@ html, body {
   font: italic 16px / 1.6 Georgia, serif;
   color: #b99f7e;
 }
+.pause-pad-hint {
+  margin: 26px 0 0;
+  font: 11px / 1.7 system-ui, sans-serif;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8d7a63;
+}
 .overlay .menu-container > h2.gameover-title {
   background-image: var(--archive-grain), linear-gradient(173deg, #d29370, #ad4b3b 32%, #842a25 64%, #b66d4c);
 }
