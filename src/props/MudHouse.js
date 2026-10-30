@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+import { HouseHealthBar } from './HouseHealthBar.js';
 
 /** Keep the kit's geometry and UVs; split it into wall/roof pieces for collapse. */
 export function createHouseFragments(template) {
@@ -107,6 +108,10 @@ export class MudHouse {
     this.chipGeometry = new THREE.DodecahedronGeometry(0.11, 0);
     this.chipMaterial = new THREE.MeshStandardMaterial({ color: 0x9f7148, roughness: 1 });
     this.root.updateMatrixWorld(true);
+    const roof = new THREE.Box3().setFromObject(this.root, true).max.y;
+    this.healthBar = new HouseHealthBar();
+    this.healthBar.position.set(0, roof - this.root.position.y + .7, 0);
+    this.root.add(this.healthBar);
   }
 
   get shootableMeshes() { return this.alive ? this.pieces.filter(p => !p.detached).map(p => p.mesh) : []; }
@@ -114,6 +119,7 @@ export class MudHouse {
   takeDamage(amount, hit = null) {
     if (!this.alive || amount <= 0) return false;
     this.health = Math.max(0, this.health - amount); this.hitTime = 0.22;
+    this.healthBar.updateHealth(this.health, this.maxHealth, this.health > 0);
     const point = hit?.point?.clone() || this.root.position.clone().add(new THREE.Vector3(0, 2, 3));
     const normal = hit?.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 0.4, 1);
     this._burst(point, normal, 20, 0.6);
@@ -171,18 +177,29 @@ export class MudHouse {
     piece.spin.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 2);
   }
 
-  _burst(point, normal, count, spread) {
+  emitEmergenceDust(door) {
+    if (this.disposed) return;
+    // Push out from the doorway, rather than following the zombie down its path.
+    const point = door.start.clone().addScaledVector(door.direction, 1.3);
+    point.y += .9;
+    this._burst(point, door.direction, 36, 1.3, {
+      color: 0xd52920, lifetime: 1.8, force: 2.8, size: 2.2, opacity: .95, rise: 1.7,
+    });
+  }
+
+  _burst(point, normal, count, spread, { color = 0xd7b386, lifetime = spread > 1 ? 3.2 : 1.1,
+    force = .5, size = spread * .6 + .35, opacity = .7, rise = 1.1 } = {}) {
     const positions = new Float32Array(count * 3), velocities = [];
     const local = this.root.worldToLocal(point.clone());
     for (let i = 0; i < count; i++) {
       positions.set([local.x + (Math.random() - 0.5) * spread, local.y, local.z + (Math.random() - 0.5) * spread], i * 3);
-      velocities.push(new THREE.Vector3((Math.random() - 0.5) * spread, Math.random() * 1.1, (Math.random() - 0.5) * spread).addScaledVector(normal, 0.5));
+      velocities.push(new THREE.Vector3((Math.random() - 0.5) * spread, Math.random() * rise, (Math.random() - 0.5) * spread).addScaledVector(normal, force));
     }
     const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({ color: 0xd7b386, map: this.textures?.dust || null, size: spread * 0.6 + 0.35,
-      transparent: true, opacity: 0.8, depthWrite: false, sizeAttenuation: true });
+    const material = new THREE.PointsMaterial({ color, map: this.textures?.dust || null, size,
+      transparent: true, opacity, depthWrite: false, sizeAttenuation: true });
     const points = new THREE.Points(geometry, material); this.root.add(points);
-    this.bursts.push({ points, velocities, age: 0, lifetime: spread > 1 ? 3.2 : 1.1 });
+    this.bursts.push({ points, velocities, age: 0, lifetime, opacity });
   }
 
   _chips(point, normal, count) {
@@ -217,7 +234,7 @@ export class MudHouse {
       burst.velocities.forEach((v, n) => {
         attribute.setXYZ(n, attribute.getX(n) + v.x * dt, attribute.getY(n) + v.y * dt, attribute.getZ(n) + v.z * dt);
       });
-      attribute.needsUpdate = true; burst.points.material.opacity = 0.7 * Math.max(0, 1 - burst.age / burst.lifetime);
+      attribute.needsUpdate = true; burst.points.material.opacity = burst.opacity * Math.max(0, 1 - burst.age / burst.lifetime);
       if (burst.age >= burst.lifetime) { burst.points.removeFromParent(); burst.points.geometry.dispose(); burst.points.material.dispose(); this.bursts.splice(i, 1); }
     }
     for (let i = this.debris.length - 1; i >= 0; i--) {
@@ -230,6 +247,7 @@ export class MudHouse {
 
   dispose() {
     if (this.disposed) return; this.disposed = true;
+    this.healthBar.dispose();
     for (const burst of this.bursts) { burst.points.geometry.dispose(); burst.points.material.dispose(); }
     for (const mark of this.marks) { mark.geometry.dispose(); mark.material.dispose(); }
     this.chipGeometry.dispose(); this.chipMaterial.dispose(); this.material.dispose();

@@ -70,7 +70,7 @@ export class EndingLightVolume {
       this.uniforms.cameraWorld.value.copy(camera.matrixWorld);
       this.uniforms.eye.value.copy(camera.position);
       this.uniforms.amount.value = amount; this.uniforms.time.value = time;
-      this.uniforms.steps.value = quality === 'low' ? 28 : 40;
+      this.uniforms.steps.value = quality === 'low' ? 12 : quality === 'high' ? 24 : 18;
       renderer.setRenderTarget(previous); renderer.render(this.scene, this.camera);
     } finally { renderer.setRenderTarget(previous); }
   }

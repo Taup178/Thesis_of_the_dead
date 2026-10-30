@@ -39,6 +39,7 @@ test('pause menu buttons invoke their actions without bubbling to the resume ove
   };
   const actions = [];
   const game = {
+    _bindGraphicsSettings() {},
     renderer: { domElement: { addEventListener() {} } },
     input: {},
     state: 'paused',

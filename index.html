@@ -65,6 +65,11 @@
       <p class="credits-text">
         <strong>Thesis of the Dead</strong><br />
         A CGV Assignment Project<br /><br />
+        <strong>The Pixel studios</strong><br />
+        Sicelo Vanyelwa &middot; Lupa Martins<br />
+        Siphesihle Merile &middot; Zamokuhle Maziya<br /><br />
+        The voices were inspired by <em>Hellblade: Senua's Sacrifice</em>.<br />
+        Boss combat was inspired by <em>Sekiro: Shadows Die Twice</em>.<br /><br />
         Built with <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a>
         (<a href="https://github.com/mrdoob/three.js/blob/master/LICENSE" target="_blank" rel="noopener">MIT license</a>).<br />
         Ending effects: <a href="https://opengameart.org/content/animated-particle-effects-2" target="_blank" rel="noopener">Animated particle effects #2</a> by para;
@@ -117,10 +122,19 @@
     </div>
   </div>
 
-  <!-- Options Overlay -->
+  <!-- Settings Overlay -->
   <div id="options-overlay" class="overlay hidden">
-    <div class="menu-container">
-      <h2>Options</h2>
+    <div class="menu-container settings-container">
+      <h2>Settings</h2>
+      <div class="settings-tabs" role="tablist" aria-label="Settings categories">
+        <button id="settings-tab-volume" class="menu-btn settings-tab" type="button" role="tab" data-settings-tab="volume" aria-controls="settings-volume" aria-selected="true">Volume</button>
+        <button id="settings-tab-controls" class="menu-btn settings-tab" type="button" role="tab" data-settings-tab="controls" aria-controls="settings-controls" aria-selected="false" tabindex="-1">Controls</button>
+        <button id="settings-tab-graphics" class="menu-btn settings-tab" type="button" role="tab" data-settings-tab="graphics" aria-controls="settings-graphics" aria-selected="false" tabindex="-1">Graphics</button>
+      </div>
+      <div class="settings-panels">
+        <section id="settings-volume" class="settings-panel" data-settings-panel="volume" role="tabpanel" aria-labelledby="settings-tab-volume">
+          <h3 class="settings-section-title">Sound &amp; voices</h3>
+          <p class="settings-intro">Set the overall volume and how the voices reach you.</p>
       <div class="option-row">
         <label for="volume-slider">Master Volume</label>
         <input id="volume-slider" type="range" min="0" max="100" value="70" />
@@ -145,25 +159,124 @@
         <label for="internal-voice-subtitles">Voice Subtitles</label>
         <input id="internal-voice-subtitles" type="checkbox" checked />
       </div>
+        </section>
+        <section id="settings-controls" class="settings-panel" data-settings-panel="controls" role="tabpanel" aria-labelledby="settings-tab-controls" hidden>
+          <h3 class="settings-section-title">Controls</h3>
+          <p class="settings-intro">Adjust mouse aiming and enable controller input.</p>
       <div class="option-row">
         <label for="sensitivity-slider">Mouse Sensitivity</label>
         <input id="sensitivity-slider" type="range" min="1" max="10" value="5" />
       </div>
-      <div class="option-row">
-        <label for="quality-select">Graphics Quality</label>
-        <select id="quality-select">
-          <option value="low">Low (4GB RAM)</option>
-          <option value="medium">Medium (8GB RAM)</option>
-          <option value="high">High (best)</option>
-        </select>
-      </div>
+
       <div class="option-row">
         <label for="gamepad-toggle">Gamepad</label>
         <input id="gamepad-toggle" type="checkbox" />
       </div>
-      <p class="option-hint">Lower quality cuts render resolution, shadows and motion blur for a faster game. Restart to apply antialiasing changes.</p>
-      <p id="options-gamepad-hint" class="option-hint" hidden>Left stick / D-pad: Choose &middot; Left / Right: Adjust &middot; A: Toggle or select &middot; B: Back</p>
-      <button id="btn-options-back" class="menu-btn">Back</button>
+          <p class="option-hint">Controller labels use Xbox names, with PlayStation equivalents where they differ. Some actions are unavailable during story sequences or while carrying the degree.</p>
+          <div class="controls-reference" tabindex="0" aria-label="Movement controls">
+            <h4>Movement &amp; camera</h4>
+            <table class="controls-table"><thead><tr><th scope="col">Action</th><th scope="col">Keyboard / mouse</th><th scope="col">Controller</th></tr></thead><tbody>
+              <tr><th scope="row">Move</th><td>W A S D</td><td>Left stick</td></tr>
+              <tr><th scope="row">Look / aim</th><td>Move mouse</td><td>Right stick</td></tr>
+              <tr><th scope="row">Sprint</th><td>Hold Shift</td><td>Hold RB / R1</td></tr>
+              <tr><th scope="row">Jump</th><td>Space</td><td>A / Cross</td></tr>
+              <tr><th scope="row">Dodge roll</th><td>Q</td><td>B / Circle</td></tr>
+              <tr><th scope="row">Switch camera</th><td>C</td><td>Y / Triangle</td></tr>
+              <tr><th scope="row">Lock on / release target</th><td>L</td><td>Click right stick (R3)</td></tr>
+            </tbody></table>
+          </div>
+          <div class="controls-reference" tabindex="0" aria-label="Combat and weapon controls">
+            <h4>Combat &amp; weapons</h4>
+            <table class="controls-table"><thead><tr><th scope="col">Action</th><th scope="col">Keyboard / mouse</th><th scope="col">Controller</th></tr></thead><tbody>
+              <tr><th scope="row">Shoot / melee attack</th><td>Left mouse button</td><td>LB / L1 or RT / R2</td></tr>
+              <tr><th scope="row">Gun bash / melee strike</th><td>F</td><td>Click left stick (L3)</td></tr>
+              <tr><th scope="row">Dual pistols: single shot</th><td>Right mouse button</td><td>LT / L2</td></tr>
+              <tr><th scope="row">Open weapon wheel</th><td>1</td><td>X / Square</td></tr>
+              <tr><th scope="row">Select in weapon wheel</th><td>Move mouse</td><td>Right stick or D-pad</td></tr>
+              <tr><th scope="row">Equip selected weapon</th><td>Left click</td><td>A / Cross</td></tr>
+              <tr><th scope="row">Close weapon wheel</th><td>1</td><td>B / Circle</td></tr>
+              <tr><th scope="row">Equip SMG / pistol / dual pistols</th><td>2 / 3 / 4</td><td>D-pad left / right cycles weapons</td></tr>
+              <tr><th scope="row">Equip katana / dagger</th><td>5 / 6</td><td>D-pad left / right cycles weapons</td></tr>
+            </tbody></table>
+          </div>
+          <div class="controls-reference" tabindex="0" aria-label="Menu and story controls">
+            <h4>Menus &amp; story</h4>
+            <table class="controls-table"><thead><tr><th scope="col">Action</th><th scope="col">Keyboard / mouse</th><th scope="col">Controller</th></tr></thead><tbody>
+              <tr><th scope="row">Pause</th><td>Esc</td><td>Start / Options (also resumes)</td></tr>
+              <tr><th scope="row">Restart / retry checkpoint</th><td>R, or pause-menu Restart</td><td>Pause-menu Restart</td></tr>
+              <tr><th scope="row">Skip opening cutscene</th><td>Enter or Skip button</td><td>B / Circle</td></tr>
+              <tr><th scope="row">Navigate menus</th><td>Mouse or Tab / Shift + Tab</td><td>D-pad up / down or left stick</td></tr>
+              <tr><th scope="row">Activate focused control</th><td>Click, Enter or Space</td><td>A / Cross</td></tr>
+              <tr><th scope="row">Back from menus</th><td>Back button</td><td>B / Circle</td></tr>
+              <tr><th scope="row">Adjust settings</th><td>Click / drag; arrow keys on focused control</td><td>D-pad left / right or left stick</td></tr>
+              <tr><th scope="row">Change settings category</th><td>Click tab; arrows / Home / End on tabs</td><td>Left / right with category tab focused</td></tr>
+              <tr><th scope="row">Scroll controls reference</th><td>Mouse wheel; Page Up / Down</td><td>Up / down to focus each section</td></tr>
+              <tr><th scope="row">Pause / skip ending credits</th><td>Pause credits / Skip credits buttons</td><td>Focus button, then A / Cross</td></tr>
+              <tr><th scope="row">Resume mouse control</th><td>Click game screen / Resume</td><td>Resume button</td></tr>
+            </tbody></table>
+            <p class="option-hint">SMG and pistol ammo are separate. Single and dual pistols share pistol rounds. Ammo pickups refill your equipped gun's supply (SMG rounds while holding a melee weapon). Pickups, checkpoints and portals activate when you walk into them. Follow on-screen prompts for story actions.</p>
+          </div>
+        </section>
+      <section id="settings-graphics" class="settings-panel graphics-settings" data-settings-panel="graphics" role="tabpanel" aria-labelledby="settings-tab-graphics" hidden>
+        <div class="graphics-heading"><h3 id="graphics-heading">Graphics</h3><span>Live settings</span></div>
+        <div class="option-row">
+          <label for="quality-select">Quality preset</label>
+          <select id="quality-select" aria-describedby="graphics-description">
+            <option value="custom" disabled>Custom</option>
+            <option value="low">Low · Performance</option>
+            <option value="medium">Medium · Balanced</option>
+            <option value="high">High · Cinematic</option>
+            <option value="ultra">Ultra · Maximum</option>
+          </select>
+        </div>
+        <p id="graphics-description" class="graphics-description" aria-live="polite"></p>
+        <div class="option-row">
+          <label for="render-scale">Render scale <output id="render-scale-value" for="render-scale">100%</output></label>
+          <input id="render-scale" data-graphics="renderScale" type="range" min="50" max="150" step="5" value="100" aria-describedby="render-scale-hint" />
+        </div>
+        <p id="render-scale-hint" class="option-hint">Lower for more speed; above 100% renders extra pixels for a sharper image. <span id="graphics-resolution"></span>.</p>
+        <div class="option-row">
+          <label for="shadow-quality">Shadow quality</label>
+          <select id="shadow-quality" data-graphics="shadows" aria-describedby="shadow-hint">
+            <option value="off">Off</option><option value="low">Low · 512</option>
+            <option value="medium">Medium · 1024</option><option value="high">High · 2048</option>
+            <option value="ultra">Ultra · 4096</option>
+          </select>
+        </div>
+        <p id="shadow-hint" class="option-hint">Higher resolution adds definition to shadows from trees, buildings and characters.</p>
+        <div class="option-row">
+          <label for="texture-filtering">Texture filtering</label>
+          <select id="texture-filtering" data-graphics="textureFiltering" aria-describedby="texture-hint">
+            <option value="1">Default · 1×</option><option value="2">Anisotropic 2×</option>
+            <option value="4">Anisotropic 4×</option><option value="8">Anisotropic 8×</option><option value="16">Anisotropic 16×</option>
+          </select>
+        </div>
+        <p id="texture-hint" class="option-hint">Keeps the ground and angled surfaces sharp as they stretch into the distance.</p>
+        <div class="option-row"><label for="graphics-aa">Anti-aliasing · FXAA</label><input id="graphics-aa" data-graphics="antiAliasing" type="checkbox" aria-describedby="aa-hint" /></div>
+        <p id="aa-hint" class="option-hint">Smooths jagged edges on trees, rooftops and character silhouettes.</p>
+        <h4 class="settings-subheading">Lighting &amp; effects</h4>
+        <div class="option-row"><label for="graphics-ao">Ambient occlusion</label><input id="graphics-ao" data-graphics="ambientOcclusion" type="checkbox" aria-describedby="ao-hint" /></div>
+        <p id="ao-hint" class="option-hint">Adds depth where surfaces meet, under foliage and around objects. Higher GPU cost.</p>
+        <div class="option-row"><label for="graphics-bloom">Bloom</label><input id="graphics-bloom" data-graphics="bloom" type="checkbox" aria-describedby="bloom-hint" /></div>
+        <p id="bloom-hint" class="option-hint">A soft glow around portals, fire and bright lights.</p>
+        <div class="option-row"><label for="graphics-grading">Cinematic colour</label><input id="graphics-grading" data-graphics="colorGrading" type="checkbox" aria-describedby="grading-hint" /></div>
+        <p id="grading-hint" class="option-hint">Richer contrast, warmer highlights and subtle darkening at the screen edges.</p>
+        <div class="option-row"><label for="graphics-blur">Motion blur</label><input id="graphics-blur" data-graphics="motionBlur" type="checkbox" aria-describedby="blur-hint" /></div>
+        <p id="blur-hint" class="option-hint">Dreamlike motion trails during intense moments. Turn off for a crisper view.</p>
+        <h4 class="settings-subheading">Display</h4>
+        <div class="option-row">
+          <label for="graphics-brightness">Brightness <output id="brightness-value" for="graphics-brightness">100%</output></label>
+          <input id="graphics-brightness" data-graphics="brightness" type="range" min="70" max="130" step="5" value="100" />
+        </div>
+        <div class="option-row"><label for="graphics-show-fps">Show FPS / frame time</label><input id="graphics-show-fps" data-graphics="showFps" type="checkbox" /></div>
+        <p class="option-hint">Settings save automatically. Expensive post effects stay off during cutscenes to keep playback smooth.</p>
+        <button id="btn-graphics-reset" class="menu-btn graphics-reset">Reset graphics to Medium</button>
+      </section>
+      </div>
+      <div class="settings-footer">
+        <p id="options-gamepad-hint" class="option-hint" hidden>Up / Down: Choose &middot; Left / Right: Adjust or switch category &middot; A: Select &middot; B: Back</p>
+        <button id="btn-options-back" class="menu-btn">Back</button>
+      </div>
     </div>
   </div>
 
@@ -282,6 +395,35 @@
   </div>
 
   <!-- Level Complete Overlay -->
+  <div id="closing-credits-overlay" class="overlay closing-credits hidden" role="dialog" aria-modal="true" aria-label="Thesis of the Dead closing credits" data-phase="epilogue">
+    <div class="closing-card closing-epilogue">
+      <span class="closing-kicker">Thesis of the Dead</span>
+      <h2 data-credits-ending-title>A Quiet Beginning</h2>
+      <p data-credits-ending-line>The voices fall quiet. The day belongs to you.</p>
+      <span class="closing-rule" aria-hidden="true"></span>
+    </div>
+    <div class="closing-card closing-studio">
+      <div class="closing-pixels" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <span class="closing-kicker">A game by</span>
+      <h2>The Pixel studios</h2>
+      <p>Every step. Every doubt. Every choice.</p>
+    </div>
+    <div class="closing-roll-viewport">
+      <div class="closing-roll" data-credit-roll>
+        <div class="closing-roll-block closing-roll-title"><span class="closing-kicker">The Pixel studios presents</span><h2>Thesis of<br />the Dead</h2><p>A journey through doubt, determination, and the cost of moving forward.</p></div>
+        <div class="closing-roll-block"><h3>Created by</h3><p class="closing-name">Sicelo Vanyelwa</p><p class="closing-name">Lupa Martins</p><p class="closing-name">Siphesihle Merile</p><p class="closing-name">Zamokuhle Maziya</p></div>
+        <div class="closing-roll-block"><h3>Voices in the dark</h3><p class="closing-inspiration">Inspired by<br /><strong>Hellblade: Senua's Sacrifice</strong></p><p>For the voices that surround us,<br />and the courage it takes to keep listening.</p></div>
+        <div class="closing-roll-block"><h3>The rhythm of the fight</h3><p class="closing-inspiration">Inspired by<br /><strong>Sekiro: Shadows Die Twice</strong></p><p>Patience. Pressure. Resolve.<br />Every defeat, another lesson.</p></div>
+        <div class="closing-roll-block"><h3>Built with</h3><p class="closing-name">Three.js</p><p>Internal dialogue generated with<br /><strong>Higgsfield Seed Audio</strong></p><p>A CGV Assignment Project</p></div>
+        <div class="closing-roll-block closing-support"><h3>Art, music &amp; sound</h3><p>Quaternius &middot; Kenney Vleugels &middot; para<br />oisougabo &middot; HamedPhixer<br />FIELDFLY3R &middot; vincekelly2187 &middot; Erroratten<br />OrbArts &middot; evolveduk<br />Blender Foundation &middot; dpoggioli &middot; Artninja<br />Elephant Music &middot; Igino Marini<br />NASA's Scientific Visualization Studio</p><p>Full asset acknowledgements and licences<br />are available in Credits from the main menu.</p></div>
+        <div class="closing-roll-block"><h3>For everyone who kept going</h3><p>When the path was uncertain.<br />When the voices grew louder.<br />When one more step was all you had.</p><p class="closing-name">This one is for you.</p></div>
+      </div>
+    </div>
+    <div class="closing-card closing-thanks"><span class="closing-kicker">The Pixel studios</span><h2>Thank you<br />for playing.</h2><p>The end of a chapter.<br />The beginning of whatever comes next.</p><span class="closing-rule" aria-hidden="true"></span></div>
+    <div class="closing-controls"><button class="menu-btn" data-credits-pause aria-pressed="false">Pause credits</button><button class="menu-btn" data-credits-skip>Skip credits</button></div>
+  </div>
+
+  <!-- Level Complete Overlay -->
   <div id="levelcomplete-overlay" class="overlay hidden">
     <div class="menu-container">
       <h2 id="levelcomplete-title">Level Complete!</h2>
@@ -293,9 +435,9 @@
   <!-- Win Overlay -->
   <div id="win-overlay" class="overlay hidden">
     <div class="menu-container">
-      <h2 class="win-title">Second Year Complete!</h2>
+      <h2 class="win-title">Final Year Complete!</h2>
       <p class="credits-text">
-        You survived The Freshman Woods and The Sophomore Room.<br />
+        You reached the end of The Final Encounter.<br />
         All available chapters complete.
       </p>
       <button id="btn-win-menu" class="menu-btn">Main Menu</button>
@@ -304,6 +446,7 @@
 
   <!-- Three.js canvas is appended here -->
   <div id="game-container"></div>
+  <div id="graphics-fps" class="graphics-fps" hidden aria-label="Rendering performance"></div>
 
   <script type="module" src="./src/main.js"></script>
 </body>

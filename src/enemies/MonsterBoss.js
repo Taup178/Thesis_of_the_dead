@@ -6,6 +6,7 @@ import { createMonsterCorpseObstacles } from './MonsterCorpse.js';
 import { MonsterVocals } from '../audio/MonsterVocals.js';
 
 const Y = new THREE.Vector3(0, 1, 0);
+const HIT_FLASH_COLOR = new THREE.Color(0xffffff);
 const ANGLES = [-Math.PI / 4, 0, Math.PI / 4];
 const RELEASE = 0.8, TAKEOFF = 0.16, LAND_RECOVERY = 0.34, GRAVITY = 20;
 const ATTACK_SPEED = 1.2;
@@ -27,6 +28,22 @@ export class MonsterBoss {
     this.previousFist = new THREE.Vector3(); this.spinHit = false;
     this.moveVelocity = new THREE.Vector3();
     this.vocals = new MonsterVocals(globalThis.__thesisAudioManager, this.group.position);
+    this.hitFlashTime = 0;
+    this.hitMaterials = new Map();
+    this.hitMeshes = [];
+    this.monster.model.traverse(mesh => {
+      if (!mesh.isMesh || !mesh.material) return;
+      const original = mesh.material;
+      const copies = (Array.isArray(original) ? original : [original]).map(material => {
+        if (!material.emissive) return material;
+        if (!this.hitMaterials.has(material)) this.hitMaterials.set(material, {
+          material: material.clone(), emissive: material.emissive.clone(), intensity: material.emissiveIntensity,
+        });
+        return this.hitMaterials.get(material).material;
+      });
+      this.hitMeshes.push({ mesh, original });
+      mesh.material = Array.isArray(original) ? copies : copies[0];
+    });
     this.group.traverse(mesh => {
       if (!mesh.isSkinnedMesh) return;
       mesh.frustumCulled = false;
@@ -41,7 +58,9 @@ export class MonsterBoss {
   start() { if (this.phase === 'waiting') { this.phase = 'combat'; this.vocals.start(); } }
 
   takeDamage(amount) {
-    if (this.phase !== 'combat' || !this.alive || !Number.isFinite(amount) || amount <= 0) return false;
+    if (this.disposed || this.phase !== 'combat' || !this.alive || !Number.isFinite(amount) || amount <= 0) return false;
+    this.hitFlashTime = 0.12;
+    this._renderHitFlash();
     this.health = Math.max(0, this.health - amount);
     if (this.health > 0) {
       if (!this.enraged && this.health <= this.maxHealth * 0.4) {
@@ -59,6 +78,10 @@ export class MonsterBoss {
 
   update(dt, player) {
     if (this.phase === 'waiting' || this.phase === 'defeated' || this.disposed) return;
+    if (this.hitFlashTime > 0) {
+      this.hitFlashTime = player.alive === false ? 0 : Math.max(0, this.hitFlashTime - Math.max(0, dt));
+      this._renderHitFlash();
+    }
     if (player.alive === false) { this.vocals.stop(); this.degree.clear(); this.rocks.clear(); return; }
     // Advance contacts and events in bounded steps, including at low frame rates.
     let remaining = Math.max(0, dt);
@@ -72,6 +95,15 @@ export class MonsterBoss {
   }
 
   _step(dt, player) {
+    this._updateBody(dt, player);
+    if (this.phase !== 'combat' || player.alive === false) return;
+    const wasActive = this.degree.active;
+    this.degree.update(dt * this.tempo, player);
+    if (wasActive && !this.degree.active && player.alive !== false) this._sound('catch', this.group.position);
+    if (player.alive === false) { this.degree.clear(); this.rocks.clear(); }
+  }
+
+  _updateBody(dt, player) {
     if (this.phase === 'dying') {
       this.fallVelocity -= GRAVITY * dt;
       this.group.position.y = Math.max(0, this.group.position.y + this.fallVelocity * dt);
@@ -118,8 +150,9 @@ export class MonsterBoss {
       this.motion.walkDistance += travel; this.motion.moveSpeed = travel / dt;
       this.motion.update('idle', 0, dt); this.cooldown -= dt * this.tempo;
       if (this.cooldown <= 0) {
-        const choices = delta.lengthSq() < 6 ** 2 ? ['spin', 'spin', 'slam', 'smash']
+        let choices = delta.lengthSq() < 6 ** 2 ? ['spin', 'spin', 'slam', 'smash']
           : delta.lengthSq() > 24 ** 2 ? ['throw', 'throw', 'slam', 'smash', 'spin'] : ['throw', 'smash', 'slam', 'spin'];
+        if (this.degree.active) choices = choices.filter(attack => attack !== 'throw');
         let attack = !this.enraged && this.attackIndex === 0 ? (delta.lengthSq() < 6 ** 2 ? 'spin' : 'throw')
           : !this.enraged && this.attackIndex === 1 ? 'smash' : choices[Math.floor(Math.random() * choices.length)];
         if (attack === this.lastAttack && this.attackRepeats >= 2) {
@@ -150,15 +183,14 @@ export class MonsterBoss {
       }
       if (this.time >= 1.5) { this.enrageComplete = true; this._finishAttack(0.04); }
     } else if (this.state === 'throw') {
-      const wasActive = this.degree.active;
       this.motion.update('throw', this.time * ATTACK_SPEED, dt, 0, this.released ? 0 : 1);
       if (!this.released && this.time * ATTACK_SPEED >= RELEASE) {
         this.degree.launch(this.aim); this.released = true;
         this._sound('throw', this.degree.position);
       }
-      this.degree.update(dt * this.tempo, player);
-      if (player.alive === false) { this.degree.clear(); this.rocks.clear(); return; }
-      if (wasActive && !this.degree.active) { this.state = 'recover'; this.time = 0; this._sound('catch', this.group.position); }
+      // Complete the native follow-through before pushing off into a run.
+      // The returning weapon remains an independent hazard during the rush.
+      if (this.released && this.time * ATTACK_SPEED >= 1.35) this._beginSpinApproach(player);
     } else if (this.state === 'smash') {
       this._updateJump(dt, player);
     } else if (this.state === 'spinApproach') {
@@ -358,6 +390,14 @@ export class MonsterBoss {
     }
   }
 
+  _renderHitFlash() {
+    const strength = Math.min(1, this.hitFlashTime / 0.06);
+    for (const { material, emissive, intensity } of this.hitMaterials.values()) {
+      material.emissive.copy(emissive).lerp(HIT_FLASH_COLOR, strength);
+      material.emissiveIntensity = THREE.MathUtils.lerp(intensity, Math.max(intensity, 0.6), strength);
+    }
+  }
+
   _sound(kind, position) {
     if (kind === 'smash') this.vocals.attack('roar');
     const audio = globalThis.__thesisAudioManager;
@@ -370,6 +410,9 @@ export class MonsterBoss {
   dispose() {
     if (this.disposed) return; this.disposed = true;
     this.vocals.stop();
+    for (const { mesh, original } of this.hitMeshes) mesh.material = original;
+    for (const { material } of this.hitMaterials.values()) material.dispose();
+    this.hitMaterials.clear(); this.hitMeshes.length = 0;
     this.degree.dispose(); this.rocks.dispose(); this.motion.dispose();
   }
 }

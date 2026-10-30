@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomExitPortal } from './RoomExitPortal.js';
+import { CheckpointMarker } from './CheckpointMarker.js';
 
 /** Preloaded portals open only after Shaun has physically collected the degree. */
 export class VictoryPortals {
@@ -9,16 +10,32 @@ export class VictoryPortals {
       new RoomExitPortal(this.root, new THREE.Vector3(7, 0, -37), { blue: true })];
     this.portals[0].root.name = 'VictoryRedPortal'; this.portals[1].root.name = 'VictoryBluePortal';
     this.time = 0; this.started = false; this.done = false;
+    this.indicators = this.portals.map(() => new CheckpointMarker(this.root, { radius: 1.05, height: 3.2 }));
+    this._placeApproachPoints();
+  }
+
+  _placeApproachPoints() {
+    this.portals.forEach((portal, index) => {
+      // Match the other exits: the marker stands beyond the entire structure,
+      // including the stairs. Scripted travel handles crossing the solid portal.
+      const bounds = new THREE.Box3().setFromObject(portal.root, true);
+      portal.approachPoint = new THREE.Vector3(portal.root.position.x, 0, bounds.max.z + .7);
+      this.indicators[index].root.position.copy(portal.approachPoint);
+    });
+  }
+
+  updateIndicators(dt, visible) {
+    for (const marker of this.indicators) marker.update(dt, visible);
   }
 
   get obstacles() {
-    // Collide with the stone uprights while keeping the opening and its approach clear.
-    return this.portals.flatMap(portal => [-1, 1].map(side => ({
-      x: portal.center.x + side * 2.15, z: portal.center.z, radius: 0.45,
-    })));
+    return this.portals.flatMap(portal => portal.obstacles);
   }
 
-  async load() { await Promise.all(this.portals.map(portal => portal.load())); }
+  async load() {
+    await Promise.all(this.portals.map(portal => portal.load()));
+    this._placeApproachPoints();
+  }
 
   async prepare(renderer, scene, camera) {
     this.root.visible = true;
@@ -54,6 +71,7 @@ export class VictoryPortals {
   }
 
   dispose() {
+    for (const marker of this.indicators) marker.dispose();
     for (const portal of this.portals) {
       portal.mixer?.stopAllAction(); if (portal.model) portal.mixer?.uncacheRoot(portal.model);
     }

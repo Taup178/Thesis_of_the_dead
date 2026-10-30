@@ -91,7 +91,8 @@ export class DeanBoss {
     this.warning = 'THE DEAN IS COMING';
     this.dean._playAction('Run');
     // The final wave is over; the player gets enough ammunition to fight the boss.
-    if (typeof player.ammo === 'number') player.ammo = Math.min(player.maxAmmo ?? 120, Math.max(player.ammo, 45));
+    if (player.ensureAmmo) player.ensureAmmo(45);
+    else if (typeof player.ammo === 'number') player.ammo = Math.min(player.maxAmmo ?? 120, Math.max(player.ammo, 45));
   }
 
   takeDamage(amount) {

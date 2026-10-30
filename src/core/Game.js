@@ -6,7 +6,10 @@ import { WeaponCombat } from '../player/WeaponCombat.js';
 import { LevelManager } from '../levels/LevelManager.js';
 import { SPIKE_CORRIDOR_PUZZLE } from '../levels/SophomoreLayout.js';
 import { DreamMotionBlur } from '../shaders/DreamMotionBlur.js';
-import { applyQuality, loadQuality, saveQuality } from './Quality.js';
+import { applyQuality } from './Quality.js';
+import { GRAPHICS_DESCRIPTIONS, graphicsPreset, isCustomGraphics, loadGraphics, normalizeGraphics, saveGraphics } from './GraphicsSettings.js';
+import { bindSettingsTabs } from './SettingsTabs.js';
+import { ClosingCredits } from './ClosingCredits.js';
 import { compileHiddenObjects } from './ShaderWarmup.js';
 import { PAD, stepFocusIndex } from './Gamepad.js';
 import { Heartbeat, getDistressEffects } from './Heartbeat.js';
@@ -74,18 +77,21 @@ export class Game {
 
     // ---- Three.js basics ----
     this.scene = new THREE.Scene();
-    this.quality = loadQuality();
-    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality !== 'low', powerPreference: 'high-performance' });
+    this.graphics = loadGraphics(); this.quality = this.graphics.preset;
+    // Anti-aliasing is applied in the live post-processing pipeline, so toggling
+    // it never needs a new WebGL context or a restart.
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     this.renderer.shadowMap.enabled = true;
     this.cinematicShadowsFrozen = false;
-    this.qualityConfig = applyQuality(this.renderer, this.scene, this.quality);
+    this.qualityConfig = applyQuality(this.renderer, this.scene, this.quality, this.graphics);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMappingExposure = this.graphics.brightness;
     this.container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
     this.motionBlur = new DreamMotionBlur(this.renderer, this.scene, this.camera);
+    this.motionBlur.configure(this.graphics);
     this.heartbeat = new Heartbeat();
     this.audio = getGlobalAudioManager();
     this.psychologicalVoices = new ChapterVoices(this.audio.internalVoices, {
@@ -252,6 +258,7 @@ export class Game {
     const qualitySelect = document.getElementById('quality-select');
     qualitySelect.value = this.quality;
     qualitySelect.addEventListener('change', () => this._setQuality(qualitySelect.value));
+    this._bindGraphicsSettings();
     const gamepadToggle = document.getElementById('gamepad-toggle');
     gamepadToggle.checked = this.input.gamepadEnabled;
     gamepadToggle.addEventListener('change', () => this.input.setGamepadEnabled(gamepadToggle.checked));
@@ -293,7 +300,7 @@ export class Game {
     if (id) this._closeWeaponWheel();
     this.motionBlur.reset();
     if (id) this.heartbeat.stop();
-    const overlays = ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay'];
+    const overlays = ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay', 'pause-overlay', 'gameover-overlay', 'closing-credits-overlay', 'levelcomplete-overlay', 'win-overlay'];
     overlays.forEach(o => document.getElementById(o).classList.add('hidden'));
     if (id) document.getElementById(id).classList.remove('hidden');
     this.container.classList.toggle('playing', !id && this.state === this.STATE.PLAYING);
@@ -392,10 +399,69 @@ export class Game {
   }
 
   _setQuality(level) {
-    this.quality = level;
-    this.qualityConfig = applyQuality(this.renderer, this.scene, level);
-    saveQuality(level);
-    this.motionBlur.setSize(window.innerWidth, window.innerHeight);
+    if (!Object.hasOwn(GRAPHICS_DESCRIPTIONS, level)) return;
+    this.graphics = { ...graphicsPreset(level), brightness: this.graphics.brightness, showFps: this.graphics.showFps };
+    this._applyGraphicsSettings();
+  }
+
+  _bindGraphicsSettings() {
+    bindSettingsTabs(document.getElementById('options-overlay'), (tab, index) => {
+      if (!this._menuNav) return;
+      this._menuNav.highlighted?.classList.remove('gamepad-focus');
+      this._menuNav.index = index;
+      this._menuNav.highlighted = tab;
+      if (this.input.gamepadInUse) tab.classList.add('gamepad-focus');
+    });
+    for (const control of document.querySelectorAll('[data-graphics]')) {
+      control.addEventListener(control.type === 'range' ? 'input' : 'change', () => {
+        const key = control.dataset.graphics;
+        const value = control.type === 'checkbox' ? control.checked
+          : control.type === 'range' ? Number(control.value) / 100
+            : key === 'textureFiltering' ? Number(control.value) : control.value;
+        this.graphics = normalizeGraphics({ ...this.graphics, [key]: value });
+        this._applyGraphicsSettings();
+      });
+    }
+    document.getElementById('btn-graphics-reset').addEventListener('click', () => {
+      this.graphics = graphicsPreset(); this._applyGraphicsSettings();
+    });
+    this._syncGraphicsSettings();
+  }
+
+  _applyGraphicsSettings() {
+    this.quality = this.graphics.preset;
+    this.qualityConfig = applyQuality(this.renderer, this.scene, this.quality, this.graphics);
+    const cinematicScene = this.currentLevel?.endingCutscene?.scene || this.currentLevel?.openingIntro?.scene;
+    if (cinematicScene) applyQuality(this.renderer, cinematicScene, this.quality, this.graphics);
+    this.motionBlur.configure(this.graphics);
+    saveGraphics(this.graphics); this._syncGraphicsSettings();
+  }
+
+  _syncGraphicsSettings() {
+    for (const control of document.querySelectorAll('[data-graphics]')) {
+      const value = this.graphics[control.dataset.graphics];
+      if (control.type === 'checkbox') control.checked = value;
+      else control.value = control.type === 'range' ? Math.round(value * 100) : value;
+    }
+    const custom = isCustomGraphics(this.graphics);
+    document.getElementById('quality-select').value = custom ? 'custom' : this.quality;
+    document.getElementById('graphics-description').textContent = custom
+      ? `Custom settings based on ${this.quality}. Changes apply immediately.` : GRAPHICS_DESCRIPTIONS[this.quality];
+    document.getElementById('render-scale-value').textContent = `${Math.round(this.graphics.renderScale * 100)}%`;
+    document.getElementById('brightness-value').textContent = `${Math.round(this.graphics.brightness * 100)}%`;
+    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    document.getElementById('graphics-resolution').textContent = `${size.x} × ${size.y} render resolution`;
+    document.getElementById('graphics-fps').hidden = !this.graphics.showFps || !!this.closingCredits?.active;
+  }
+
+  _updateGraphicsStats(frameDt) {
+    if (!this.graphics.showFps || frameDt <= 0 || frameDt > 1) return;
+    this.graphicsStatsTime = (this.graphicsStatsTime ?? 0) + frameDt;
+    this.graphicsStatsFrames = (this.graphicsStatsFrames ?? 0) + 1;
+    if (this.graphicsStatsTime < .5) return;
+    const fps = this.graphicsStatsFrames / this.graphicsStatsTime;
+    document.getElementById('graphics-fps').textContent = `${Math.round(fps)} FPS · ${(1000 / fps).toFixed(1)} ms`;
+    this.graphicsStatsTime = this.graphicsStatsFrames = 0;
   }
 
   // =====================================================================
@@ -429,14 +495,15 @@ export class Game {
     const directSophomoreSection = launch.get('section');
     const level = await this.levelManager.loadLevel(levelIndex ?? (directFinal ? 2 : directSophomore ? 1 : 0), (p) => {
       progressBar.style.width = `${p * 100}%`;
-    }, directFinal && launch.get('victory') === '1' ? { victoryPreview: true, endingPreview: import.meta.env?.DEV ? launch.get('ending') : null } :
+    }, directFinal && launch.get('victory') === '1' ? { victoryPreview: true,
+      choicePreview: launch.get('choice') === '1', endingPreview: import.meta.env?.DEV ? launch.get('ending') : null } :
       directFinal && launch.get('transform') === '1' ? { transformationPreview: true } :
       directFinal && launch.get('boss') === '1' ? { bossPreview: true } :
       directSophomore && directSophomoreSection === 'spikes' ? { puzzleIndex: SPIKE_CORRIDOR_PUZZLE } :
       directSophomore && directSophomoreSection === 'memory' ? { puzzleIndex: 2 } : null);
     this.currentLevel = level;
     await this.psychologicalVoices?.loadForLevel?.(level);
-    applyQuality(this.renderer, this.scene, this.quality); // Re-cap shadows on freshly loaded lights.
+    applyQuality(this.renderer, this.scene, this.quality, this.graphics); // Re-cap shadows on freshly loaded lights.
     this.audio?.setLevelTheme?.(level.title);
     this.audio?.preload?.(LEVEL_AUDIO_ASSETS);
 
@@ -487,7 +554,7 @@ export class Game {
       progressBar.style.width = `${p * 100}%`;
     }, { preserveCheckpoint });
     this.currentLevel = level;
-    applyQuality(this.renderer, this.scene, this.quality);
+    applyQuality(this.renderer, this.scene, this.quality, this.graphics);
     this.audio?.restartLevelTheme?.(level.title);
     await this.psychologicalVoices?.loadForLevel?.(level);
 
@@ -540,7 +607,7 @@ export class Game {
     }
 
     this.currentLevel = level;
-    applyQuality(this.renderer, this.scene, this.quality);
+    applyQuality(this.renderer, this.scene, this.quality, this.graphics);
     this.audio?.setLevelTheme?.(level.title);
     this.player.reset(level.spawnPoint);
     await this.player.setFootstepSurface?.(level.footstepSurface);
@@ -584,6 +651,7 @@ export class Game {
   }
 
   returnToMenu() {
+    this.closingCredits?.dispose(); this.closingCredits = null;
     this.psychologicalVoices?.leave();
     this.combat.reset();
     this.audio?.stopAll?.();
@@ -628,7 +696,18 @@ export class Game {
       ? (this.currentLevel.destinyChoice === 'blue' ? 'A Quiet Beginning' : 'The Wrong Way Out') : 'Level Complete!';
     document.getElementById('levelcomplete-text').textContent = this.currentLevel.getCompletionText?.() ||
       `You collected ${this.currentLevel.creditsCollected} credits and survived ${this.currentLevel.title}.`;
-    this._showOverlay('levelcomplete-overlay');
+    if (this.currentLevel?.endingCutscene?.done && this.currentLevel.destinyChoice) {
+      this.closingCredits?.dispose();
+      this.audio?.stopAll?.();
+      this.closingCredits = new ClosingCredits(document.getElementById('closing-credits-overlay'), () => {
+        this._showOverlay('levelcomplete-overlay');
+        document.getElementById('graphics-fps').hidden = !this.graphics.showFps;
+        document.getElementById('btn-nextlevel').focus({ preventScroll: true });
+      });
+      this._showOverlay('closing-credits-overlay');
+      this.closingCredits.start(this.currentLevel.destinyChoice);
+      document.getElementById('graphics-fps').hidden = true;
+    } else this._showOverlay('levelcomplete-overlay');
     this.hudEl.classList.add('hidden');
     document.exitPointerLock();
   }
@@ -727,7 +806,7 @@ export class Game {
   // =====================================================================
   _activeOverlayId() {
     for (const id of ['menu-overlay', 'levels-overlay', 'credits-overlay', 'options-overlay', 'loading-overlay',
-      'pause-overlay', 'gameover-overlay', 'levelcomplete-overlay', 'win-overlay']) {
+      'pause-overlay', 'gameover-overlay', 'closing-credits-overlay', 'levelcomplete-overlay', 'win-overlay']) {
       if (!document.getElementById(id).classList.contains('hidden')) return id;
     }
     return null;
@@ -776,7 +855,7 @@ export class Game {
 
     const overlay = document.getElementById(overlayId);
     // Options rows take the focus too, so volume, toggles and dropdowns adjust from the pad.
-    const selector = overlayId === 'options-overlay' ? '.option-row, .menu-btn' : '.menu-btn';
+    const selector = overlayId === 'options-overlay' ? '.option-row, .menu-btn, .controls-reference' : '.menu-btn';
     const items = [...overlay.querySelectorAll(selector)]
       .filter(item => item.offsetParent !== null && !item.disabled);
     if (items.length === 0) {
@@ -790,12 +869,13 @@ export class Game {
 
     if (nav.overlayId !== overlayId) {
       nav.overlayId = overlayId;
-      nav.index = 0;
+      nav.index = overlayId === 'options-overlay'
+        ? Math.max(0, items.findIndex(item => item.getAttribute?.('aria-selected') === 'true')) : 0;
       nav.stickDir = 0;
       nav.stickDirX = 0;
       nav.repeat = 0;
       nav.repeatX = 0;
-      this._highlightMenuButton(items, 0);
+      this._highlightMenuButton(items, nav.index);
     }
 
     let dir = 0;
@@ -845,7 +925,11 @@ export class Game {
     }
     nav.stickDirX = stickX;
     if (adjust !== 0 && overlayId === 'options-overlay') {
-      this._adjustMenuOption(this._menuItemControl(items[nav.index]), adjust);
+      const item = items[nav.index];
+      if (item.dataset?.settingsTab) {
+        const tabs = [...overlay.querySelectorAll('[data-settings-tab]')];
+        tabs[(tabs.indexOf(item) + adjust + tabs.length) % tabs.length]?.click();
+      } else this._adjustMenuOption(this._menuItemControl(item), adjust);
     }
 
     if (this.input.consumeGamepadPress(PAD.JUMP)) {
@@ -883,7 +967,13 @@ export class Game {
     } else if (control.tagName === 'SELECT') {
       const count = control.options?.length ?? 0;
       if (count === 0) return;
-      control.selectedIndex = (control.selectedIndex + direction + count) % count;
+      let index = control.selectedIndex;
+      for (let tried = 0; tried < count; tried++) {
+        index = (index + direction + count) % count;
+        if (!control.options[index].disabled) break;
+      }
+      if (control.options[index].disabled) return;
+      control.selectedIndex = index;
       control.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
@@ -919,7 +1009,7 @@ export class Game {
     this.weaponWheelPreview.alt = weapon.name;
     this.weaponWheelType.textContent = weapon.type === 'gun' ? 'FIREARM' : 'MELEE';
     this.weaponWheelDetails.textContent = weapon.type === 'gun'
-      ? `${weapon.damage} damage / hit · ${this.currentLevel?.hasUnlimitedAmmo?.(weapon.id) ? '∞' : this.player.ammo} bullets${weapon.ammo > 1 ? ' · 2 / shot' : ''}`
+      ? `${weapon.damage} damage / hit · ${this.currentLevel?.hasUnlimitedAmmo?.(weapon.id) ? '∞' : this.player.getAmmo?.(weapon.id) ?? this.player.ammo} bullets${weapon.ammo > 1 ? ' · 2 / shot' : ''}`
       : `${weapon.damage} damage / hit · ${weapon.reach}m reach`;
     const pickPrompt = this.input?.gamepadInUse ? 'PRESS A TO EQUIP' : 'CLICK TO EQUIP';
     this.weaponWheelStatus.textContent = weapon.id === this.player.weapon ? 'EQUIPPED' : pickPrompt;
@@ -1108,12 +1198,15 @@ export class Game {
       }
     }
 
-    const checkpoint = this.currentLevel.exitCheckpoint?.root || this.currentLevel.bossFight?.centerMarker;
-    if (checkpoint?.visible) {
+    const checkpoints = [this.currentLevel.exitCheckpoint?.root, this.currentLevel.bossFight?.centerMarker,
+      ...(this.currentLevel.victoryPortals?.indicators ?? []).map(marker => marker.root)];
+    for (const checkpoint of checkpoints) {
+      if (!checkpoint?.visible) continue;
       const position = checkpoint.getWorldPosition(new THREE.Vector3());
       const x = (position.x - px) * scale + w / 2, y = (position.z - pz) * scale + h / 2;
       if (x > 5 && x < w - 5 && y > 5 && y < h - 5) {
-        ctx.fillStyle = '#e4c48b'; ctx.strokeStyle = '#21170e'; ctx.lineWidth = 2;
+        ctx.fillStyle = '#e4c48b';
+        ctx.strokeStyle = '#21170e'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y);
         ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill(); ctx.stroke();
       }
@@ -1145,6 +1238,7 @@ export class Game {
     requestAnimationFrame(() => this._animate());
 
     const frameDt = this.clock.getDelta();
+    this._updateGraphicsStats(frameDt);
     let voiceEvents = {};
     const dt = Math.min(frameDt, 0.05); // cap gameplay physics to avoid spiral of death
     this.elapsedTime += dt;
@@ -1193,6 +1287,11 @@ export class Game {
     }
 
     this._updateMenuFocus(dt);
+    if (this.closingCredits?.active) {
+      if (!document.hidden) this.closingCredits.update(frameDt);
+      // Credits are DOM text over black. Stop rendering the ended 3D stage.
+      return;
+    }
 
     if (this.input.isDown('KeyR') && this.state === this.STATE.PLAYING) {
       this.input.keys['KeyR'] = false;
@@ -1276,20 +1375,20 @@ export class Game {
         this.psychologicalVoices.third.assets.l3_protector_good_ending,
         lines => this._renderVoiceCaptions(lines));
     }
-    if (ending?.choice === 'blue' && ending.time >= 10.5 && !ending.finalVoicePrepared) {
+    if (ending?.choice === 'blue' && ending.time >= 7.5 && !ending.finalVoicePrepared) {
       this.psychologicalVoices.cancel();
       ending.finalVoicePrepared = true;
     }
-    if (active && ending?.choice === 'blue' && ending.time >= 11) ending.finalVoice.start();
+    if (active && ending?.choice === 'blue' && ending.time >= 8) ending.finalVoice.start();
     const voiceGain = this.audio?.internalVoiceGain?.gain;
     const audioContext = this.audio?.context;
     if (voiceGain && audioContext) {
-      const fade = ending?.choice === 'blue' ? ending.time < 10.5 ? 1 - THREE.MathUtils.smoothstep(ending.time, 6, 10) : 1 : 1;
+      const fade = 1;
       voiceGain.setTargetAtTime(this.audio.internalVoices.settings.volume * INTERNAL_VOICE_GAIN * fade, audioContext.currentTime, 0.08);
     }
     this.psychologicalVoices?.update(dt, this.currentLevel, this.player, {
       active,
-      blocked: !!ending && (ending.choice === 'red' ? ending.time >= 15 : ending.time >= 10.5) || this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
+      blocked: !!ending && (ending.choice === 'red' ? ending.time >= 20 : ending.time >= 7.5) || this.firstLevelTutorialBlocking || this.firstLevelTutorialInventoryPause || this.weaponWheelOpen,
       events: voiceEvents,
     });
     const freezeCinematicShadows = active && !!this.currentLevel?.portalCinematicActive;
@@ -1307,7 +1406,7 @@ export class Game {
     if (this.state === this.STATE.LOADING) return;
     if (this.currentLevel?.endingCutscene) this.currentLevel.endingCutscene.render(this.renderer, this.quality);
     else this.motionBlur.render(dt, this.qualityConfig.blur && !cinematic ? effects.blur : 0,
-      this.currentLevel?.openingCinematicActive ? this.currentLevel.openingIntro.scene : this.currentLevel?.endingCutscene?.scene || this.scene);
+      this.currentLevel?.openingCinematicActive ? this.currentLevel.openingIntro.scene : this.currentLevel?.endingCutscene?.scene || this.scene, cinematic);
     // Reveal only after the live frame and its cinematic fade have been prepared.
     this.container.classList.remove('loading');
   }
@@ -1441,8 +1540,9 @@ export class Game {
   _onResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    applyQuality(this.renderer, this.scene, this.quality, this.graphics);
     this.motionBlur.setSize(window.innerWidth, window.innerHeight);
+    this._syncGraphicsSettings();
   }
 
   async _warmLoadedView() {
@@ -1455,7 +1555,10 @@ export class Game {
     // cannot warm shaders for objects hidden during an entrance cutscene.
     const wasVisible = this.player.group.visible;
     this.player.group.visible = true;
-    try { this.renderer.render(this.scene, this.camera); }
+    try {
+      this.renderer.render(this.scene, this.camera);
+      this.motionBlur?.render(1 / 60, 0);
+    }
     finally { this.player.group.visible = wasVisible; }
     if (this.currentLevel?.openingCinematicActive) {
       await this.renderer.compileAsync(this.currentLevel.openingIntro.scene, this.camera);

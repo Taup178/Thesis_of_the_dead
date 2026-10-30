@@ -73,6 +73,35 @@ test('only landing frames make sounds; stopping and non-walking states stay quie
   assert.equal(sounds.length, 2);
 });
 
+test('forward gait keeps natural cadence and resumes after a slowed cinematic action', () => {
+  const { player } = fixture();
+  player.carryingDegree = true;
+  const walk = player.actions.Walk;
+  walk.play();
+  walk.setEffectiveTimeScale(.2); walk.setLoop(THREE.LoopOnce, 1);
+  walk.clampWhenFinished = true; walk.paused = true;
+  player.currentAction = walk; player.currentActionName = 'Walk';
+  for (const speed of [1.8, 4, 8]) {
+    player.velocity.set(0, 0, -speed);
+    player._updateLocomotion(0);
+    assert.equal(player.currentAction, walk);
+    assert.equal(walk.getEffectiveTimeScale(), THREE.MathUtils.clamp(speed / player.moveSpeed, .65, 1.35));
+    assert.equal(walk.loop, THREE.LoopRepeat);
+    assert.equal(walk.paused, false);
+    assert.equal(walk.clampWhenFinished, false);
+  }
+  const before = walk.time;
+  player._updateLocomotion(1 / 60);
+  assert.ok(walk.time > before, 'carrying the degree must not freeze the walking cycle');
+  player.velocity.z = -player.moveSpeed * player.sprintMultiplier;
+  player._updateLocomotion(0);
+  assert.equal(player.currentActionName, 'Run');
+  assert.equal(player.currentAction.getEffectiveTimeScale(), 1, 'sprinting uses the native run cadence');
+  player.velocity.set(player.moveSpeed, 0, 0);
+  player._updateLocomotion(0);
+  assert.ok(player.currentAction.getEffectiveTimeScale() <= 1.35, 'side steps must not become rapid mechanical shuffles');
+});
+
 test('surface changes preload once and use separate grass, stone and sand single-step assets', () => {
   const { player, sounds, preloads } = fixture();
   player.velocity.z = -8;

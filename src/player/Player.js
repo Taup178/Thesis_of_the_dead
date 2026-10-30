@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SurvivorWeapon } from './SurvivorWeapon.js';
-import { createDirectionalWalkClips, DIRECTIONAL_STEP_LENGTH } from './DirectionalWalk.js';
+import { createDirectionalWalkClips } from './DirectionalWalk.js';
 import { weaponById } from './WeaponInventory.js';
 import { SWORD_ATTACKS, createSwordSwingClips } from './SwordSwings.js';
 import { PlayerDeath } from './PlayerDeath.js';
@@ -31,7 +31,7 @@ export class Player {
     this.maxHealth = 100;
     this.health = this.maxHealth;
     this.score = 0;
-    this.ammo = 30;
+    this.ammoReserves = { smg: 30, pistol: 30 };
     this.maxAmmo = 120;
     this.weapon = 'smg';
     this.aimTime = 0;
@@ -257,7 +257,7 @@ export class Player {
     this.lockOnTarget = this.lockOnTarget ? null : this.bossLockAvailable;
     if (this.lockOnTarget) {
       this._faceLockedBoss(0);
-      this.group.rotation.y = this.yaw;
+      this.group.rotation.set(0, this.yaw, 0);
       this._updateCamera();
     }
     this.input.flushMouseDelta();
@@ -292,6 +292,22 @@ export class Player {
     this.weaponPresentation?.bash();
     this._playExertion();
     return true;
+  }
+
+  // Single and dual pistols share pistol rounds; SMG rounds are independent.
+  getAmmo(id = this.weapon) {
+    return this.ammoReserves?.[id === 'pistol' || id === 'dual' ? 'pistol' : 'smg'] ?? 30;
+  }
+
+  get ammo() { return this.getAmmo(); }
+  set ammo(value) {
+    this.ammoReserves ??= { smg: 30, pistol: 30 };
+    this.ammoReserves[this.weapon === 'pistol' || this.weapon === 'dual' ? 'pistol' : 'smg'] = value;
+  }
+
+  ensureAmmo(minimum) {
+    this.ammoReserves ??= { smg: 30, pistol: 30 };
+    for (const pool of ['smg', 'pistol']) this.ammoReserves[pool] = Math.min(this.maxAmmo, Math.max(this.ammoReserves[pool], minimum));
   }
 
   equipWeapon(id) {
@@ -397,7 +413,7 @@ export class Player {
     this.bodyMesh.rotation.set(0, 0, 0);
     this.scriptedMovement = false;
     this.boundaryNoticeTime = 0;
-    this.ammo = 30;
+    this.ammoReserves = { smg: 30, pistol: 30 };
     this.bashTime = 0;
     this.shotTime = 0;
     this.aimTime = 0;
@@ -428,7 +444,7 @@ export class Player {
       this.group.position.copy(spawnPoint);
     }
     this.lastSafePosition.copy(this.group.position);
-    this.group.rotation.y = this.yaw;
+    this.group.rotation.set(0, this.yaw, 0);
     this._updateCamera();
     if (this.mixer) { this._playAnimation('Idle', 'Idle_Gun'); this.mixer.update(0); }
     this.weaponPresentation?.update(0);
@@ -457,8 +473,9 @@ export class Player {
     inp.flushMouseDelta();
     this._faceLockedBoss(dt);
 
-    // Apply yaw to player group (horizontal rotation)
-    this.group.rotation.y = this.yaw;
+    // Replace the full rotation: cinematic quaternion turns can be represented
+    // as Euler X/Z flips, which survive assigning rotation.y alone.
+    this.group.rotation.set(0, this.yaw, 0);
 
     // ---- Movement ----
     const sinYaw = Math.sin(this.yaw), cosYaw = Math.cos(this.yaw);
@@ -637,8 +654,6 @@ export class Player {
     } else if (moving && this._directionalWalkName()) {
       const name = aiming ? this._directionalWalkName() : `Relaxed${this._directionalWalkName()}`;
       this._playAnimation(name, aiming ? 'Walk_Gun' : 'Walk', 'Walk');
-      // Speed up the foot cycle with actual movement, including sprint and diagonals.
-      if (this.actions[name]) this.currentAction.setEffectiveTimeScale(Math.min(3, speed * 0.6 / (2 * DIRECTIONAL_STEP_LENGTH)));
     } else if (moving && speed > (platforming?.moveSpeed ?? this.moveSpeed) * 1.1) {
       this._playAnimation(aiming ? 'Run_Gun' : 'Run', 'Run');
     } else if (moving) {
@@ -647,6 +662,20 @@ export class Player {
       this._playAnimation(aiming ? 'Idle_Gun' : 'Idle', 'Idle');
     }
     const action = this.currentAction;
+    if (moving && this.grounded && !this.isDodging && this.hitReactionTime <= 0 && this.bashTime <= 0 && action) {
+      // Gameplay travel is faster than the cinematic walk. Preserve the authored
+      // cadence instead of accelerating short strides four to eleven times.
+      // Reused actions still need their cinematic pause and loop state cleared.
+      const name = this.currentActionName || '';
+      const baseSpeed = platforming?.moveSpeed ?? this.moveSpeed;
+      const gaitSpeed = /^Run/.test(name) ? baseSpeed * this.sprintMultiplier
+        : /^(?:Relaxed)?(?:Walk|Strafe)/.test(name) ? baseSpeed : 0;
+      if (gaitSpeed > 0) {
+        action.setLoop(THREE.LoopRepeat, Infinity); action.clampWhenFinished = false;
+        action.paused = false;
+        action.setEffectiveTimeScale(THREE.MathUtils.clamp(speed / gaitSpeed, .65, 1.35));
+      }
+    }
     const stepStart = action?.time ?? 0;
     this.mixer.update(dt);
     this._updateMovementAudio(stepStart, action?.paused ? 0 : dt * this.mixer.timeScale * (action?.getEffectiveTimeScale() ?? 0), moving, speed);
@@ -800,7 +829,7 @@ export class Player {
     );
     this.yaw = Math.atan2(dx, dz);
     this.pitch = 0;
-    this.group.rotation.y = this.yaw;
+    this.group.rotation.set(0, this.yaw, 0);
     this.input.flushMouseDelta();
     this.boundaryNoticeTime = 3.5;
     this.velocity.set(0, 0, 0);

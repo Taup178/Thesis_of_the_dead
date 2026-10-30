@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { EndingLightVolume } from './EndingLightVolume.js';
 import { EndingFire } from './EndingFire.js';
+import { CinematicRenderer, CINEMATIC_RESOLUTION, prepareRoomFurniture } from '../shaders/CinematicRenderer.js';
 
 const smooth = THREE.MathUtils.smoothstep;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -34,7 +34,14 @@ export class EndingCutscene {
     this.floor.receiveShadow = true; this.floor.rotation.x = -Math.PI / 2; this.scene.add(this.floor);
     this.furniture = assets ? [assets.couch, assets.bed] : [];
     if (assets) { place(assets.couch, 2.5, 0, -1.3); place(assets.bed, 2.6, 3.4, -1.2); this.scene.add(...this.furniture); }
+    for (const root of this.furniture) prepareRoomFurniture(root);
     for (const root of this.furniture) root.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+    if (choice === 'red') {
+      this.scene.background.setHex(0x000000);
+      this.scene.fog = null;
+      this.floor.visible = false;
+      for (const root of this.furniture) root.visible = false;
+    }
     this.ambient = new THREE.HemisphereLight(0xd5e7ed, 0x303033, 0.7); this.scene.add(this.ambient);
     this.light = new THREE.SpotLight(0xffe7c7, 75, 18, Math.PI / 3, 0.7, 2);
     this.light.position.set(-2, 5, 4); this.light.target.position.set(0, 1, 0); this.scene.add(this.light, this.light.target);
@@ -46,61 +53,93 @@ export class EndingCutscene {
   }
 
   _makePeaceAtmosphere() {
-    this.sun = new THREE.SpotLight(0xffe0b5, 0, 22, .32, .18, 2);
-    this.sun.position.set(-3.8, 5.8, -2.8); this.sun.target.position.set(.15, .45, 1.2);
-    this.sun.map = this.textures.window ?? null;
-    this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024);
-    this.sun.shadow.camera.near = .2; this.sun.shadow.camera.far = 20;
-    this.sun.shadow.bias = -.00015; this.sun.shadow.normalBias = .025;
-    this.scene.add(this.sun, this.sun.target);
-    this.volume = new EndingLightVolume(this.sun, this.textures.window);
-    this.ambient.color.set(0x8193ac); this.light.color.set(0x9caec8);
-    this.dustGeometry = new THREE.BufferGeometry(); this.dustPositions = new Float32Array(64 * 3);
-    this.dustGeometry.setAttribute('position', new THREE.BufferAttribute(this.dustPositions, 3));
-    this.dustMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
-      uniforms: { amount: { value: 0 } },
-      vertexShader: 'varying float brightness; void main(){brightness=.4+.6*fract(position.y*3.17);vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;gl_PointSize=clamp(8./-p.z,1.,2.5);}',
-      fragmentShader: 'uniform float amount;varying float brightness;void main(){float a=1.-smoothstep(.04,.5,length(gl_PointCoord-.5));gl_FragColor=vec4(1.,.82,.52,a*amount*brightness);}' });
-    this.dust = new THREE.Points(this.dustGeometry, this.dustMaterial); this.dust.frustumCulled = false; this.scene.add(this.dust);
-    this.wispGeometry = new THREE.PlaneGeometry(1, 1, 24, 1);
-    this.wispMaterial = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      uniforms: { time: { value: 0 }, opacity: { value: 0 } },
-      vertexShader: 'varying vec2 vUv; uniform float time;void main(){vUv=uv;vec3 p=position;p.y+=sin(uv.x*9.+time*1.5)*.045;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}',
-      fragmentShader: 'varying vec2 vUv;uniform float opacity;void main(){float edge=pow(max(0.,sin(vUv.x*3.14159)),2.)*pow(max(0.,1.-abs(vUv.y-.5)*2.),3.);gl_FragColor=vec4(.31,.42,.57,edge*opacity);}' });
-    this.wisps = new THREE.Group(); this.scene.add(this.wisps);
-    for (let i = 0; i < 7; i++) {
-      const wisp = new THREE.Mesh(this.wispGeometry, this.wispMaterial);
-      wisp.scale.set(.55 + i * .045, .045, 1); this.wisps.add(wisp);
+    this.player.camera.fov = 46; this.player.camera.updateProjectionMatrix();
+    this.floor.material.color.setHex(0x131414);
+    this.roomResources = [];
+    // Soft contact patches ground the furniture without a per-frame shadow pass.
+    const pixels = new Uint8Array(32 * 32 * 4);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const radius = Math.hypot((x - 15.5) / 15.5, (y - 15.5) / 15.5);
+      pixels[(y * 32 + x) * 4 + 3] = Math.round(100 * Math.max(0, 1 - radius) ** 1.5);
     }
+    const map = new THREE.DataTexture(pixels, 32, 32); map.needsUpdate = true;
+    map.magFilter = map.minFilter = THREE.LinearFilter;
+    const contactMaterial = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false });
+    const contactGeometry = new THREE.PlaneGeometry(1, 1);
+    this.roomResources.push(map, contactMaterial, contactGeometry);
+    for (const [x, z, width, depth] of [[0, -1.3, 3, 2], [3.4, -1.2, 2.6, 3], [0, 1.25, .8, .65]]) {
+      const shadow = new THREE.Mesh(contactGeometry, contactMaterial);
+      shadow.rotation.x = -Math.PI / 2; shadow.position.set(x, .012, z); shadow.scale.set(width, depth, 1);
+      this.scene.add(shadow); this.actorContact = shadow;
+    }
+    // One ordinary scene pass. No ray-marched volume or animated shadow maps.
+    this.scene.remove(this.ambient);
+    this.light.color.setHex(0xfff0dc);
+    this.light.position.set(.8, 3.8, 3.2);
+    this.light.target.position.set(1, .5, 0);
+    this.light.distance = 16; this.light.angle = Math.PI / 3; this.light.penumbra = .5;
+    this.light.castShadow = true;
+    this.light.shadow.camera.near = .2; this.light.shadow.camera.far = 13;
+    this.light.shadow.bias = -.00015; this.light.shadow.normalBias = .018;
+    this.light.shadow.radius = 3;
+    for (const root of this.furniture) root.traverse(node => {
+      if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; }
+    });
+    this.actorShadowSettings = [];
+    this.player.group.traverse(node => {
+      if (!node.isMesh) return;
+      this.actorShadowSettings.push({ node, receiveShadow: node.receiveShadow });
+      // Match the opening: the low-poly face and cap should not become black
+      // from self-shadow strips. Shaun still casts a real shadow on the floor.
+      node.receiveShadow = false;
+    });
+    const bed = this.furniture[1];
+    bed?.updateMatrixWorld(true);
+    const bounds = bed ? new THREE.Box3().setFromObject(bed.getObjectByName('Bed') || bed, true) : null;
+    this.bedside = bounds ? V(bounds.min.x - .55, 0, (bounds.min.z + bounds.max.z) / 2 + .35) : V(2.25, 0, -.8);
+    this.bedPath = new THREE.CatmullRomCurve3([V(0, 0, 1.25), V(this.bedside.x * .55, 0, 1.25),
+      V(this.bedside.x, 0, .65), this.bedside.clone()], false, 'centripetal');
+    this.bedWalkDuration = this.bedPath.getLength() / 1.25;
+    this.bedPoint = V(); this.bedTangent = V(); this.bedHeading = new THREE.Quaternion();
+    this.bedAxis = V(0, 1, 0);
+    this.blueCameraStart = V(-4.2, 2.2, 6.8); this.blueCameraEnd = V(-2.6, 2.2, 5.8);
+    this.blueFocus = V();
     this.poseBones = ['Abdomen', 'Torso', 'Head', 'ShoulderR', 'ShoulderL', 'UpperArmR', 'UpperArmL'].map(name => this.player.characterModel?.getObjectByName(name));
     this.poseOffsets = this.poseBones.map(() => new THREE.Quaternion());
     this.poseAxis = V(1, 0, 0);
   }
 
-  _updatePeace(t, peace) {
-    this.peace = peace; this.sun.intensity = peace * 210;
-    this.exposure = .88 + smooth(t, 4, 14) * .18;
-    this.ambient.intensity = .32 + peace * .29;
-    this.light.intensity = 60 - peace * 10;
-    this.light.color.lerpColors(new THREE.Color(0x8499ba), new THREE.Color(0xffe1bf), peace);
-    this.scene.background.setRGB(.006 + peace * .009, .009 + peace * .007, .017 + peace * .003);
-    this.scene.fog.color.copy(this.scene.background); this.scene.fog.density = .055 - peace * .02;
-    for (let i = 0; i < 64; i++) {
-      const seed = i * 2.39996;
-      this.dustPositions[3*i] = -1.6 + Math.sin(seed)*1.6 + Math.sin(t*.23+seed)*.07;
-      this.dustPositions[3*i+1] = .25 + ((i*.071+t*.018)%1)*3.3;
-      this.dustPositions[3*i+2] = .2 + Math.cos(seed*1.7)*1.1;
+  _updatePeace(t, peace, dt) {
+    this.peace = peace;
+    this.exposure = 1;
+    this.light.intensity = 150;
+    this.scene.background.setHex(0x000000); this.scene.fog.density = .055;
+    this.scene.fog.color.copy(this.scene.background);
+    const player = this.player;
+    const progress = THREE.MathUtils.smootherstep(t, 8, 8 + this.bedWalkDuration);
+    const previous = player.group.position;
+    this.bedPath.getPointAt(progress, this.bedPoint);
+    const speed = dt > 0 ? previous.distanceTo(this.bedPoint) / dt : 0;
+    this.bedPath.getTangentAt(Math.min(.9999, progress), this.bedTangent);
+    const yaw = Math.atan2(-this.bedTangent.x, -this.bedTangent.z);
+    this.bedHeading.setFromAxisAngle(this.bedAxis, yaw);
+    if (t >= 6) player.group.quaternion.rotateTowards(this.bedHeading, dt * 2.5);
+    player.group.position.copy(this.bedPoint);
+    this.actorContact.position.x = this.bedPoint.x; this.actorContact.position.z = this.bedPoint.z;
+    const walking = t >= 8 && progress < 1;
+    this._animate(walking ? 'Walk' : 'Idle');
+    if (player.currentAction) {
+      player.currentAction.setLoop?.(THREE.LoopRepeat, Infinity);
+      player.currentAction.clampWhenFinished = false;
+      player.currentAction.paused = false;
+      player.currentAction.setEffectiveTimeScale?.(walking ? THREE.MathUtils.clamp(speed / 1.8, .3, 1.15) : 1);
     }
-    this.dustGeometry.attributes.position.needsUpdate = true;
-    this.dustMaterial.uniforms.amount.value = peace * .38;
-    this.wispMaterial.opacity = .32 * (1 - smooth(t, 4, 10));
-    this.wispMaterial.uniforms.opacity.value = this.wispMaterial.opacity;
-    this.wispMaterial.uniforms.time.value = t;
-    this.wisps.children.forEach((wisp, i) => {
-      const a = i * 2.4 + t * .12, spread = .48 + smooth(t, 4, 10) * .5;
-      wisp.position.set(Math.sin(a)*spread, 1.4 + (i%3)*.14 + smooth(t,4,10)*.2, 1.25+Math.cos(a)*spread);
-      wisp.rotation.set(.1*Math.sin(a), a, .14*Math.sin(a*2));
-    });
+    this.phase = t < 2 ? 'reveal' : t < 8 ? 'release' : walking ? 'walk-to-bed' : 'rest';
+    const camera = player.camera;
+    camera.position.lerpVectors(this.blueCameraStart, this.blueCameraEnd, smooth(t, 0, 18));
+    this.blueFocus.copy(player.group.position); this.blueFocus.y = 1.05;
+    this.blueFocus.x *= .6; this.blueFocus.z *= .6;
+    camera.lookAt(this.blueFocus); camera.updateMatrixWorld(true);
   }
 
   _clearReliefPose() {
@@ -125,18 +164,36 @@ export class EndingCutscene {
   }
 
   render(renderer, quality = 'medium') {
+    // Match the selected preset, rather than reducing every ending to 720p.
+    // Bound cinematic fill cost independently of display density. Keep this
+    // ratio for playback; resizing the drawing buffer twice per frame stalls.
+    if (renderer.getSize && renderer.getPixelRatio && renderer.setPixelRatio) {
+      this.renderSize ??= new THREE.Vector2();
+      renderer.getSize(this.renderSize);
+      const current = renderer.getPixelRatio();
+      if (this.renderRenderer !== renderer || current !== this.renderPixelRatio || this.graphicsRevision !== renderer._graphicsRevision) {
+        this.originalPixelRatio = current;
+        this.renderRenderer = renderer;
+        this.graphicsRevision = renderer._graphicsRevision;
+      }
+      const budget = CINEMATIC_RESOLUTION[quality] ?? CINEMATIC_RESOLUTION.medium;
+      const ratio = Math.min(this.originalPixelRatio, budget.ratio,
+        budget.width / Math.max(1, this.renderSize.x), budget.height / Math.max(1, this.renderSize.y));
+      if (current !== ratio) renderer.setPixelRatio(ratio);
+      this.renderPixelRatio = ratio;
+    }
     if (this.quality !== quality) {
       this.quality = quality;
-      if (this.sun) {
+      if (this.sun?.castShadow) {
         const size = quality === 'low' ? 512 : 1024;
         this.sun.shadow.mapSize.set(size, size); this.sun.shadow.map?.dispose(); this.sun.shadow.map = null;
       }
     }
     const exposure = renderer.toneMappingExposure;
     try {
-      renderer.toneMappingExposure = this.exposure;
-      if (this.volume) this.volume.render(renderer, this.scene, this.player.camera, this.peace ?? 0, this.time, quality);
-      else renderer.render(this.scene, this.player.camera);
+      renderer.toneMappingExposure = exposure * this.exposure;
+      this.presentation ??= new CinematicRenderer(renderer);
+      this.presentation.render(this.scene, this.player.camera, quality);
     } finally { renderer.toneMappingExposure = exposure; }
   }
 
@@ -206,7 +263,7 @@ export class EndingCutscene {
     if (this.done || this.disposed) return;
     this._clearReliefPose();
     let step = Math.max(0, Math.min(dt, .15));
-    if (this.choice === 'blue' && this.finalVoice && this.time >= 11) {
+    if (this.choice === 'blue' && this.finalVoice && this.time >= 17) {
       if (this.finalVoice.state !== 'finished') step = 0;
       else if ((this.finalSilence ?? 0) < 2) {
         this.finalSilence = (this.finalSilence ?? 0) + step;
@@ -216,20 +273,19 @@ export class EndingCutscene {
     this.time += step;
     const t = this.time, red = this.choice === 'red', p = this.player;
     this.phase = t < 2 ? 'reveal' : t < 5.5 ? 'recognition' : t < (red ? 17 : 14) ? (red ? 'engulf' : 'release') : 'resolution';
-    this.fade = Math.max(1 - smooth(t, 0, 1.4), smooth(t, red ? 21 : 17, red ? 23 : 19));
+    this.fade = Math.max(1 - smooth(t, 0, 1.4), smooth(t, red ? 21 : 19, red ? 23 : 21));
     const progress = smooth(t, 0, 12), retreat = red ? smooth(t, 16, 22) : 0;
     const run = red ? smooth(t, 8.1, 10.9) : 0;
-    const camera = p.camera; camera.position.copy(this.path.getPointAt(progress)).add(V(run * .65 - retreat * 1.5, retreat * .6, retreat * 2));
-    camera.lookAt(this.focus.clone().add(V(run * 1.15, 0, 0))); camera.fov = THREE.MathUtils.lerp(48, red ? 52 : 46, progress); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
     if (red) {
+      const camera = p.camera; camera.position.copy(this.path.getPointAt(progress)).add(V(run * .65 - retreat * 1.5, retreat * .6, retreat * 2));
+      camera.lookAt(this.focus.clone().add(V(run * 1.15, 0, 0))); camera.fov = THREE.MathUtils.lerp(48, 52, progress); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
       const dread = smooth(t, 2.5, 7), running = t >= 8.1 && t < 10.9;
       this._animate(t < 3 ? 'Idle' : t < 6 ? 'No' : t < 8.1 ? 'HitReact' : t < 10.9 ? 'Run' : t < 13 ? 'HitReact' : 'Death', t >= 10.9);
       p.group.position.set(run * 2.3, 0, 1.25 + run * .15);
       const turning = smooth(t, 7.4, 8.3) - smooth(t, 10.2, 11.5);
       p.group.rotation.y = Math.PI + turning * 1.5 + dread * .12 + (running ? Math.sin(t * 6) * .045 : 0);
       if (running && p.currentAction?.setEffectiveTimeScale) p.currentAction.setEffectiveTimeScale(.75 + .3 * Math.sin(Math.PI * run));
-      this.scene.background.setRGB(.008 + dread * .006, .006 - dread * .003, .008 - dread * .004);
-      this.scene.fog.color.copy(this.scene.background); this.scene.fog.density = .065;
+      this.scene.background.setHex(0x000000);
       this.ambient.intensity = .7 - dread * .45; this.light.color.lerpColors(new THREE.Color(0xffe7c7), new THREE.Color(0x8b2920), dread);
       const fire = smooth(t, 5, 10), ash = smooth(t, 15, 20);
       this.exposure = .9 - dread * .08;
@@ -245,20 +301,23 @@ export class EndingCutscene {
         this.audio?._playDesignedCue?.('ending-fire', { duration: .22, volume: .035 * fire, cutoffStart: 1200, cutoffEnd: 350, attack: .012, cooldown: .3 });
       }
     } else {
-      this._animate(t < 3 ? 'No' : t < 6 ? 'HitReact' : t < 12.5 ? 'Idle' : 'Yes', t < 6 || t >= 12.5);
-      p.group.position.set(0, 0, 1.25); p.group.rotation.y = Math.PI + Math.sin(t * .65) * .055 * (1 - smooth(t, 9, 13));
-      const peace = smooth(t, 4, 13); this._updatePeace(t, peace);
-      if (p.bodyMesh && this.saved.bodyScale) p.bodyMesh.scale.y = this.saved.bodyScale.y * (1 + Math.sin(t * 1.15) * .006 * (1 - peace * .35));
+      const peace = smooth(t, 1, 8); this._updatePeace(t, peace, step);
     }
     p.mixer?.update(step);
-    if (red) this._updateFire(...this.pendingFire); else this._reliefPose(t);
-    this.done = t >= (red ? 23.2 : 19.2);
+    if (red) this._updateFire(...this.pendingFire); else if (t < 6) this._reliefPose(t);
+    this.done = t >= (red ? 23.2 : 21.2);
   }
 
   dispose() {
     if (this.disposed) return; this.disposed = true;
+    if (this.renderRenderer && this.renderRenderer.getPixelRatio() === this.renderPixelRatio
+      && this.graphicsRevision === this.renderRenderer._graphicsRevision) {
+      this.renderRenderer.setPixelRatio(this.originalPixelRatio);
+    }
     this._clearReliefPose();
     this.finalVoice?.dispose();
+    this.presentation?.dispose(); this.light.shadow.dispose();
+    for (const entry of this.actorShadowSettings ?? []) entry.node.receiveShadow = entry.receiveShadow;
     try { this.ignitionSource?.stop(); } catch {}
     const p = this.player, s = this.saved;
     s.parent?.add(p.group); p.group.position.copy(s.position); p.group.quaternion.copy(s.quaternion); p.group.scale.copy(s.scale);
@@ -267,7 +326,8 @@ export class EndingCutscene {
     for (const entry of this.dissolveOriginals || []) entry.node.material = entry.original;
     for (const material of this.dissolveMaterials || []) material.dispose();
     this.floor.geometry.dispose(); this.floor.material.dispose(); this.fireEffects?.dispose(); this.ashGeometry?.dispose(); this.ashMaterial?.dispose();
-    this.volume?.dispose(); this.sun?.shadow.dispose(); this.dustGeometry?.dispose(); this.dustMaterial?.dispose(); this.wispGeometry?.dispose(); this.wispMaterial?.dispose();
+    this.sun?.shadow.dispose();
+    for (const resource of this.roomResources ?? []) resource.dispose();
     const resources = new Set();
     for (const root of this.furniture) root.traverse(node => {
       if (node.geometry) resources.add(node.geometry);

@@ -109,7 +109,14 @@ export class Level2Music {
     const position = this.offset + now - this.startedAt;
     this.offset = position < duration ? position : this.loopStart + (position - duration) % (duration - this.loopStart);
     const gain = this.voice.gain.gain;
-    gain.cancelAndHoldAtTime(now);
+    if (typeof gain.cancelAndHoldAtTime === 'function') gain.cancelAndHoldAtTime(now);
+    else {
+      // Firefox does not expose cancelAndHoldAtTime. Sample before cancelling
+      // the automation so the fade starts at the current audible level.
+      const value = gain.value;
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(value, now);
+    }
     gain.linearRampToValueAtTime(0, now + 0.08);
     this.source.stop(now + 0.1);
     this.source = null; this.voice = null;

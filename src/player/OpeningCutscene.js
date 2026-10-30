@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { OpeningPose } from './OpeningPose.js';
 import { OpeningJointLining } from './OpeningJointLining.js';
+import { prepareRoomFurniture } from '../shaders/CinematicRenderer.js';
 
 const smooth = THREE.MathUtils.smoothstep;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -64,19 +65,12 @@ export class OpeningCutscene {
     this.couch = assets.couch; this.bed = assets.bed;
     place(this.couch, 2.5, V(0, 0, 0));
     placeBed(this.bed);
-    for (const model of [this.couch, this.bed]) model.traverse(node => {
-      if (!node.isMesh) return;
-      node.castShadow = true; node.receiveShadow = true;
-      for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
-        // The bed's authored emissive map must not become another light source.
-        if (material.emissive) material.emissive.set(0);
-        material.emissiveIntensity = 0; material.roughness = Math.max(0.72, material.roughness);
-        // The tiny clock does not need a full-scene transmission render pass.
-        if (material.transmission) material.transmission = 0;
-        // Wood and bedding are diffuse surfaces, without an environment map.
-        if (model === this.bed) material.metalness = 0;
-      }
-    });
+    for (const model of [this.couch, this.bed]) {
+      prepareRoomFurniture(model);
+      model.traverse(node => {
+        if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; }
+      });
+    }
     this.scene.add(this.couch, this.bed);
     this.light = new THREE.SpotLight(0xfff0dc, 150, 16, Math.PI / 3, 0.5, 2);
     this.light.position.set(0.8, 3.8, 3.2); this.light.target.position.set(1, 0.5, 0);

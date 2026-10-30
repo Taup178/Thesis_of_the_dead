@@ -7,6 +7,8 @@ import { createPortalObstacles } from '../src/props/PortalObstacles.js';
 import { RoomExitPortal } from '../src/props/RoomExitPortal.js';
 import { Player } from '../src/player/Player.js';
 import { Level2 } from '../src/levels/Level2.js';
+import { VictoryPortals } from '../src/props/VictoryPortals.js';
+import { Level3 } from '../src/levels/Level3.js';
 
 // Use the shipped geometry and its existing portal normalization, without textures or fetches.
 const url = new URL('../public/assets/models/portal/portal.gltf', import.meta.url);
@@ -64,6 +66,40 @@ test('fallback portals also block their hollow opening', () => {
     p._moveHorizontally(0, -10, room.obstacles);
     assert.ok(p.group.position.z > 0.5);
   } finally { p.dispose(); }
+});
+
+test('fate portals block their full structure and trigger entry at the marker before the stairs', () => {
+  const root = new THREE.Group(), portals = new VictoryPortals(root), p = player();
+  const level = new Level3(new THREE.Scene());
+  p.actions = {};
+  for (const entry of portals.portals) {
+    entry.fallback.removeFromParent();
+    entry.root.add(portal(.65));
+    entry.obstacles = createPortalObstacles(entry.root);
+  }
+  portals._placeApproachPoints();
+  level.victoryPortals = portals;
+  level.degreeVictory = { keepHolding() {} };
+  try {
+    for (const [index, entry] of portals.portals.entries()) {
+      const bounds = new THREE.Box3().setFromObject(entry.root, true);
+      assert.equal(entry.approachPoint.z, bounds.max.z + .7);
+      assert.ok(portals.indicators[index].root.position.equals(entry.approachPoint));
+      p.group.position.copy(entry.approachPoint).add(new THREE.Vector3(0, 0, 5));
+      p._moveHorizontally(0, -5, portals.obstacles);
+      assert.ok(p.group.position.distanceTo(entry.approachPoint) < 1.15, 'marker is reachable without climbing');
+      p.grounded = true;
+      level._updateDestiny(0, p);
+      assert.equal(level.destinyChoice, index === 0 ? 'red' : 'blue');
+      assert.ok(level.destinyPassage);
+      level.destinyPassage.restore(); level.destinyPassage = null;
+      p.group.position.copy(entry.approachPoint).add(new THREE.Vector3(0, 0, 5));
+      p._moveHorizontally(0, -20, portals.obstacles);
+      assert.ok(p.group.position.z > entry.root.position.z, 'cannot pass through the portal');
+      for (const obstacle of portals.obstacles) assert.ok(Math.hypot(p.group.position.x - obstacle.x,
+        p.group.position.z - obstacle.z) >= obstacle.radius + p.radius - 1e-6, 'player stays outside the portal colliders');
+    }
+  } finally { portals.dispose(); p.dispose(); }
 });
 
 test('room exit collision still lets the approach trigger start and finish scripted portal travel', () => {

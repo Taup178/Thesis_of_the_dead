@@ -46,6 +46,9 @@ for index, line in enumerate(lines):
     audible = [i for i, peak in enumerate(frames) if peak > 0.008]
     if not audible: raise ValueError(f'Silent generation {line["id"]}')
     start = max(0, audible[0] * 0.02 - 0.08)
+    # This preserved master has an unwanted generated speaker lead-in.
+    if job['job_id'] == 'd3229c87-2a61-4f01-b627-7025dc59622c':
+        start = max(start, 1.8)
     end = min(len(samples) / 48000, (audible[-1] + 1) * 0.02 + 0.12)
     duration = end - start
     speech = samples[round(start * 48000):round(end * 48000)]
@@ -62,6 +65,15 @@ for index, line in enumerate(lines):
         '[dry][echo1][echo2]amix=inputs=3:duration=longest:normalize=0,aresample=44100,earwax,alimiter=limit=0.85:level=0,'
         f'afade=t=in:st=0:d=0.01,afade=t=out:st={max(0, duration + tail - 0.08)}:d=0.08[out]'
     )
+    if line['id'] == 'l3_protector_good_ending':
+        tail = 3.1
+        graph = f'[0:a]aformat=channel_layouts=mono,highpass=f=85,lowpass=f=10000,volume={gain},asplit=5[d][a][b][c][e];'
+        graph += f'[d]{pan(0.05)}[dry];'
+        graph += f'[a]lowpass=f=2300,volume=0.24,adelay=700:all=1,{pan(-0.18)}[a1];'
+        graph += f'[b]lowpass=f=1800,volume=0.12,adelay=1400:all=1,{pan(0.22)}[b1];'
+        graph += f'[c]lowpass=f=1300,volume=0.055,adelay=2200:all=1,{pan(-0.1)}[c1];'
+        graph += f'[e]lowpass=f=950,volume=0.025,adelay=3100:all=1,{pan(0.05)}[e1];'
+        graph += f'[dry][a1][b1][c1][e1]amix=inputs=5:duration=longest:normalize=0,alimiter=limit=0.85:level=0,afade=t=in:st=0:d=0.01,afade=t=out:st={duration+1.8}:d=1.3[out]'
     relative = f'{line["identity"]}/{line["id"]}.ogg'
     target = game / relative; target.parent.mkdir(exist_ok=True)
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-ss', str(start), '-t', str(duration),

@@ -121,7 +121,7 @@ export class Level1 {
     player.setFootstepSurface?.(this.footstepSurface);
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true;
-    player.yaw = 0; player.pitch = -0.12; player.group.rotation.y = 0;
+    player.yaw = 0; player.pitch = -0.12; player.group.rotation.set(0, 0, 0);
     player.cameraGroundY = 0; player.cameraObstacles = this.getObstacles();
     if (this.openingAssets && !this.skipOpening && player.characterModel) {
       this.openingIntro = new OpeningCutscene(player, this.openingAssets, this.audioManager);

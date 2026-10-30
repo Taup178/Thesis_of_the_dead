@@ -15,7 +15,7 @@ export class EndingVoice {
       isCurrent: () => !this.disposed && this.state === 'loading',
       onStart: handle => {
         this.handle = handle; this.state = 'playing';
-        if (this.playback.settings.subtitles) this.captions([{ text: "It's done.", label: 'The Protector', identity: 'protector' }]);
+        if (this.playback.settings.subtitles) this.captions([{ text: 'Go on, Shaun. You can rest now.', label: 'The Protector', identity: 'protector' }]);
       },
       onEnd: () => { this.handle = null; this.captions([]); if (!this.disposed) this.state = 'finished'; },
     }).then(handle => {

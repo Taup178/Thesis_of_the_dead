@@ -22,6 +22,7 @@ test('Start Game honors the final-boss URL instead of forcing Chapter 1', async 
   const stop = new Error('stop after selecting the level');
   let selected, launch;
   const game = { input: {}, renderer: { domElement: element('canvas') },
+    _bindGraphicsSettings() {},
     combat: { reset() {} }, firstLevelTutorialSeen: new Set(), firstLevelHintQueue: [],
     STATE: { LOADING: 'loading' }, hudEl: element('hud'), _showOverlay() {}, _releaseMouse() {},
     levelManager: { progress: new LevelProgress(memoryStorage()),

@@ -10,6 +10,23 @@ function buffer(channels, length, sampleRate) {
     getChannelData: channel => data[channel] };
 }
 
+test('Firefox music pause fades safely without cancelAndHoldAtTime and can be called again', () => {
+  const events = [];
+  const gain = { value: .42,
+    cancelScheduledValues(time) { events.push(['cancel', time]); this.value = 0; },
+    setValueAtTime(value, time) { events.push(['hold', value, time]); },
+    linearRampToValueAtTime(value, time) { events.push(['fade', value, time]); } };
+  const music = Object.assign(Object.create(Level2Music.prototype), {
+    enabled: true, offset: 1, startedAt: 2, loopStart: 1.5,
+    context: { currentTime: 5 }, buffer: { duration: 20 }, voice: { gain: { gain } },
+    source: { stop(time) { events.push(['stop', time]); } },
+  });
+  music.pause(); music.pause();
+  assert.deepEqual(events, [['cancel', 5], ['hold', .42, 5], ['fade', 0, 5.08], ['stop', 5.1]]);
+  assert.equal(music.enabled, false); assert.equal(music.source, null); assert.equal(music.voice, null);
+  assert.equal(music.offset, 4, 'checkpoint retry preserves the music position');
+});
+
 test('music retains its first intro and joins each loop to the overlapped opening', () => {
   const input = buffer(2, 48000, 48000);
   for (let channel = 0; channel < 2; channel++) {

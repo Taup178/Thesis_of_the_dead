@@ -137,7 +137,9 @@ export class DegreeVictory {
       if (distance > 0.001) {
         delta.normalize(); player.group.position.addScaledVector(delta, Math.min(distance, this.speed * dt));
         const heading = new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(-delta.x, -delta.z));
-        player.group.quaternion.rotateTowards(heading, 4 * dt); player.yaw = player.group.rotation.y;
+        player.group.quaternion.rotateTowards(heading, 4 * dt);
+        const forward = V(0, 0, -1).applyQuaternion(player.group.quaternion);
+        player.yaw = Math.atan2(-forward.x, -forward.z);
       }
       this._animate(this.speed > 3 ? 'Run' : 'Walk', dt);
       if (distance < 0.035) {
@@ -152,7 +154,9 @@ export class DegreeVictory {
       }
       const toward = this.contact.clone().sub(player.group.position).setY(0);
       const heading = new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(-toward.x, -toward.z));
-      player.group.quaternion.rotateTowards(heading, 3 * dt); player.yaw = player.group.rotation.y;
+      player.group.quaternion.rotateTowards(heading, 3 * dt);
+      const forward = V(0, 0, -1).applyQuaternion(player.group.quaternion);
+      player.yaw = Math.atan2(-forward.x, -forward.z);
       this._animate(this.phase === 'hold' && this.speed > 0.05 ? 'RelaxedWalkBackward' : 'Idle', dt);
       const target = this.phase === 'reach' ? this.contact.clone() : this.grip.getWorldPosition(V());
       if (this.phase === 'hold') target.lerp(this.contact, 1 - smooth(this.time, 0, 1));
@@ -207,7 +211,7 @@ export class DegreeVictory {
   releaseControl() {
     this.player.scriptedMovement = this.saved.scripted;
     this.player.carryingDegree = true; this.player.isFirstPerson = false;
-    this.player.yaw = 0; this.player.pitch = 0; this.player.group.rotation.y = 0;
+    this.player.yaw = 0; this.player.pitch = 0; this.player.group.rotation.set(0, 0, 0);
     this.player.lastSafePosition?.copy(this.player.group.position);
     this.player._updateCamera?.();
   }

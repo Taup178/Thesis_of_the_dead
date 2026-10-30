@@ -59,12 +59,12 @@ export class Level3Voices extends Level1Voices {
       if (this.pending || this.running || this.captions.size) this.cancel();
       this.wasBlocked = true; return;
     }
-    // Choice dialogue may already have finished during the portal passage. Replay
-    // the actual registered recording once in the room so the retreat is audible.
+    // Begin red warnings in the void; blue dialogue may replay after passage.
     if (level.endingCutscene && this.endingScene !== level.endingCutscene) {
       this.endingScene = level.endingCutscene;
       this.cancel();
       this._queueStory(level.destinyChoice === 'blue' ? 'blue_choice' : 'red_choice', true, { trackHistory: false });
+      this.offered.add(level.destinyChoice === 'red' ? 'red_choice' : 'blue_choice');
       this.readyAt = this.clock;
     }
     const step = Math.max(0, Math.min(0.15, dt));
@@ -90,7 +90,8 @@ export class Level3Voices extends Level1Voices {
       if (current.time <= 15 && current.time > 0 && last.time > 15) {
         this._offerEvent('time_low', { story: true, ttl: 2, valid: () => arena() && level.timeRemaining > 0 });
       }
-    } else if (phase !== 'arrival_camera' && phase !== 'monster_dying') {
+    } else if (phase !== 'arrival_camera' && phase !== 'monster_dying'
+      && !(['red_choice', 'blue_choice'].includes(phase) && !level.endingCutscene)) {
       const continuing = phase === 'dean_fallen' ? during('dean_fallen', 'transformation')
         : phase === 'degree_taken' ? during('degree_taken', 'portals')
           : phase === 'monster_reveal' ? during('monster_reveal', 'monster_combat') : during(phase);

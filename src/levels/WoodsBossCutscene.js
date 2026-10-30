@@ -21,18 +21,17 @@ export class WoodsBossCutscene {
     this.scriptedMovement = !!player.scriptedMovement;
     this.allowsShooting = level.allowsShooting;
     this.woods = level.woods;
-    this.woods?.setCinematicDetail(true);
     this.renderer = level.cinematicRenderer;
-    if (this.renderer?.getPixelRatio) {
-      this.pixelRatio = this.renderer.getPixelRatio();
-      if (this.pixelRatio > 1) this.renderer.setPixelRatio(1);
-    }
+    this.graphicsRevision = this.renderer?._graphicsRevision;
+    const quality = this.renderer?._graphicsSettings?.preset ?? 'medium';
+    const performanceMode = quality === 'low' || quality === 'medium';
+    this.woods?.setCinematicDetail(performanceMode);
     this.focus = new THREE.Vector3();
     this.shadow = level.moonLight?.shadow;
     if (this.shadow) {
       this.shadowAutoUpdate = this.shadow.autoUpdate;
       // The woods and enemies hold still. Reuse their shadow map during the escape.
-      this.shadow.autoUpdate = false;
+      this.shadow.autoUpdate = !performanceMode;
       this.shadow.needsUpdate = !this.shadow.map;
     }
 
@@ -176,7 +175,6 @@ export class WoodsBossCutscene {
     if (this.presentationRestored) return;
     this.presentationRestored = true;
     this.woods?.setCinematicDetail(false);
-    if (this.pixelRatio > 1) this.renderer.setPixelRatio(this.pixelRatio);
     if (this.shadow) {
       this.shadow.autoUpdate = this.shadowAutoUpdate;
       this.shadow.needsUpdate = true;

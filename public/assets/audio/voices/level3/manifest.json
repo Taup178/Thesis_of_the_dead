@@ -91,15 +91,10 @@
       "effectsBaked": true,
       "speechDuration": 5.0
     },
-    "l3_protector_red_choice": {
-      "file": "protector/l3_protector_red_choice.ogg",
-      "effectsBaked": true,
-      "speechDuration": 3.3800000000000003
-    },
     "l3_protector_blue_choice": {
-      "file": "protector/l3_protector_blue_choice.ogg",
+      "file": "protector/l3_protector_blue_choice_bedside_v2.ogg",
       "effectsBaked": true,
-      "speechDuration": 4.2
+      "speechDuration": 5.44
     },
     "l3_tormentor_burn_raise": {
       "file": "tormentor/l3_tormentor_burn_raise.ogg",
@@ -122,10 +117,24 @@
       "speechDuration": 3.34
     },
     "l3_protector_good_ending": {
-      "file": "protector/l3_protector_good_ending.ogg",
+      "file": "protector/l3_protector_good_ending_bedside_v2.ogg",
       "effectsBaked": true,
-      "speechDuration": 0.88,
-      "duration": 1.36
+      "speechDuration": 3.0
+    },
+    "l3_tormentor_red_wrong_way": {
+      "file": "tormentor/l3_tormentor_red_wrong_way.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.58
+    },
+    "l3_anxious_red_portal_clue": {
+      "file": "anxious/l3_anxious_red_portal_clue_v2.ogg",
+      "effectsBaked": true,
+      "speechDuration": 6.340000000000001
+    },
+    "l3_manipulator_red_inattention": {
+      "file": "manipulator/l3_manipulator_red_inattention.ogg",
+      "effectsBaked": true,
+      "speechDuration": 2.18
     }
   }
 }

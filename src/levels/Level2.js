@@ -193,7 +193,7 @@ export class Level2 {
     player.cameraGroundY = 0;
     player.pitch = -0.25;
     player.yaw = 0;
-    player.group.rotation.y = 0;
+    player.group.rotation.set(0, 0, 0);
     player._updateCamera();
     if (this.puzzleIndex === 0 && !this.isCheckpointRestart) this._beginArrival(player);
     else if (this.puzzleIndex !== 2) {

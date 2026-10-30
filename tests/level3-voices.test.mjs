@@ -80,7 +80,7 @@ test('victory preview skips earlier story and waits for physical pickup and visi
   f.level.victoryPortals.time = 2; await f.tick(4);
   assert.deepEqual(f.playback.played.slice(-2), ['l3_manipulator_portals', 'l3_protector_portals']);
   f.level.destinyChoice = 'blue'; await f.tick(2);
-  assert.equal(f.playback.played.at(-1), 'l3_protector_blue_choice');
+  assert.ok(!f.playback.played.includes('l3_protector_blue_choice'), 'reassurance waits until the room is visible');
   assert.ok(!f.playback.played.includes('l3_protector_red_choice'));
 });
 
@@ -118,13 +118,30 @@ test('all authored lines have generated local recordings with the existing four 
   const root = new URL('../public/assets/audio/voices/level3/', import.meta.url);
   const manifest = JSON.parse(readFileSync(new URL('manifest.json', root), 'utf8'));
   const lines = LEVEL3_VOICE_CUES.flatMap(c => c.lines);
-  assert.equal(lines.length, 25); assert.equal(Object.keys(manifest.clips).length, lines.length);
+  assert.equal(lines.length, 27); assert.equal(Object.keys(manifest.clips).length, lines.length);
   for (const line of lines) {
     assert.ok(['tormentor', 'anxious', 'manipulator', 'protector'].includes(line.identity));
     const clip = manifest.clips[line.id]; assert.ok(clip.effectsBaked && clip.speechDuration > 0);
     const bytes = readFileSync(new URL(clip.file, root));
     assert.equal(bytes.subarray(0, 4).toString(), 'OggS'); assert.ok(bytes.length > 2000);
   }
+});
+
+test('red warnings start once in the void, explain the clue and respect pause', async () => {
+  const clue = LEVEL3_VOICE_CUES.find(cue => cue.id === 'red_choice').lines
+    .find(line => line.id === 'l3_anxious_red_portal_clue');
+  assert.equal(clue.text, 'Blue was the way in. The exits were red. Every time.');
+  const f = fixture(); f.level.destinyChoice = 'red';
+  await f.tick(3);
+  assert.equal(f.playback.played.length, 0, 'no warnings during portal passage');
+  f.level.endingCutscene = { time: 0 };
+  await f.tick(6);
+  assert.deepEqual(f.playback.played, ['l3_tormentor_red_wrong_way',
+    'l3_anxious_red_portal_clue', 'l3_manipulator_red_inattention']);
+  await f.tick(20);
+  assert.equal(f.playback.played.length, 3, 'warnings never repeat');
+  await f.tick(1, { active: false });
+  assert.equal(f.handles.size, 0);
 });
 
 test('ending room replays the real choice recording once and stops when blocked', async () => {

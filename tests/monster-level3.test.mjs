@@ -7,6 +7,22 @@ import { monsterFixture } from './helpers/monster-fixture.mjs';
 import { VictoryPortals } from '../src/props/VictoryPortals.js';
 import { Player } from '../src/player/Player.js';
 
+test('monster health displays disappear on death and stay hidden through pickup and fate selection', () => {
+  const level = new Level3(new THREE.Scene());
+  level.monsterFight = { alive: true, phase: 'combat', health: 600, maxHealth: 600 };
+  assert.equal(level.getTargetStatus().health, 600);
+  assert.equal(level.getChallengeStatus().label, 'BOSS HEALTH');
+  for (const phase of ['dying', 'defeated']) {
+    Object.assign(level.monsterFight, { alive: false, phase, health: 0 });
+    assert.equal(level.getTargetStatus(), null);
+    assert.equal(level.getChallengeStatus(), null);
+  }
+  level.destinyReady = true;
+  assert.equal(level.getTargetStatus(), null);
+  assert.equal(level.getChallengeStatus().title, 'CHOOSE YOUR DESTINY');
+  level.monsterFight = null; level.dispose();
+});
+
 test('Level 3 selects each boss song and stops music after the degree pickup cutscene', () => {
   const level = new Level3(new THREE.Scene());
   try {
@@ -57,7 +73,7 @@ test('Monster combat waits for camera/control restoration and then owns the rig 
     f.level.update(0.3, f.player); assert.equal(f.level.monsterFight, undefined);
     f.level.update(0.4, f.player);
     assert.equal(f.level.monsterFight.phase, 'combat'); assert.equal(f.player.scriptedMovement, false);
-    assert.equal(f.level.allowsShooting, true); assert.equal(f.level.hasUnlimitedAmmo('smg'), true);
+    assert.equal(f.level.allowsShooting, true); assert.equal(f.level.hasUnlimitedAmmo('smg'), false);
     assert.equal(f.level.hasUnlimitedAmmo('pistol'), false);
     const before = f.level.transformation.updates; f.level.update(0.1, f.player);
     assert.equal(f.level.transformation.updates, before, 'cinematic no longer overwrites combat bones or the flying degree');

@@ -1,7 +1,7 @@
 // Original internal dialogue, tied to the actual final encounter rather than a timeline.
 export const LEVEL3_VOICE_CUES = [
   { id: "good_ending_final", priority: 100, overlap: 0, lines: [
-    { id: "l3_protector_good_ending", identity: "protector", text: "It's done.", label: "The Protector", pan: 0.05 }
+    { id: "l3_protector_good_ending", identity: "protector", text: "Go on, Shaun. You can rest now.", label: "The Protector", pan: 0.05 }
   ] },
   {
     "id": "arrival",
@@ -247,11 +247,25 @@ export const LEVEL3_VOICE_CUES = [
     "overlap": 0,
     "lines": [
       {
-        "id": "l3_protector_red_choice",
-        "identity": "protector",
-        "text": "You chose it. Keep going.",
-        "label": "The Protector",
-        "pan": 0.05
+        "id": "l3_tormentor_red_wrong_way",
+        "identity": "tormentor",
+        "text": "You went the wrong way, Shaun.",
+        "label": "The Tormentor",
+        "pan": -0.5
+      },
+      {
+        "id": "l3_anxious_red_portal_clue",
+        "identity": "anxious",
+        "text": "Blue was the way in. The exits were red. Every time.",
+        "label": "The Anxious One",
+        "pan": 0.55
+      },
+      {
+        "id": "l3_manipulator_red_inattention",
+        "identity": "manipulator",
+        "text": "You weren't paying attention all along.",
+        "label": "The Manipulator",
+        "pan": 0.25
       }
     ]
   },
@@ -263,7 +277,7 @@ export const LEVEL3_VOICE_CUES = [
       {
         "id": "l3_protector_blue_choice",
         "identity": "protector",
-        "text": "Your next step is yours, Shaun.",
+        "text": "You chose the right path, Shaun. You can go about your day.",
         "label": "The Protector",
         "pan": 0.05
       }

@@ -110,6 +110,7 @@ export class WeaponCombat {
       }
     }
     this.updateProjectiles(dt, player, level, this.projectiles.length ? getTargets() : []);
+    for (const drop of level.bossAmmoDrops?.splice(0) ?? []) this.dropAmmo(drop.position, drop);
     this.updatePickups(dt, player);
   }
 
@@ -209,19 +210,29 @@ export class WeaponCombat {
     if (this.kills % 2 === 0) this.dropAmmo(zombie.group.position);
   }
 
-  dropAmmo(position) {
+  dropAmmo(position, { origin = null, amount = 12 } = {}) {
     const group = new THREE.Group(); group.name = 'AmmoPickup'; group.position.set(position.x, 0.3, position.z);
     group.add(new THREE.Mesh(this.boxGeometry, this.boxMaterial));
     for (let i = 0; i < 4; i++) {
       const round = new THREE.Mesh(this.roundGeometry, this.roundMaterial); round.position.set((i - 1.5) * 0.09, 0.17, 0); group.add(round);
     }
     const ring = new THREE.Mesh(this.ringGeometry, this.ringMaterial); ring.rotation.x = -Math.PI / 2; ring.position.y = -0.22; group.add(ring);
-    this.root.add(group); this.pickups.push({ group, amount: 12, age: 0 });
+    const landing = group.position.clone();
+    if (origin) group.position.copy(origin);
+    this.root.add(group); this.pickups.push({ group, amount, age: 0, origin: origin?.clone(), landing });
   }
 
   updatePickups(dt, player) {
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const pickup = this.pickups[i]; pickup.age += dt;
+      if (pickup.origin && pickup.age < 0.65) {
+        const t = pickup.age / 0.65;
+        pickup.group.position.lerpVectors(pickup.origin, pickup.landing, t);
+        pickup.group.position.y += Math.sin(t * Math.PI) * 1.3;
+        pickup.group.rotation.y += dt * 4;
+        continue;
+      }
+      if (pickup.origin) { pickup.group.position.copy(pickup.landing); pickup.origin = null; }
       pickup.group.position.y = 0.3 + Math.sin(pickup.age * 3) * 0.06; pickup.group.rotation.y += dt * 0.55;
       if (!player.alive || player.scriptedMovement || player.ammo >= player.maxAmmo || pickup.group.position.distanceTo(player.group.position) > 1.4) continue;
       const amount = Math.min(pickup.amount, player.maxAmmo - player.ammo);

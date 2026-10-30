@@ -10,7 +10,7 @@ test('final voice waits for decoding, starts once and captions only after source
   voice.start(); voice.start(); assert.equal(loaded, 1); assert.equal(calls, 1); assert.equal(voice.state, 'loading'); assert.deepEqual(captions, []);
   const handle = {stop() { options.onEnd(); }};
   assert.equal(options.isCurrent(), true); options.onStart(handle); resolve(handle); await Promise.resolve();
-  assert.equal(voice.state, 'playing'); assert.equal(captions.at(-1)[0].text, "It's done.");
+  assert.equal(voice.state, 'playing'); assert.equal(captions.at(-1)[0].text, 'Go on, Shaun. You can rest now.');
   options.onEnd(); assert.equal(voice.state, 'finished'); assert.deepEqual(captions.at(-1), []);
 });
 

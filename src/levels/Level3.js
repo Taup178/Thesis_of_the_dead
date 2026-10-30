@@ -36,6 +36,7 @@ export class Level3 {
     this.resources = new Set(); this.targetHouse = null; this.lastHitHouse = null; this.targetHold = 0;
     this.failureReason = 'The desert overwhelmed you. Regroup and try the encounter again.';
     this.victoryPreview = !!options?.victoryPreview;
+    this.choicePreview = this.victoryPreview && !!options?.choicePreview;
     this.endingPreview = this.victoryPreview && ['red', 'blue'].includes(options?.endingPreview) ? options.endingPreview : null;
     this.transformationPreview = !!options?.transformationPreview || this.victoryPreview;
     this.bossPreview = !!options?.bossPreview || this.transformationPreview;
@@ -61,8 +62,7 @@ export class Level3 {
     }
     return null;
   }
-  hasUnlimitedAmmo(weaponId) { return weaponId === 'smg'
-    && (this.bossFight?.phase === 'combat' || this.monsterFight?.phase === 'combat'); }
+  hasUnlimitedAmmo() { return false; }
   get spawnPoint() { return new THREE.Vector3(0, 0, this.resumeArena ? 8 : 31); }
   get controlsHint() { return 'WASD: Move | Mouse: Aim | Click: Shoot | F: Gun Bash | Shift: Sprint | Space: Jump | Q: Roll | C: Camera | R: Restart | Esc: Pause'; }
 
@@ -125,26 +125,33 @@ export class Level3 {
   async prepareShaders(renderer, camera, player) {
     // Link the skinned actor and fire programs while the loading cover is up.
     // The warm-up stage has no furniture and owns none of the player's assets.
-    const warmup = new BadEndingCutscene(player, null);
-    try { await renderer?.compileAsync?.(warmup.scene, camera); }
-    finally { warmup.dispose(); }
+    for (const Ending of [BadEndingCutscene, GoodEndingCutscene]) {
+      const warmup = new Ending(player, null, this.endingTextures);
+      try { await renderer?.compileAsync?.(warmup.scene, camera); }
+      finally { warmup.dispose(); }
+    }
   }
 
   preparePlayer(player) {
     player.setFootstepSurface?.(this.footstepSurface);
     player.group.position.copy(this.spawnPoint); player.lastSafePosition.copy(player.group.position);
-    player.pitch = -0.04; player.yaw = 0; player.group.rotation.y = 0;
+    player.pitch = -0.04; player.yaw = 0; player.group.rotation.set(0, 0, 0);
     player.velocity.set(0, 0, 0); player.verticalVelocity = 0; player.grounded = true; player.platformSupport = null;
     player.cameraGroundY = 0; player.cameraObstacles = this.getObstacles(); player._updateCamera();
     if (this.resumeArena) {
       player.scriptedMovement = false;
-      player.ammo = Math.min(player.maxAmmo, Math.max(player.ammo, 45));
+      if (player.ensureAmmo) player.ensureAmmo(45);
+      else player.ammo = Math.min(player.maxAmmo, Math.max(player.ammo, 45));
       player.weaponPresentation?.update(0);
       if (this.victoryPreview) {
         // Settle the preceding cinematic under the loading overlay so this
         // preview begins with the fallen boss and the degree collection.
         for (let frame = 0; frame < 2400 && !this.monsterFight; frame++) this.update(1 / 60, player);
         this.monsterFight?.takeDamage(this.monsterFight.maxHealth);
+        if (this.choicePreview) {
+          // Advance the real pickup and portal reveal behind the loading cover.
+          for (let frame = 0; frame < 3600 && !this.destinyReady; frame++) this.update(1 / 60, player);
+        }
       }
       return;
     }
@@ -497,7 +504,7 @@ export class Level3 {
   handleBulletHit(hit, damage, player) {
     if (this._isMonsterMesh(hit.object)) { this._damageMonster(damage, player); return true; }
     if (this._isDeanMesh(hit.object)) {
-      if (this.bossFight?.takeDamage(damage)) this._onDeanDefeated(player);
+      this._damageDean(damage, player);
       return true;
     }
     const house = hit.object.userData.mudHouse;
@@ -524,13 +531,42 @@ export class Level3 {
   }
 
   _damageMonster(damage, player) {
+    const before = this.monsterFight?.health;
     if (this.monsterFight?.takeDamage(damage)) player.addScore?.(1500);
+    this._queueBossAmmo(this.monsterFight, before, player);
+  }
+
+  _damageDean(damage, player) {
+    const before = this.dean?.health;
+    const killed = this.bossFight?.takeDamage(damage);
+    this._queueBossAmmo(this.dean, before, player);
+    if (killed) this._onDeanDefeated(player);
+  }
+
+  _queueBossAmmo(boss, before, player) {
+    if (!boss || !(boss.health < before) || !(boss.maxHealth > 0)) return;
+    this.bossAmmoMilestones ??= new WeakMap();
+    this.bossAmmoDrops ??= [];
+    const claimed = this.bossAmmoMilestones.get(boss) ?? new Set();
+    this.bossAmmoMilestones.set(boss, claimed);
+    for (const threshold of [0.8, 0.6, 0.4, 0.2]) {
+      if (claimed.has(threshold) || before <= boss.maxHealth * threshold || boss.health > boss.maxHealth * threshold) continue;
+      claimed.add(threshold);
+      const origin = boss.group.position.clone();
+      const direction = player.group.position.clone().sub(origin).setY(0);
+      if (direction.lengthSq() < 0.01) direction.set(0, 0, 1);
+      direction.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (0.5 - threshold) * 1.4);
+      const position = origin.clone().addScaledVector(direction, 3.5);
+      position.x = THREE.MathUtils.clamp(position.x, -40, 40);
+      position.z = THREE.MathUtils.clamp(position.z, -40, 40);
+      this.bossAmmoDrops.push({ position, origin: origin.setY(origin.y + 2), amount: 12 });
+    }
   }
 
   handleMeleeHit(zombie, damage, player) {
     if (zombie === this.monsterFight) { this._damageMonster(damage, player); return true; }
     if (zombie !== this.dean) return false;
-    if (this.bossFight?.takeDamage(damage)) this._onDeanDefeated(player);
+    this._damageDean(damage, player);
     return true;
   }
 
@@ -598,7 +634,7 @@ export class Level3 {
     // Shaun faces -Z; the creature's rig faces +Z. Restore both headings rather
     // than returning to whatever direction the player faced before the cinematic.
     player.lockOnTarget = player.bossLockAvailable = null;
-    player.yaw = Math.atan2(-dx, -dz); player.group.rotation.y = player.yaw;
+    player.yaw = Math.atan2(-dx, -dz); player.group.rotation.set(0, player.yaw, 0);
     const eye = player.isFirstPerson ? player.firstPersonOffset?.y ?? 1.6 : player.cameraPivotOffset?.y ?? 1.55;
     player.pitch = THREE.MathUtils.clamp(Math.atan2(target.y + 2.2 - position.y - eye, Math.hypot(dx, dz)),
       -(player.maxLookPitch ?? Math.PI / 3), player.maxLookPitch ?? Math.PI / 3);
@@ -616,8 +652,9 @@ export class Level3 {
 
   updateTarget(hit) { this.targetHouse = hit?.object.userData.mudHouse || null; }
   getTargetStatus() {
-    if (this.monsterFight) return { title: 'THE MONSTER', health: this.monsterFight.health,
-      maxHealth: this.monsterFight.maxHealth, destroyed: this.monsterFight.phase === 'defeated' };
+    if (this.monsterFight) return this.monsterFight.alive && this.monsterFight.phase === 'combat'
+      ? { title: 'THE MONSTER', health: this.monsterFight.health,
+        maxHealth: this.monsterFight.maxHealth, destroyed: false } : null;
     if (this.deanDefeated) return null;
     if (this.bossFight && this.bossFight.phase !== 'waiting') {
       return { title: 'THE DEAN', health: this.dean.health, maxHealth: this.dean.maxHealth,
@@ -646,7 +683,7 @@ export class Level3 {
       if (this.destinyReady) {
         if (this.endingPreview && !this.destinyChoice) {
           const portal = this.victoryPortals.portals[this.endingPreview === 'red' ? 0 : 1];
-          player.group.position.copy(portal.center).setY(0); player.grounded = true;
+          player.group.position.copy(portal.approachPoint); player.grounded = true;
           this.endingPreview = null;
         }
         this._updateDestiny(dt, player);
@@ -714,6 +751,8 @@ export class Level3 {
       return;
     }
     if (this.destinyPassage) {
+      this.victoryPortals.portals[this.destinyChoice === 'red' ? 0 : 1].update(dt, true);
+      player.mixer?.update(dt);
       this.destinyPassage.update(dt);
       // The existing portal fades the whole actor and parchment together. Hide
       // the original scroll only once the passage has fully concealed them.
@@ -731,19 +770,20 @@ export class Level3 {
       return;
     }
     this.degreeVictory.keepHolding();
+    this.victoryPortals.updateIndicators?.(dt, player.alive !== false);
     for (const portal of this.victoryPortals.portals) portal.update(dt);
     if (!player.grounded || !player.alive) return;
-    const index = this.victoryPortals.portals.findIndex(portal => {
-      const dx = player.group.position.x - portal.center.x, dz = player.group.position.z - portal.center.z;
-      return Math.abs(dx) < 0.9 && dz > -0.45 && dz < 2.2;
-    });
+    const index = this.victoryPortals.portals.findIndex(portal =>
+      player.group.position.distanceTo(portal.approachPoint) < 1.15);
     if (index < 0) return;
     this.destinyChoice = index === 0 ? 'red' : 'blue';
+    this.victoryPortals.updateIndicators?.(0, false);
     // A portal can be entered during a dodge. Clear its temporary body transform
     // before scripted movement suspends the normal roll-pose update.
     player.isDodging = false; player.dodgeTimer = 0; player.dodgeProgress = 0; player.dodgeBufferTimer = 0;
     player.bodyMesh?.position.set(0, 0, 0); player.bodyMesh?.rotation.set(0, 0, 0);
     player.scriptedMovement = true; player.velocity?.set(0, 0, 0);
+    player._playAnimation?.('Walk', 'Idle');
     this.destinyPassage = new PortalPassage(player.group, this.victoryPortals.portals[index].center);
     this.audioManager?.playPortalEntry?.();
   }
@@ -767,6 +807,11 @@ export class Level3 {
       }
     }
     if (record.phase === 'exiting') {
+      record.dustPulse = (record.dustPulse ?? 0) - dt;
+      if (record.dustPulse <= 0) {
+        house.emitEmergenceDust?.(door);
+        record.dustPulse = .24;
+      }
       record.progress = Math.min(1, record.progress + dt / 2.1);
       zombie.group.position.lerpVectors(door.start, door.end, record.progress);
       zombie.group.lookAt(door.end.x + door.direction.x, 0, door.end.z + door.direction.z);
@@ -805,6 +850,7 @@ export class Level3 {
       detail: this.destinyChoice ? `You chose the ${this.destinyChoice} portal.` : 'Enter the red portal or the blue portal.',
       timer: this.destinyChoice ? this.destinyChoice.toUpperCase() : 'CHOOSE', label: 'YOUR DESTINY',
       progress: 1, tone: 'desert', mode: 'encounter' };
+    if (this.monsterFight && (!this.monsterFight.alive || this.monsterFight.phase !== 'combat')) return null;
     if (this.monsterFight) return { title: 'FINAL BOSS: THE MONSTER', detail: 'Claim your degree.',
       timer: `${Math.ceil(this.monsterFight.health / this.monsterFight.maxHealth * 100)}%`, label: 'BOSS HEALTH',
       progress: this.monsterFight.health / this.monsterFight.maxHealth, tone: 'danger', mode: 'encounter' };

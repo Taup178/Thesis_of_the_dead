@@ -65,6 +65,13 @@ export class MonsterDegreeFlight {
       elapsed += step; this.age += step; this.spinAge += step;
       this.lastPlayer.lerpVectors(startPlayer, player.group.position, Math.min(1, elapsed / total));
       this.curve.getPointAt(Math.min(1, this.age / this.duration), this.position);
+      if (this.leg === 'return') {
+        // Bend the final approach toward the live hand as the monster moves.
+        // Zero weight at the turn preserves the outgoing curve and second pass.
+        const hand = this.grip.getWorldPosition(this.tangent);
+        this.position.addScaledVector(hand.sub(this.catchPoint),
+          THREE.MathUtils.smootherstep(this.age / this.duration, 0.35, 1));
+      }
       this.relativeB.copy(this.position).sub(this.lastPlayer);
       if (!this.hit.has(this.leg) && !player.isDodging && crossesPlayer(this.relativeA, this.relativeB)) {
         this.hit.add(this.leg);

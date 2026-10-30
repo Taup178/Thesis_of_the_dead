@@ -8,6 +8,26 @@ import { DegreeVictory } from '../src/player/DegreeVictory.js';
 import { monsterFixture } from './helpers/monster-fixture.mjs';
 
 globalThis.ProgressEvent ??= class {};
+
+test('pickup handoff clears cinematic Euler flips and aligns camera, facing and movement', () => {
+  const input = { flushMouseDelta() {}, isDown: key => key === 'KeyW' };
+  const player = new Player(new THREE.Scene(), input, new THREE.PerspectiveCamera());
+  try {
+    for (const angle of [-2.8, -1.8, 1.8, 2.8]) {
+      player.group.quaternion.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, angle);
+      // Reading rotation.y alone loses the heading past ninety degrees.
+      DegreeVictory.prototype.releaseControl.call({ player, saved: { scripted: false } });
+      assert.ok(new THREE.Vector3(0, 0, -1).applyQuaternion(player.group.quaternion)
+        .distanceTo(new THREE.Vector3(0, 0, -1)) < 1e-8);
+      assert.equal(player.group.rotation.x, 0); assert.equal(player.group.rotation.z, 0);
+      const before = player.group.position.clone();
+      player.update(1 / 60);
+      assert.ok(player.group.position.z < before.z, 'forward moves toward the fate portals');
+      const cameraForward = player.camera.getWorldDirection(new THREE.Vector3()).setY(0).normalize();
+      assert.ok(cameraForward.distanceTo(new THREE.Vector3(0, 0, -1)) < 1e-8);
+    }
+  } finally { player.dispose(); }
+});
 const data = JSON.parse(readFileSync(new URL('../public/assets/models/character/shaun.gltf', import.meta.url), 'utf8'));
 data.materials = data.materials.map(() => ({}));
 

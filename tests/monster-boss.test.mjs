@@ -4,6 +4,37 @@ import * as THREE from 'three';
 import { MonsterBoss, MONSTER_SLAM_RADIUS } from '../src/enemies/MonsterBoss.js';
 import { monsterFixture } from './helpers/monster-fixture.mjs';
 
+test('monster damage flashes its own materials, refreshes on hits and clears after lethal damage', async () => {
+  const f = await monsterFixture();
+  const mesh = f.monster.model.getObjectByProperty('isMesh', true);
+  const original = mesh.material;
+  const boss = new MonsterBoss(f.root, f.monster, f.degreeCatch);
+  const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+  const source = Array.isArray(original) ? original[0] : original;
+  const base = material.emissive.clone(), intensity = material.emissiveIntensity;
+  try {
+    boss.takeDamage(10);
+    assert.equal(boss.hitFlashTime, 0, 'invulnerable reveal does not flash');
+    boss.start(); boss.takeDamage(10);
+    assert.notEqual(material, source, 'shared asset materials remain untouched');
+    assert.equal(material.emissive.getHex(), 0xffffff);
+    assert.equal(material.emissiveIntensity, Math.max(intensity, 0.6));
+    assert.ok(source.emissive.equals(base));
+    boss.update(.08, f.player);
+    boss.takeDamage(10);
+    assert.equal(boss.hitFlashTime, .12, 'each hit gets a fresh flash');
+    boss.update(.13, f.player);
+    assert.ok(material.emissive.equals(base));
+    assert.equal(material.emissiveIntensity, intensity);
+    boss.takeDamage(boss.maxHealth);
+    boss.update(.13, f.player);
+    assert.ok(material.emissive.equals(base), 'killing flash clears during the fall');
+  } finally {
+    boss.dispose(); f.degreeCatch.dispose();
+  }
+  assert.equal(mesh.material, original, 'disposal restores asset ownership');
+});
+
 test('the real Monster catches the degree then jumps between three separate smash positions', async () => {
   const f = await monsterFixture(), boss = new MonsterBoss(f.root, f.monster, f.degreeCatch);
   boss.start();
@@ -43,7 +74,7 @@ test('the real Monster catches the degree then jumps between three separate smas
     previousDegree = position; previousActive = boss.degree.active;
     feet.forEach((foot, i) => {
       const local = f.monster.group.worldToLocal(foot.getWorldPosition(new THREE.Vector3()));
-      if (boss.motion.previousKind !== 'idle' && boss.motion.transitionTime >= 0.14)
+      if (['throw', 'recover', 'smash'].includes(boss.motion.previousKind) && boss.motion.transitionTime >= 0.14)
         assert.ok(local.distanceTo(feetLocal[i]) < 0.035, 'feet stay planted under the attack pose');
     });
   }
@@ -61,6 +92,33 @@ test('the real Monster catches the degree then jumps between three separate smas
   }
   assert.ok(f.scroll.getWorldScale(new THREE.Vector3()).distanceTo(new THREE.Vector3(0.82, 0.78, 0.78)) < 1e-5);
   boss.dispose(); f.degreeCatch.dispose();
+});
+
+test('throw follow-through leads into a grounded rush while the degree keeps flying', async () => {
+  const f = await monsterFixture(), boss = new MonsterBoss(f.root, f.monster, f.degreeCatch);
+  boss.start();
+  let releasedAt, rushed = false, moved = false, caught = false;
+  try {
+    for (let frame = 0; frame < 600; frame++) {
+      const active = boss.degree.active;
+      const previous = f.scroll.getWorldPosition(new THREE.Vector3());
+      boss.update(1 / 60, f.player);
+      if (!releasedAt && boss.degree.active) releasedAt = boss.group.position.clone();
+      if (releasedAt && boss.degree.active && boss.state === 'spinApproach') {
+        rushed = true;
+        if (boss.group.position.distanceTo(releasedAt) > .5) moved = true;
+        assert.equal(boss.group.position.y, 0, 'rush stays on the ground');
+        assert.equal(f.scroll.parent, f.root, 'flying degree remains separate from the hand');
+      }
+      if (active && !boss.degree.active) {
+        caught = true;
+        assert.ok(f.scroll.getWorldPosition(new THREE.Vector3()).distanceTo(previous) < .65, 'moving catch stays continuous');
+        break;
+      }
+    }
+    assert.ok(rushed && moved, 'monster closes distance before the degree returns');
+    assert.ok(caught, 'degree reaches the moving hand');
+  } finally { boss.dispose(); f.degreeCatch.dispose(); }
 });
 
 test('Monster damage, death and player death stop every hazard without extra attack indicators', async () => {

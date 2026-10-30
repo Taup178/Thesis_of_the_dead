@@ -20,13 +20,25 @@ test('Level 3 emits the house-zombie music cue once when the first zombie exits'
     _updateBossCutscene() {},
   });
   level.spawnRecords[0].zombie = level.zombies[0];
+  let dustPulses = 0;
+  level.spawnRecords[0].house.emitEmergenceDust = () => dustPulses++;
   const player = { alive: true, group: new THREE.Group() };
 
   const first = level.update(1 / 60, player);
   assert.equal(first.houseZombiesEmerging, true);
   assert.equal(level.spawnRecords[0].phase, 'exiting');
   assert.equal(level.zombies[0].group.visible, true);
+  assert.equal(dustPulses, 1);
 
   const next = level.update(1 / 60, player);
   assert.equal(next.houseZombiesEmerging, false);
+  assert.equal(dustPulses, 1, 'dust is pulsed, not allocated every frame');
+  for (let frame = 0; frame < 130 && level.spawnRecords[0].phase === 'exiting'; frame++) level.update(1 / 60, player);
+  assert.ok(dustPulses >= 8 && dustPulses <= 10, 'red dust keeps pumping throughout emergence');
+  assert.equal(level.spawnRecords[0].phase, 'hunting');
+  const count = dustPulses;
+  level.spawnRecords[0].zombie.alive = false;
+  level.spawnRecords[0].deathHandled = true;
+  level.update(1 / 60, player);
+  assert.equal(dustPulses, count, 'dead zombies stop emitting');
 });

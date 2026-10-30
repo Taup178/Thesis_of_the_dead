@@ -428,6 +428,74 @@ body:not(.using-pad) #menu-overlay .menu-btn:hover .menu-arrow,
 }
 
 /* ---- Options ---- */
+/* Closing credits share the game's warm print palette, with no 3D work behind them. */
+.closing-credits { z-index: 150; overflow: hidden; background: #050504; backdrop-filter: none; color: #e6d8bf; text-align: center; }
+.closing-credits:not(.hidden) { animation: closing-reveal 1.2s ease both; }
+.closing-credits::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, #4b392114, transparent 65%); }
+.closing-card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 32px; opacity: 0; transform: translateY(10px); transition: opacity 1s ease, transform 1.4s ease; pointer-events: none; }
+.closing-credits[data-phase="epilogue"] .closing-epilogue,
+.closing-credits[data-phase="studio"] .closing-studio,
+.closing-credits[data-phase="thanks"] .closing-thanks { opacity: 1; transform: none; }
+.closing-kicker { display: block; color: #b59463; text-transform: uppercase; letter-spacing: .24em; font: 12px Georgia, serif; line-height: 1.8; }
+.closing-card h2, .closing-roll h2 { margin: 0; font: clamp(38px, 6vw, 88px)/1.15 'Archive Letterpress', Georgia, serif; color: #ead6af; font-weight: 400; }
+.closing-card p { max-width: 580px; margin: 0; color: #b7aa94; font: italic clamp(15px, 1.8vw, 21px)/1.8 Georgia, serif; }
+.closing-rule { width: 90px; height: 1px; margin-top: 14px; background: linear-gradient(90deg, transparent, #c6a36b, transparent); }
+.closing-pixels { display: grid; grid-template-columns: repeat(2, 14px); gap: 4px; margin-bottom: 18px; transform: rotate(-8deg); }
+.closing-pixels i { width: 14px; height: 14px; background: #c8a56e; }
+.closing-pixels i:last-child { opacity: .45; transform: translate(4px, 4px); }
+.closing-roll-viewport { position: absolute; inset: 0 0 80px; overflow: hidden; opacity: 0; transition: opacity 1s; mask-image: linear-gradient(transparent, black 10%, black 86%, transparent); }
+.closing-credits[data-phase="roll"] .closing-roll-viewport { opacity: 1; }
+.closing-roll { width: min(760px, calc(100% - 48px)); margin: 0 auto; will-change: transform; }
+.closing-roll-block { margin: 0 0 clamp(90px, 13vh, 160px); }
+.closing-roll-block h3 { margin: 0 0 26px; font: 12px/1.7 Georgia, serif; text-transform: uppercase; letter-spacing: .23em; color: #b59463; }
+.closing-roll-block p { margin: 14px 0; font: clamp(16px, 2vw, 21px)/1.9 Georgia, serif; color: #b7aa94; }
+.closing-roll-block .closing-name { color: #ead6af; font: clamp(23px, 3.2vw, 38px)/1.65 'Archive Letterpress', Georgia, serif; }
+.closing-roll-title .closing-kicker { margin-bottom: 28px; }
+.closing-roll-title h2 { text-transform: uppercase; margin-bottom: 30px; }
+.closing-roll-block .closing-inspiration { margin-bottom: 28px; }
+.closing-inspiration strong { color: #ead6af; font-weight: 400; font-size: 1.3em; }
+.closing-support p { font-size: clamp(14px, 1.6vw, 18px); }
+.closing-controls { position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; gap: 18px; z-index: 2; padding: 0 20px; }
+.closing-controls .menu-btn { width: auto; min-height: 38px; padding: 8px 12px; color: #a79880; font-size: 12px; background: transparent; border-color: #62513a66; }
+@keyframes closing-reveal { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .closing-credits:not(.hidden) { animation: none; } .closing-card { transform: none; transition: opacity .2s; } }
+
+.settings-container { width: min(660px, calc(100% - 36px)); display: flex; flex-direction: column; overflow: hidden; }
+.settings-container > h2 { flex-shrink: 0; margin-bottom: 18px; }
+.settings-tabs { display: flex; flex-shrink: 0; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid #77553a; }
+.settings-tab { flex: 1; min-width: 0; min-height: 44px; padding: 10px 8px; justify-content: center; font-size: clamp(13px, 2.5vw, 17px); }
+.settings-tab[aria-selected="true"] { color: #f0dbb3; border-color: #b98a61; background: #4b3020; box-shadow: inset 0 -2px #d5aa7c; }
+.settings-panels { min-height: 0; overflow-y: auto; padding: 24px 10px 4px 4px; scrollbar-width: thin; scrollbar-color: #77553a transparent; }
+.settings-panel[hidden] { display: none; }
+.settings-section-title { margin: 0 0 8px; color: #dfc6a1; font: 27px 'Archive Letterpress', Georgia, serif; }
+.settings-intro { color: #bda88b; font-size: 13px; line-height: 1.6; margin: 0 0 26px; }
+.controls-reference { margin: 26px 0; border: 1px solid #66513b; border-radius: 8px; padding: 16px; scroll-margin: 12px; }
+.controls-reference h4 { margin: 0 0 16px; color: #dfc6a1; font: 22px 'Archive Letterpress', Georgia, serif; }
+.controls-reference:focus-visible { outline: 2px solid #dfc6a1; outline-offset: 3px; }
+.controls-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; line-height: 1.5; color: #d2c4b1; }
+.controls-table th, .controls-table td { padding: 10px 8px; text-align: left; vertical-align: top; overflow-wrap: anywhere; border-bottom: 1px solid #ffffff12; }
+.controls-table thead th { color: #c49b68; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.controls-table tbody th { font-weight: normal; color: #eee0cc; }
+.controls-table tr:last-child > * { border-bottom: 0; }
+@media (max-width: 600px) {
+  .controls-reference { padding: 10px 5px; }
+  .controls-table { font-size: 11px; }
+  .controls-table th, .controls-table td { padding: 9px 5px; }
+}
+.settings-subheading { margin: 26px 0 20px; padding-top: 18px; border-top: 1px solid #77553a66; color: #dfc6a1; font: 20px 'Archive Letterpress', Georgia, serif; letter-spacing: .7px; }
+.settings-footer { flex-shrink: 0; padding-top: 16px; border-top: 1px solid #77553a; }
+.settings-footer .option-hint { margin: 0 0 12px; font-size: 11px; }
+.graphics-settings {
+  margin: 0; padding: 0;
+}
+.graphics-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.graphics-heading h3 { margin: 0; font: 30px 'Archive Letterpress', Georgia, serif; text-transform: uppercase; letter-spacing: 1.5px; color: #dfc6a1; }
+.graphics-heading span { font-size: 12px; color: #bda88b; text-transform: uppercase; letter-spacing: 1px; }
+.graphics-description { margin: -5px 0 26px; padding: 12px; background: #1c120c; border-left: 2px solid #ac6a4d; font-size: 13px; line-height: 1.6; color: #dfc6a1; }
+.graphics-settings output { display: block; margin-top: 4px; font: 12px monospace; color: #bda88b; }
+.graphics-reset { margin-top: 12px; font-size: 14px; }
+.graphics-fps { position: fixed; right: 16px; bottom: 16px; z-index: 200; padding: 7px 10px; background: #100d09dd; border: 1px solid #77553a; color: #dfc6a1; font: 12px monospace; pointer-events: none; }
+.graphics-fps[hidden] { display: none; }
 .option-row {
   display: flex;
   align-items: center;
